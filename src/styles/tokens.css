@@ -1,0 +1,99 @@
+/*
+ * 디자인 토큰. 색·간격·둥글기·글자·크기·움직임 값은 이 파일에만 둔다 (CLAUDE.md, FRONTEND.md 3장).
+ * 색은 DESIGN.md frontmatter와 같은 값. 바꾸면 DESIGN.md도 같이 고친다.
+ */
+:root {
+  /* ── 중립 ── */
+  --c-canvas: #eef0f2;        /* 화면 바탕 */
+  --c-surface: #fff;          /* 패널·카드·표 */
+  --c-surface-sunk: #f5f6f8;  /* hover, 해제된 행, 선택된 항목 */
+  --c-track: #e7e9ec;         /* 막대의 빈 부분 */
+  --c-ink: #16191d;           /* 본문·숫자 */
+  --c-ink-2: #4a515b;         /* 설명·라벨 */
+  --c-ink-3: #626a75;         /* 메타·축 라벨 (canvas 위 4.79:1) */
+  --c-line: rgb(20 24 31 / 9%);         /* 옅은 구분선 */
+  --c-line-strong: rgb(20 24 31 / 18%); /* 입력·탭 테두리, 표 머리줄 아래선 */
+  --c-line-ink: var(--c-ink-3);         /* 연결선, 정지 칸 테두리 */
+
+  /* ── 강조: 하나뿐. 실적·달성률·포커스·링크에만 ── */
+  --c-accent: #2149c4;
+
+  /* ── 상태 (D-77, 의미 색) ── */
+  --c-run: #32864e;           /* R 가동. 흰 글자 4.51:1 */
+  --c-run-ink: #fff;
+  --c-stop: #e3e5e9;          /* S 정지 칸 면. 테두리는 --c-line-ink */
+  --c-stop-ink: #3f454e;
+  --c-stop-solid: #6b717b;    /* 그래프 막대의 정지 */
+  --c-idle: #f1c21b;          /* I 대기 */
+  --c-idle-ink: #1b1600;
+  --c-idle-edge: #a67c00;     /* 대기 칸 테두리, 예지보전 주의 테두리 (흰 바탕 3.82:1) */
+  --c-down: #c62828;          /* D 고장, 예지보전 위험 테두리 */
+  --c-down-ink: #fff;
+  --c-caution-ink: #7a5c00;   /* 예지보전 주의 글자 */
+  --c-down-tint: #fbe9e9;     /* 진행 중 고장·위험 행 바탕 */
+  --c-idle-tint: #fdf3d0;     /* 진행 중 대기 행 바탕 */
+
+  /* ── 어두운 표면 (고장 토스트) ── */
+  --c-inverse: var(--c-ink);
+  --c-inverse-ink: #fff;
+  --c-inverse-ink-2: #c3c8cf;
+
+  /* ── 간격: 4px 기준 ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ── 둥글기 ── */
+  --r-1: 4px;   /* 상태 열쇠 칸, 표 안 작은 요소 */
+  --r-2: 6px;   /* 버튼, 입력, 탭, 설비 칸 */
+  --r-3: 8px;   /* 패널 */
+
+  /* ── 글자 ── */
+  --font: pretendard, "Malgun Gothic", system-ui, sans-serif;
+  --fs-caption: 12px;
+  --fs-label: 13px;
+  --fs-body: 14px;
+  --fs-body-lg: 15px;
+  --fs-title: 16px;
+  --fs-heading: 20px;
+  --fs-figure-sm: 24px;
+  --fs-figure: 32px;
+  --fs-figure-lg: 44px;
+  --fw-regular: 400;
+  --fw-strong: 600;
+  --fw-code: 700;  /* 상태 코드 글자(R/S/I/D)만 */
+  --lh-tight: 1.15;
+  --lh-body: 1.45;
+
+  /* ── 크기·배치 ── */
+  --nav-h: 52px;
+  --head-h: 64px;
+  --page-gutter: var(--sp-6);
+  --col-summary: clamp(280px, 17vw, 320px);
+  --col-side: clamp(340px, 22vw, 440px);
+  --key-sm: 22px;
+  --key-md: 26px;
+  --key-lg: 40px;
+  --line-w: 1px;
+  --line-w-strong: 1.5px;
+  --mark-w: 3px;   /* 예지보전 테두리 굵기 */
+
+  /* ── 깊이: 토스트만 ── */
+  --shadow-float: 0 8px 24px rgb(20 24 31 / 18%);
+
+  /* ── 움직임: 토스트와 물류 점만 ── */
+  --dur-fast: 150ms;
+  --dur-enter: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-enter: 0ms;
+  }
+}
