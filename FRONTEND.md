@@ -220,7 +220,8 @@ DESIGN.md를 같이 고친다.
 
 ## 6. 데이터 층
 
-데이터정의서 7장대로 두 갈래다.
+데이터정의서 7장대로 두 갈래다. 메시지·API 형식과 주기는 `docs/specs/API명세서.md`가 기준이다
+(웹소켓 `plant`·`risk`·`telemetry:{설비}` 구독, REST API-0xx). `contracts.ts`의 함수는 API 명세의 API와 1:1로 맞춘다.
 
 ```ts
 // data/contracts.ts (모양만)
