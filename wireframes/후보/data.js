@@ -78,7 +78,7 @@ function renderMap(el) {
 
 function renderAlerts(el) {
   el.innerHTML = ALERTS.map((a) => `
-    <li class="al ${a.on ? 'on' : 'off'}">
+    <li class="al ${a.on ? 'on' : 'off'}${a.on && a.s !== 'S' ? ' t-' + a.s : ''}">
       <span class="al-code ${a.s === 'P' ? 'pdm' : 's-' + a.s}">${a.s === 'P' ? '위험' : a.s}</span>
       <div class="al-main">
         <div class="al-eq">${a.eq}</div>

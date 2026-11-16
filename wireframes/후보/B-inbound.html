@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="b.css">
 <link rel="stylesheet" href="b-detail.css">
 <style>
-.inb-page { grid-template-rows: auto auto minmax(0, 1fr); }
+.inb-page { grid-template-rows: auto minmax(0, 1fr); }
 .sum { grid-template-columns: repeat(3, 1fr); }
 .body { grid-template-columns: clamp(320px, 22vw, 400px) minmax(0, 1fr); }
 .toggles { display: flex; gap: var(--sp-2); }
@@ -24,13 +24,13 @@
   <div class="head">
     <nav class="crumb" aria-label="이동 경로"><a href="B.html">대시보드</a><i data-lucide="chevron-right"></i><b>코일입고</b></nav>
     <span class="note2">설비 없음 · 입고 기록은 시뮬레이터가 만든 값</span>
+    <div class="hsum">
+      <div><div class="st-l">오늘 입고 코일</div><div class="st-v">24<small>개</small></div></div>
+      <div><div class="st-l">슬리팅 앞 재고 · 6개 라인 합</div><div class="st-v">37<small>롤</small></div></div>
+      <div><div class="st-l">오늘 투입 · 제품 ID 발급</div><div class="st-v">802</div></div>
+    </div>
   </div>
 
-  <section class="panel sum">
-    <div><div class="st-l">오늘 입고 코일</div><div class="st-v">24<small>개</small></div></div>
-    <div><div class="st-l">슬리팅 앞 재고 · 6개 라인 합</div><div class="st-v">37<small>롤</small></div></div>
-    <div><div class="st-l">오늘 투입 · 제품 ID 발급</div><div class="st-v">802</div></div>
-  </section>
 
   <div class="body">
     <section class="panel">

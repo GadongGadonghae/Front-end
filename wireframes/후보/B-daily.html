@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="b.css">
 <style>
-.daily { grid-template-rows: auto auto minmax(0, 1.45fr) minmax(0, 1fr); }
+.daily { grid-template-rows: auto minmax(0, 1fr); }
 .head { display: flex; align-items: center; gap: var(--sp-6); }
 .head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
 .date { height: 36px; padding: 0 10px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); display: flex; align-items: center; gap: var(--sp-2); }
@@ -57,44 +57,49 @@
     <span class="note">하루 마감 값 · 제품별 상세는 생산 조회에서</span>
   </div>
 
-  <section class="panel kpi">
-    <div><div class="st-l">목표</div><div class="st-v">1,200</div></div>
-    <div><div class="st-l">실적 · 출고 양품</div><div class="st-v">1,174</div></div>
-    <div><div class="st-l">달성률</div><div class="st-v">97.8<small>%</small></div></div>
-    <div><div class="st-l">OEE</div><div class="st-v">81.3<small>%</small></div><div class="st-sub">시간가동률 90.2 × 성능가동률 93.5 × 양품률 96.4</div></div>
-  </section>
+  <div class="withk">
+    <section class="panel kcol">
+      <div class="ph"><h2>하루 요약</h2><span class="meta">11-15 마감</span></div>
+      <div class="k lead"><div class="st-l">실적 · 출고 양품 / 목표</div><div class="st-v">1,174<small>/ 1,200</small></div>
+        <div class="kbar" role="img" aria-label="달성률 97.8%"><i style="width:97.8%"></i></div><div class="st-sub">달성률 97.8%</div></div>
+      <div class="k"><div class="st-l">OEE</div><div class="st-v">81.3<small>%</small></div>
+        <ul class="klist"><li>시간가동률<b>90.2</b></li><li>성능가동률<b>93.5</b></li><li>양품률<b>96.4</b></li></ul></div>
+      <div class="k"><div class="st-l">불량 제외 합계</div><div class="st-v">44</div><div class="st-sub">공정 검사 + 출고 비전</div></div>
+    </section>
+    <div class="kright" style="grid-template-rows: minmax(0, 1.45fr) minmax(0, 1fr)">
+    <div class="row">
+      <section class="panel">
+        <div class="ph"><h2>라인별 실적</h2></div>
+        <div class="fill scroll">
+          <table class="tbl">
+            <thead><tr><th>라인</th><th class="num">계획</th><th class="num">실적</th><th class="num">달성률</th><th class="num">OEE</th><th class="num">불량 제외</th></tr></thead>
+            <tbody id="lines"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>공정별 생산량 · 불량</h2><span class="meta">공정 검사 기준</span></div>
+        <div class="fill scroll">
+          <table class="tbl">
+            <thead><tr><th>공정</th><th class="num">생산</th><th class="num">불량</th><th class="num">불량률</th></tr></thead>
+            <tbody id="procs"></tbody>
+            <tfoot><tr><td>합계</td><td></td><td class="num">44</td><td></td></tr></tfoot>
+          </table>
+        </div>
+      </section>
+    </div>
 
-  <div class="row">
-    <section class="panel">
-      <div class="ph"><h2>라인별 실적</h2></div>
-      <div class="fill scroll">
-        <table class="tbl">
-          <thead><tr><th>라인</th><th class="num">계획</th><th class="num">실적</th><th class="num">달성률</th><th class="num">OEE</th><th class="num">불량 제외</th></tr></thead>
-          <tbody id="lines"></tbody>
-        </table>
-      </div>
-    </section>
-    <section class="panel">
-      <div class="ph"><h2>공정별 생산량 · 불량</h2><span class="meta">공정 검사 기준</span></div>
-      <div class="fill scroll">
-        <table class="tbl">
-          <thead><tr><th>공정</th><th class="num">생산</th><th class="num">불량</th><th class="num">불량률</th></tr></thead>
-          <tbody id="procs"></tbody>
-          <tfoot><tr><td>합계</td><td></td><td class="num">44</td><td></td></tr></tfoot>
-        </table>
-      </div>
-    </section>
-  </div>
-
-  <div class="row">
-    <section class="panel">
-      <div class="ph"><h2>비가동 코드별 시간 · 건수</h2><span class="meta">39대 합계 · 계획정지는 회색</span></div>
-      <ul class="hb" id="codes"></ul>
-    </section>
-    <section class="panel">
-      <div class="ph"><h2>재공품</h2><span class="meta">공정 사이 · 24:00 마감 시점</span></div>
-      <ul class="wip" id="wip"></ul>
-    </section>
+    <div class="row">
+      <section class="panel">
+        <div class="ph"><h2>비가동 코드별 시간 · 건수</h2><span class="meta">39대 합계 · 계획정지는 회색</span></div>
+        <ul class="hb" id="codes"></ul>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>재공품</h2><span class="meta">공정 사이 · 24:00 마감 시점</span></div>
+        <ul class="wip" id="wip"></ul>
+      </section>
+    </div>
+    </div>
   </div>
 </main>
 

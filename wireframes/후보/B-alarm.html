@@ -22,7 +22,7 @@
 .tbl td .code { min-width: 24px; height: 24px; font-size: var(--fs-xs); }
 .tbl .eqn { font-weight: 600; }
 .tbl .det { color: var(--text-2); }
-.tbl tr.live td { background: var(--surface-2); }
+.tbl tr.live:not([class*="t-"]) td { background: var(--surface-2); }
 .live-tag { color: var(--text); font-weight: 600; }
 .sent { display: inline-flex; gap: var(--sp-3); color: var(--text-2); font-size: var(--fs-sm); }
 .sent span { display: inline-flex; align-items: center; gap: 2px; }
@@ -87,7 +87,7 @@
     ['10:15:03', '10:33:43', '도장', '도장 #2', 'D', '장비고장(알람)', '건조로 온도 상한 초과', '18:40', ok('메일') + ok('슬랙'), ['버너 출력 조정', '김현수', '10:40'], 'make'],
     ['09:03:44', '09:07:49', 'L1', 'L1 슬리팅', 'I', '재공부족', '코일 공급 지연', '4:05', '', ['입고 대차 지연', '이민재', '09:15'], ''],
   ]
-  rows.innerHTML = data.map(([a, b, l, eq, s, code, det, dur, sent, memo, rep]) => `<tr class="${b ? '' : 'live'}">
+  rows.innerHTML = data.map(([a, b, l, eq, s, code, det, dur, sent, memo, rep]) => `<tr class="${b ? '' : 'live' + (s !== 'S' ? ' t-' + s : '')}">
     <td>${a}</td><td>${b || '<span class="live-tag">진행 중</span>'}</td><td>${l}</td><td class="eqn">${eq}</td>
     <td><span class="code s-${s}">${s}</span> ${code}</td><td class="det wrap">${det}</td><td class="num">${dur}</td>
     <td>${sent ? `<span class="sent">${sent}</span>` : '-'}</td>

@@ -21,16 +21,16 @@
   <div class="head">
     <nav class="crumb" aria-label="이동 경로"><a href="B.html">대시보드</a><i data-lucide="chevron-right"></i><a href="B-line.html">L2</a><i data-lucide="chevron-right"></i><b>프레스</b></nav>
     <div class="tabs"><a href="B-slit.html">슬리팅</a><a class="on" href="#">프레스</a><a href="B-weld.html">용접</a></div>
+    <div class="hsum">
+      <div><div class="st-l">설비 4대 상태</div><div class="rsid"><span><span class="code s-R">R</span>2</span><span class="zero"><span class="code s-S">S</span>0</span><span><span class="code s-I">I</span>1</span><span><span class="code s-D">D</span>1</span></div></div>
+      <div><div class="st-l">오늘 생산 · 양품</div><div class="st-v">118<small>/ 115</small></div></div>
+      <div><div class="st-l">공정 OEE</div><div class="st-v">70.2<small>%</small></div></div>
+      <div><div class="st-l">재공 · 앞 / 뒤</div><div class="st-v">6<small>/ 0</small></div></div>
+    </div>
   </div>
 
   <div class="body">
     <div class="left">
-      <section class="panel sum">
-        <div><div class="st-l">설비 4대 상태</div><div class="rsid"><span><span class="code s-R">R</span>2</span><span class="zero"><span class="code s-S">S</span>0</span><span><span class="code s-I">I</span>1</span><span><span class="code s-D">D</span>1</span></div></div>
-        <div><div class="st-l">오늘 생산 · 양품</div><div class="st-v">118<small>/ 115</small></div></div>
-        <div><div class="st-l">공정 OEE</div><div class="st-v">70.2<small>%</small></div></div>
-        <div><div class="st-l">재공 · 앞 / 뒤</div><div class="st-v">6<small>/ 0</small></div></div>
-      </section>
 
       <div class="eqs" id="eqs"></div>
 
@@ -47,7 +47,7 @@
       <section class="panel">
         <div class="ph"><h2>비가동 이력</h2><span class="meta">3단 피어싱 · 오늘</span></div>
         <ul class="hist fill scroll">
-          <li><span class="code s-D">D</span>
+          <li class="t-D"><span class="code s-D">D</span>
             <div><div class="w">장비고장(알람)</div><div class="d">Pressure 1 상한 초과 (356 / 상한 350)</div></div>
             <div class="m">14:20:12 ~ 진행 중<b>11:56</b></div>
             <div class="memo"><input placeholder="조치 메모 (선택)" aria-label="조치 메모"><button class="btn primary">저장</button></div>

@@ -8,13 +8,8 @@
 <link rel="stylesheet" href="b.css">
 <style>
 .dash { grid-template-columns: minmax(0, 1fr) clamp(320px, 21vw, 400px); }
-.col { display: grid; grid-template-rows: auto minmax(0, 1.75fr) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; min-width: 0; }
-
-/* 숫자 띠 */
-.strip { display: grid; grid-template-columns: repeat(3, auto) 1fr 1fr 1fr; padding: 0; }
-.strip > div { padding: 14px var(--sp-6); border-left: 1px solid var(--line); min-width: 0; }
-.strip > div:first-child { border-left: 0; }
-.st-row { display: flex; align-items: flex-end; gap: var(--sp-3); }
+/* 배치도 → 생산·가동률·품질 3칸 (SCR-001). 위 숫자 띠를 없애 배치도 칸이 세로로 여유를 갖게 함 */
+.col { display: grid; grid-template-rows: minmax(0, 1.75fr) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; min-width: 0; }
 
 /* 배치도 (창 크기에 맞춰 칸이 늘고 줄어듦) */
 .mapwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: var(--sp-3) var(--sp-4); border: 1px solid var(--line); border-radius: var(--r-md); background-color: var(--surface); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 24px 24px; background-position: -1px -1px; }
@@ -46,14 +41,24 @@
 .m-paint .cell::before, .m-paint .cell::after { content: ''; position: absolute; top: 50%; width: calc(var(--conn) / 2); border-top: 1.5px solid var(--line-3); }
 .m-paint .cell::before { left: calc(var(--conn) / -2 - 1px); } .m-paint .cell::after { right: calc(var(--conn) / -2 - 1px); }
 
+/* 아래 3칸: 생산이 가장 넓고, 가동률·품질은 숫자 하나 + 그 숫자를 풀어 쓴 목록 */
+.lower { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+.figs { display: flex; align-items: flex-end; gap: var(--sp-6); margin-bottom: var(--sp-3); flex: none; }
+.figs .st-v.sm { font-size: var(--fs-xl); color: var(--text-2); }
+.lead { display: flex; align-items: baseline; gap: var(--sp-3); flex: none; }
+.lead .st-sub { font-size: var(--fs-sm); }
+.parts { list-style: none; flex: 1; min-height: 0; margin: var(--sp-4) 0 0; padding: var(--sp-2) 0 0; display: flex; flex-direction: column; justify-content: space-around; gap: var(--sp-2); border-top: 1px solid var(--line); }
+.parts li { display: grid; grid-template-columns: 72px minmax(0, 1fr) 44px; align-items: center; gap: var(--sp-3); color: var(--text-2); font-size: var(--fs-sm); }
+.parts li b { text-align: right; font-size: var(--fs-md); font-weight: 600; color: var(--text); }
+.parts .t { height: 6px; background: var(--surface-3); border-radius: 2px; }
+.parts .t i { display: block; height: 100%; background: var(--text-2); border-radius: 2px; }
+.rank { list-style: none; margin: auto 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
 @media (max-height: 860px) {
-  .strip > div { padding: 10px var(--sp-5); }
+  .col { grid-template-rows: minmax(0, 2fr) minmax(0, 1fr); }
   .st-v { font-size: var(--fs-2xl); }
-  .col { grid-template-rows: auto minmax(0, 2.2fr) minmax(0, 1fr); }
+  .parts { gap: var(--sp-1); margin-top: var(--sp-3); }
+  .lead .st-sub { white-space: nowrap; }
 }
-/* 아래 */
-.lower { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-4); min-height: 0; }
-.rank { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: space-around; flex: 1; }
 .rank li { display: grid; grid-template-columns: 72px minmax(0, 1fr) 36px; align-items: center; gap: var(--sp-3); color: var(--text-2); font-size: var(--fs-sm); }
 .rank li b { text-align: right; font-size: var(--fs-md); font-weight: 600; color: var(--text); }
 .rank .t { height: 8px; background: var(--surface-3); border-radius: 2px; }
@@ -65,7 +70,7 @@
 .alerts .ph { padding: var(--sp-5) var(--sp-5) 0; }
 .toast { position: fixed; right: 40px; bottom: 40px; width: 348px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 14px var(--sp-4); background: var(--text); color: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); }
 .toast b { font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); }
-.toast b::before { content: 'D'; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 3px; background: var(--d-bg); font-size: var(--fs-xs); }
+.toast .code { color: inherit; }
 .toast p { margin: var(--sp-1) 0 0; color: var(--on-dark-2); font-size: var(--fs-sm); }
 .toast a { height: 32px; padding: 0 14px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--surface); color: var(--text); font-weight: 600; text-decoration: none; }
 </style>
@@ -75,19 +80,10 @@
 
 <main class="page dash">
   <div class="col">
-    <section class="panel strip">
-      <div><div class="st-l">목표</div><div class="st-v" id="pTarget"></div></div>
-      <div><div class="st-l">실적 · 출고 양품</div><div class="st-v" id="pDone"></div></div>
-      <div><div class="st-l">달성률</div><div class="st-v" id="pRate"></div></div>
-      <div><div class="st-l">종합 가동률 OEE</div><div class="st-row"><div class="st-v" id="oee"></div><div class="st-sub" id="oeeSub"></div></div></div>
-      <div><div class="st-l">출고 불량률</div><div class="st-row"><div class="st-v" id="qRate"></div><div class="st-sub" id="qSub"></div></div></div>
-      <div><div class="st-l">설비 39대</div><div class="st-row"><div class="st-v">34<small>가동</small></div><div class="st-sub">정지 1 · 대기 2<br>고장 1</div></div></div>
-    </section>
-
     <section class="panel">
-      <div class="ph"><h2>공장 배치도</h2>
+      <div class="ph"><h2>공장 배치도</h2><span class="meta">설비 39대</span>
         <div class="r">
-          <div class="legend"><span><i class="s-R"></i>R 가동</span><span><i class="s-S"></i>S 정지</span><span><i class="s-I"></i>I 대기</span><span><i class="s-D"></i>D 고장</span><span><i class="lg-warn"></i>주의</span><span><i class="lg-danger"></i>위험</span></div>
+          <div class="legend"><span><i class="s-R">R</i>가동<b>34</b></span><span><i class="s-S">S</i>정지<b>1</b></span><span><i class="s-I">I</i>대기<b>2</b></span><span><i class="s-D">D</i>고장<b>1</b></span><span><i class="lg-warn"></i>주의<b>1</b></span><span><i class="lg-danger"></i>위험<b>1</b></span></div>
           <div class="seg"><button class="on">2D</button><button>3D</button></div>
         </div>
       </div>
@@ -96,13 +92,24 @@
 
     <div class="lower">
       <section class="panel" id="prodPanel" style="cursor:pointer">
-        <div class="ph"><h2>오늘 생산</h2><span class="meta">00시~24시 누적</span>
+        <div class="ph"><h2>오늘 생산</h2><span class="meta">실적 = 출고 양품</span>
           <div class="r chleg"><span><i></i>실적</span><span><i class="t"></i>목표</span></div></div>
+        <div class="figs">
+          <div><div class="st-l">실적</div><div class="st-v" id="pDone"></div></div>
+          <div><div class="st-l">목표</div><div class="st-v sm" id="pTarget"></div></div>
+          <div><div class="st-l">달성률</div><div class="st-v sm" id="pRate"></div></div>
+        </div>
         <div class="fill" id="chart"></div>
       </section>
       <section class="panel">
-        <div class="ph"><h2>공정별 불량</h2><span class="meta">오늘 · 공정 검사</span></div>
-        <ul class="rank" id="rank"></ul>
+        <div class="ph"><h2>종합 가동률</h2><span class="meta">오늘 · OEE</span></div>
+        <div class="lead"><div class="st-v" id="oee"></div></div>
+        <ul class="parts" id="oeeParts"></ul>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>품질</h2><span class="meta">오늘 · 출고 불량률</span></div>
+        <div class="lead"><div class="st-v" id="qRate"></div><div class="st-sub" id="qSub"></div></div>
+        <ul class="parts" id="rank"></ul>
       </section>
     </div>
   </div>
@@ -114,7 +121,7 @@
 </main>
 
 <div class="toast" role="status">
-  <div><b>L2 프레스 3단 · 장비고장(알람)</b><p>압력 상한 초과 · 14:20:12</p></div>
+  <div><b><span class="code s-D">D</span>L2 프레스 3단 · 장비고장(알람)</b><p>압력 상한 초과 · 14:20:12</p></div>
   <a href="B-press.html">보기</a>
 </div>
 
@@ -130,8 +137,10 @@
   document.querySelectorAll('.m-line').forEach((el) => el.style.cursor = 'pointer')
   pTarget.textContent = fmt(PROD.target); pDone.textContent = fmt(PROD.done); pRate.innerHTML = `${PROD.rate}<small>%</small>`
   oee.innerHTML = `${OEE.oee}<small>%</small>`
-  oeeSub.innerHTML = `시간 ${OEE.a.toFixed(1)}<br>성능 ${OEE.p.toFixed(1)} · 양품 ${OEE.q.toFixed(1)}`
-  qRate.innerHTML = `${QUALITY.rate}<small>%</small>`; qSub.innerHTML = `양품 ${fmt(QUALITY.ok)}<br>불량 ${QUALITY.ng}`
+  // OEE = 시간 × 성능 × 양품. 세 요소를 0~100% 막대로 풀어 씀
+  oeeParts.innerHTML = [['시간가동률', OEE.a], ['성능가동률', OEE.p], ['양품률', OEE.q]].map(([n, v]) => `<li><span>${n}</span><div class="t"><i style="width:${v}%"></i></div><b>${v.toFixed(1)}</b></li>`).join('')
+  qRate.innerHTML = `${QUALITY.rate}<small>%</small>`; qSub.innerHTML = `양품 ${fmt(QUALITY.ok)} · 불량 ${QUALITY.ng}`
+  // 공정별 불량 수 (공정 검사)
   const max = Math.max(...QUALITY.byProc.map((p) => p[1]))
   rank.innerHTML = [...QUALITY.byProc].sort((a, b) => b[1] - a[1]).map(([p, n]) => `<li><span>${p}</span><div class="t"><i style="width:${(n / max) * 100}%"></i></div><b>${n}</b></li>`).join('')
   draw(chart, prodChart)

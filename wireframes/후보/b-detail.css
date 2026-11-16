@@ -2,18 +2,21 @@
 .detail { grid-template-rows: auto minmax(0, 1fr); }
 .head { display: flex; align-items: center; gap: var(--sp-6); }
 .body { display: grid; grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 460px); gap: var(--sp-4); min-height: 0; }
-.left { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: var(--sp-4); min-height: 0; min-width: 0; }
-.right { display: grid; grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr) auto; gap: var(--sp-4); min-height: 0; }
+.left { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: var(--sp-4); min-height: 0; min-width: 0; }
+.right { display: grid; grid-template-rows: minmax(0, 1.22fr) minmax(0, 1fr) auto; gap: var(--sp-4); min-height: 0; }
 
-/* 공정 요약 */
-.sum { display: grid; grid-template-columns: repeat(4, 1fr); padding: 0; }
-.sum > div { padding: 14px var(--sp-6); border-left: 1px solid var(--line); }
-.sum > div:first-child { border-left: 0; }
-.sum .st-v { font-size: var(--fs-2xl); }
-.rsid { display: flex; gap: var(--sp-3); margin-top: 6px; }
-.rsid span { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xl); font-weight: 600; }
-.rsid span.zero { color: var(--text-3); font-weight: 400; }
-.rsid .code { font-size: var(--fs-xs); min-width: 24px; height: 24px; }
+/* 공정 요약: 화면 폭 전체를 차지하던 띠 대신 이동 경로 줄 오른쪽에 숫자만 */
+.hsum { margin-left: auto; display: flex; align-items: flex-end; }
+.hsum > div { padding: 0 var(--sp-6); border-left: 1px solid var(--line-2); }
+.hsum > div:first-child { border-left: 0; }
+.hsum > div:last-child { padding-right: 0; }
+.hsum .st-l { font-size: var(--fs-xs); }
+.hsum .st-v { font-size: var(--fs-xl); }
+.hsum .st-v small { font-size: var(--fs-sm); }
+.hsum .rsid > span { font-size: var(--fs-xl); }
+.rsid { display: flex; gap: var(--sp-4); margin-top: 6px; }
+.rsid > span { display: inline-flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-xl); font-weight: 600; }
+.rsid > span.zero { color: var(--text-3); font-weight: 400; }
 
 .eq { border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; text-align: left; padding: 0; transition: border-color .15s ease; }
 .eq:hover { border-color: var(--line-3); }
@@ -30,8 +33,10 @@
 
 /* 이력 */
 .hist { list-style: none; margin: 0; padding: 0; }
-.hist li { display: grid; grid-template-columns: 28px 1fr auto; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
+.hist li { display: grid; grid-template-columns: 32px 1fr auto; gap: var(--sp-3); padding: var(--sp-3) 0; border-top: 1px solid var(--line); }
 .hist li:first-child { border-top: 0; padding-top: 0; }
+.hist li.t-D, .hist li.t-I { margin: 0 calc(var(--sp-3) * -1); padding: var(--sp-3); border-radius: var(--r-md); border-top-color: transparent; }
+.hist li.t-D + li, .hist li.t-I + li { border-top-color: transparent; }
 .hist .code { min-width: 24px; }
 .hist .w { font-weight: 600; } .hist .d { color: var(--text-2); font-size: var(--fs-sm); }
 .hist .m { text-align: right; color: var(--text-3); font-size: var(--fs-xs); }
@@ -54,7 +59,7 @@
 .micro > div:last-child { margin-left: auto; text-align: right; }
 
 @media (max-height: 860px) {
-  .sum > div { padding: 10px var(--sp-5); } .sum .st-v { font-size: var(--fs-xl); } .rsid span { font-size: var(--fs-lg); }
+  .hsum > div { padding: 0 var(--sp-5); } .hsum .st-v, .hsum .rsid > span { font-size: var(--fs-lg); }
   .eq .band { padding: 8px 12px; } .eq .info { padding: 8px 12px 10px; } .eq .nm { font-size: var(--fs-md); margin-bottom: 0; }
   .detail .panel { padding: var(--sp-4); } .detail .ph { margin-bottom: var(--sp-3); }
   .qnum .st-v { font-size: var(--fs-xl); }
@@ -72,5 +77,5 @@
 .ctbl td.over { color: var(--danger); font-weight: 600; }
 .ctbl tr.on td { background: var(--surface-2); font-weight: 600; }
 .note2 { color: var(--text-3); font-size: var(--fs-xs); }
-.left.c2 { grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); }
+.left.c2 { grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr); }
 .right.r2 { grid-template-rows: minmax(0, 1fr) minmax(0, 1.15fr); }

@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <link rel="stylesheet" href="b.css">
 <style>
-.util { grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); }
+.util { grid-template-rows: auto minmax(0, 1fr); }
 .head { display: flex; align-items: flex-end; gap: var(--sp-6); }
 .head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 600; line-height: 32px; }
 .filters { display: flex; align-items: flex-end; gap: var(--sp-3); }
@@ -83,29 +83,33 @@
     <span class="note">00:00 ~ 14:32 기준 · 코일입고 제외</span>
   </div>
 
-  <section class="panel kpi">
-    <div><div class="st-l">종합 가동률 OEE</div><div class="st-v">78.4<small>%</small></div><div class="st-sub">시간가동률 × 성능가동률 × 양품률</div></div>
-    <div><div class="st-l">시간가동률</div><div class="st-v">89.1<small>%</small></div><div class="st-sub">(부하시간 − I·D 시간) ÷ 부하시간</div></div>
-    <div><div class="st-l">성능가동률</div><div class="st-v">92.0<small>%</small></div><div class="st-sub">표준CT × 생산수량 ÷ 가동시간</div></div>
-    <div><div class="st-l">양품률</div><div class="st-v">95.6<small>%</small></div><div class="st-sub">출고 양품 ÷ 슬리팅 투입</div></div>
-  </section>
+  <div class="withk">
+    <section class="panel kcol">
+      <div class="ph"><h2>종합 가동률</h2><span class="meta">00:00 ~ 14:32</span></div>
+      <div class="k lead"><div class="st-l">OEE</div><div class="st-v">78.4<small>%</small></div><div class="st-sub">시간가동률 × 성능가동률 × 양품률</div></div>
+      <div class="k"><div class="st-l">시간가동률</div><div class="st-v">89.1<small>%</small></div><div class="st-sub">(부하시간 − I·D 시간) ÷ 부하시간</div></div>
+      <div class="k"><div class="st-l">성능가동률</div><div class="st-v">92.0<small>%</small></div><div class="st-sub">표준CT × 생산수량 ÷ 가동시간</div></div>
+      <div class="k"><div class="st-l">양품률</div><div class="st-v">95.6<small>%</small></div><div class="st-sub">출고 양품 ÷ 슬리팅 투입</div></div>
+    </section>
+    <div class="kright" style="grid-template-rows: minmax(0, 1fr) minmax(0, 1fr)">
+    <div class="mid">
+      <section class="panel">
+        <div class="ph"><h2>라인별 OEE</h2><span class="meta">막대를 누르면 그 라인의 공정별로</span></div>
+        <ul class="hb" id="lineOee"></ul>
+      </section>
+      <section class="panel">
+        <div class="ph"><h2>비가동 코드별 시간 · 건수</h2><span class="meta">계획정지는 회색</span></div>
+        <ul class="hb" id="codes"></ul>
+      </section>
+    </div>
 
-  <div class="mid">
     <section class="panel">
-      <div class="ph"><h2>라인별 OEE</h2><span class="meta">막대를 누르면 그 라인의 공정별로</span></div>
-      <ul class="hb" id="lineOee"></ul>
+      <div class="ph"><h2>상태 타임라인</h2><span class="meta">라인 대표 상태 (D &gt; I &gt; S &gt; R)</span>
+        <div class="r legend"><span><i class="s-R">R</i>가동</span><span><i class="s-S">S</i>정지</span><span><i class="s-I">I</i>대기</span><span><i class="s-D">D</i>고장</span><span><i style="background:var(--surface-3)"></i>아직 안 온 시간</span></div></div>
+      <div class="tl"><div class="tl-rows" id="tl"></div><div class="tl-axis"><div></div><div id="axis"></div></div></div>
     </section>
-    <section class="panel">
-      <div class="ph"><h2>비가동 코드별 시간 · 건수</h2><span class="meta">계획정지는 회색</span></div>
-      <ul class="hb" id="codes"></ul>
-    </section>
+    </div>
   </div>
-
-  <section class="panel">
-    <div class="ph"><h2>상태 타임라인</h2><span class="meta">라인 대표 상태 (D &gt; I &gt; S &gt; R)</span>
-      <div class="r legend"><span><i class="s-R"></i>R 가동</span><span><i class="s-S"></i>S 정지</span><span><i class="s-I"></i>I 대기</span><span><i class="s-D"></i>D 고장</span><span><i style="background:var(--surface-3)"></i>아직 안 온 시간</span></div></div>
-    <div class="tl"><div class="tl-rows" id="tl"></div><div class="tl-axis"><div></div><div id="axis"></div></div></div>
-  </section>
 </main>
 
 <script src="data.js"></script>
