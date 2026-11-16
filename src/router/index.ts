@@ -38,6 +38,11 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'settings', redirect: '/settings/target' },
 ]
 
+// 부품 견본: 개발 모드에서만 (빌드 결과에는 들어가지 않음)
+if (import.meta.env.DEV) {
+  appRoutes.push({ path: 'dev/parts', component: () => import('@/pages/DevPartsPage.vue'), meta: { title: '부품 견본' } })
+}
+
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('@/pages/Scr000LoginPage.vue'), meta: { screen: 'SCR-000', title: '로그인', public: true } },
   { path: '/', component: () => import('@/layouts/AppShell.vue'), children: appRoutes },
