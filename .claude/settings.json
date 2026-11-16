@@ -1,9 +1,10 @@
 {
-  "enabledPlugins": {
-    "unslop@heydamir": true,
-    "impeccable@impeccable": true
-  },
   "env": {
     "IMPECCABLE_LIVE_COPY_AGENT": "off"
+  },
+  "enabledPlugins": {
+    "unslop@heydamir": true,
+    "impeccable@impeccable": true,
+    "frontend-design@claude-plugins-official": false
   }
 }
