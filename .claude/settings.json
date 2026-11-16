@@ -1,0 +1,9 @@
+{
+  "enabledPlugins": {
+    "unslop@heydamir": true,
+    "impeccable@impeccable": true
+  },
+  "env": {
+    "IMPECCABLE_LIVE_COPY_AGENT": "off"
+  }
+}

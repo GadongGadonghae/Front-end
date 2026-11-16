@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>시안 B · 라인 상세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="b.css">
+<link rel="stylesheet" href="b-detail.css">
+<style>
+.line { grid-template-rows: auto auto minmax(0, 1fr) minmax(0, 1fr); }
+.sum .st-v small { margin-left: 6px; }
+.lower { display: grid; grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 460px); gap: var(--sp-4); min-height: 0; }
+
+/* 라인 흐름 */
+.flowwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: var(--sp-4) var(--sp-5); border: 1px solid var(--line); border-radius: var(--r-md); background-color: var(--surface); background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px); background-size: 24px 24px; background-position: -1px -1px; }
+.flow { flex: 1; min-height: 0; align-content: center; display: grid; grid-template-columns: 72px minmax(0, 1fr) 96px minmax(0, 4.6fr) 96px minmax(0, 1fr) 72px; grid-template-rows: auto minmax(56px, 136px) auto; column-gap: 0; row-gap: var(--sp-2); }
+.f-head { grid-row: 1; text-align: center; }
+.f-head a { display: inline-flex; align-items: center; gap: 2px; font-weight: 600; text-decoration: none; background: var(--surface); padding: 0 4px; }
+.f-head a:hover { text-decoration: underline; }
+.f-head svg { width: 14px; height: 14px; color: var(--text-3); }
+.f-grp { grid-row: 2; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 10px; position: relative; }
+.f-grp .cell { height: 100%; }
+.f-grp .cell .c-code { font-size: var(--fs-2xl); }
+.f-grp .cell .c-name { font-size: var(--fs-md); font-weight: 600; }
+.f-grp .cell .c-word, .f-grp .cell .c-dur { font-size: var(--fs-md); }
+.f-link { grid-row: 2; position: relative; display: grid; place-items: center; }
+.f-link::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px solid var(--line-3); }
+.f-link span { position: relative; background: var(--surface); padding: 2px 6px; color: var(--text-2); font-size: var(--fs-sm); text-align: center; line-height: 1.3; }
+.f-link span b { display: block; color: var(--text); font-size: var(--fs-lg); }
+.f-end { grid-row: 2; position: relative; display: grid; place-items: center; color: var(--text-3); font-size: var(--fs-xs); }
+.f-end::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 1.5px dashed var(--line-3); }
+.f-end span { position: relative; background: var(--surface); padding: 0 4px; }
+.f-foot { grid-row: 3; text-align: center; color: var(--text-2); font-size: var(--fs-sm); }
+.f-foot b { color: var(--text); font-weight: 600; }
+
+.sum .big { display: flex; align-items: center; gap: var(--sp-3); margin-top: 4px; }
+.sum .big .code { min-width: 34px; height: 34px; font-size: var(--fs-lg); }
+.sum .big b { font-size: var(--fs-xl); font-weight: 600; white-space: nowrap; margin-right: var(--sp-2); }
+.sum .big .rsid { padding-left: var(--sp-4); border-left: 1px solid var(--line); }
+.sum .rsid { margin-top: 0; }
+.alerts .ph { margin-bottom: var(--sp-2); }
+.al { grid-template-columns: 44px 1fr auto; }
+@media (max-height: 860px) {
+  .flowwrap { padding: var(--sp-3) var(--sp-4); }
+  .f-grp .cell .c-code { font-size: var(--fs-xl); }
+  .sum .big .code { min-width: 28px; height: 28px; }
+}
+</style>
+</head>
+<body>
+<header class="top"></header>
+
+<main class="page detail line">
+  <div class="head">
+    <nav class="crumb" aria-label="이동 경로"><a href="B.html">대시보드</a><i data-lucide="chevron-right"></i><b>L2</b></nav>
+    <div class="tabs"><a href="#">L1</a><a class="on" href="#">L2</a><a href="#">L3</a><a href="#">L4</a><a href="#">L5</a><a href="#">L6</a><a href="B-paint.html">도장</a></div>
+  </div>
+
+  <section class="panel sum">
+    <div><div class="st-l">라인 상태 · 설비 6대</div>
+      <div class="big"><span class="code s-D">D</span><b>고장</b>
+        <div class="rsid"><span><span class="code s-R">R</span>3</span><span class="zero"><span class="code s-S">S</span>0</span><span><span class="code s-I">I</span>2</span><span><span class="code s-D">D</span>1</span></div></div></div>
+    <div><div class="st-l">오늘 라인 실적 / 라인 계획</div><div class="st-v">108<small>/ 200 · 54.0%</small></div></div>
+    <div><div class="st-l">라인 OEE</div><div class="st-v">68.9<small>%</small></div></div>
+    <div><div class="st-l">오늘 불량 제외</div><div class="st-v">7<small>슬리팅 1 · 프레스 3 · 용접 3</small></div></div>
+  </section>
+
+  <section class="panel">
+    <div class="ph"><h2>라인 흐름</h2><span class="meta">공정 이름이나 설비 칸을 누르면 공정 상세</span>
+      <div class="r legend"><span><i class="s-R"></i>R 가동</span><span><i class="s-S"></i>S 정지</span><span><i class="s-I"></i>I 대기</span><span><i class="s-D"></i>D 고장</span></div></div>
+    <div class="flowwrap"><div class="flow" id="flow"></div></div>
+  </section>
+
+  <div class="lower">
+    <section class="panel">
+      <div class="ph"><h2>시간대별 라인 생산</h2><span class="meta">00시~24시 누적</span>
+        <div class="r chleg"><span><i></i>라인 실적</span><span><i class="t"></i>라인 계획 200</span></div></div>
+      <div class="fill" id="chart"></div>
+    </section>
+    <section class="panel alerts">
+      <div class="ph"><h2>L2 오늘 알림</h2><span class="meta">3건 · 진행 중 3</span></div>
+      <ul id="alerts"></ul>
+    </section>
+  </div>
+</main>
+
+<script src="data.js"></script>
+<script src="b.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  renderTop('대시보드')
+  // 데모 값 (L2, 14:32:08)
+  const L = LINES[1]
+  const durs = ['4:02:15', '4:02:15', '4:02:15', '11:56', '11:28', '11:03'] // 지금 상태가 이어진 시간
+  const eq = (i, n) => cell(n, L.st[i], { dur: durs[i] })
+  const head = (col, n, href) => `<div class="f-head" style="grid-column:${col}"><a href="${href}">${n}<i data-lucide="chevron-right"></i></a></div>`
+  flow.innerHTML = `
+    <div class="f-end" style="grid-column:1"><span>입고에서</span></div>
+    ${head(2, '슬리팅', 'B-slit.html')}<div class="f-grp" style="grid-column:2" data-href="B-slit.html">${eq(0, '슬리팅')}</div>
+    <div class="f-link" style="grid-column:3"><span>재공<b>6</b></span></div>
+    ${head(4, '프레스', 'B-press.html')}<div class="f-grp" style="grid-column:4" data-href="B-press.html">${['1단 성형', '2단 트림', '3단 피어싱', '4단 플랜지'].map((n, i) => eq(i + 1, n)).join('')}</div>
+    <div class="f-link" style="grid-column:5"><span>재공<b>0</b></span></div>
+    ${head(6, '용접', 'B-weld.html')}<div class="f-grp" style="grid-column:6" data-href="B-weld.html">${eq(5, '용접')}</div>
+    <div class="f-end" style="grid-column:7"><span>도장으로</span></div>
+    <div class="f-foot" style="grid-column:2">생산 <b>131</b> · 불량 1</div>
+    <div class="f-foot" style="grid-column:4">생산 <b>118</b> · 불량 3 <span class="note2">(4단 뒤 검사)</span></div>
+    <div class="f-foot" style="grid-column:6">생산 <b>115</b> · 불량 3</div>`
+  flow.querySelectorAll('.f-grp').forEach((g) => g.addEventListener('click', () => location.href = g.dataset.href))
+
+  // 누적 실적: 시간당 7~8개, 14:20 고장 뒤 멈춤
+  const hourly = [8, 7, 8, 7, 8, 7, 8, 7, 8, 7, 8, 7, 8, 7, 3], pts = [[0, 0]]
+  let cum = 0
+  hourly.forEach((v, i) => pts.push([i === 14 ? 14 + 20 / 60 : i + 1, (cum += v)]))
+  pts.push([14 + 32 / 60, cum])
+  draw(chart, (el) => lineChart(el, { label: 'L2 시간대별 누적 실적과 라인 계획', x0: 0, x1: 24, xTicks: [0, 6, 12, 18, 24].map((h) => [h, `${String(h).padStart(2, '0')}시`]), y0: 0, y1: 200, yTicks: [0, 50, 100, 150, 200],
+    series: [{ pts, cls: 'ch-actual' }, { pts: [[0, 0], [24, 200]], cls: 'ch-target' }], dot: true, now: 14 + 32 / 60 }))
+
+  alerts.innerHTML = ALERTS.filter((a) => a.eq.startsWith('L2')).map((a) => `
+    <li class="al ${a.on ? 'on' : 'off'}" onclick="location.href='B-press.html'">
+      <span class="al-code s-${a.s}">${a.s}</span>
+      <div class="al-main"><div class="al-eq">${a.eq}</div><div class="al-msg">${a.code} · ${a.msg}</div></div>
+      <div class="al-meta"><span>${a.t}</span><span class="al-dur">${a.dur}</span></div>
+    </li>`).join('')
+  lucide.createIcons()
+</script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>시안 B · 계획수정 보고서</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="b.css">
+<style>
+.rep { grid-template-rows: auto minmax(0, 1fr); }
+.head { display: flex; align-items: center; gap: var(--sp-6); }
+.head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
+.body { display: grid; grid-template-columns: clamp(300px, 22vw, 380px) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+
+/* 목록 */
+.list { list-style: none; margin: 0 calc(var(--sp-5) * -1); padding: 0; overflow: auto; }
+.list .d { padding: var(--sp-3) var(--sp-5) var(--sp-1); color: var(--text-3); font-size: var(--fs-xs); }
+.list a { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-3); padding: var(--sp-3) var(--sp-5); text-decoration: none; border-left: 2px solid transparent; }
+.list a:hover { background: var(--surface-2); }
+.list a.on { background: var(--surface-2); border-left-color: var(--text); }
+.list a b { font-weight: 600; }
+.list a span { color: var(--text-2); font-size: var(--fs-sm); }
+.list a time { color: var(--text-3); font-size: var(--fs-sm); }
+
+/* 보고서 */
+.doc { overflow: auto; padding: var(--sp-6) var(--sp-6) var(--sp-5); }
+.doc-head { display: flex; align-items: flex-start; gap: var(--sp-4); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line-2); }
+.doc-head h2 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
+.doc-head p { margin: 4px 0 0; color: var(--text-3); font-size: var(--fs-sm); }
+.doc-head .btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.doc-head .btn svg { width: 16px; height: 16px; }
+.doc section { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: var(--sp-5); padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
+.doc section:last-child { border-bottom: 0; }
+.doc h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-2); }
+.doc p { margin: 0; max-width: 72ch; }
+.facts { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: var(--sp-1) var(--sp-6); margin-top: var(--sp-3); }
+.facts dt { color: var(--text-3); font-size: var(--fs-sm); } .facts dd { margin: 0; font-weight: 600; }
+.calc { display: flex; gap: var(--sp-6); margin-top: var(--sp-3); }
+.calc .st-v { font-size: var(--fs-2xl); }
+.tbl { max-width: 760px; margin-top: var(--sp-3); }
+.tbl tfoot td { font-weight: 600; border-bottom: 0; border-top: 1px solid var(--line-2); }
+.tbl td.add { font-weight: 600; }
+.result { display: flex; align-items: center; gap: var(--sp-3); }
+.result .grade { height: 28px; }
+.note2 { color: var(--text-3); font-size: var(--fs-xs); margin-top: var(--sp-2); }
+@media (max-height: 860px) {
+  .doc { padding: var(--sp-5); } .doc section { padding: var(--sp-3) 0; } .tbl td { padding: 5px var(--sp-3); }
+}
+</style>
+</head>
+<body>
+<header class="top"></header>
+
+<main class="page rep">
+  <div class="head">
+    <h1>리포트</h1>
+    <div class="tabs"><a href="B-daily.html">일일 생산 리포트</a><a class="on" href="#">계획수정 보고서</a></div>
+  </div>
+
+  <div class="body">
+    <section class="panel">
+      <div class="ph"><h2>보고서 목록</h2><span class="meta">날짜별</span></div>
+      <div class="list">
+        <div class="d">2026-11-16 (월)</div>
+        <a class="on" href="#"><b>L2 프레스 3단</b><time>14:24:31</time><span>장비고장(알람)</span></a>
+        <div class="d">2026-11-14 (토)</div>
+        <a href="#"><b>L4 프레스 2단</b><time>16:40:05</time><span>장비고장</span></a>
+        <div class="d">2026-11-12 (목)</div>
+        <a href="#"><b>도장 #1</b><time>09:12:44</time><span>장비고장(알람)</span></a>
+        <a href="#"><b>L6 슬리팅</b><time>03:05:18</time><span>안전문제</span></a>
+      </div>
+    </section>
+
+    <section class="panel doc">
+      <div class="doc-head">
+        <div><h2>계획수정 보고서 · L2 프레스 3단</h2><p>2026-11-16 14:24:31 생성 · 김현수 · 제안만 하며 목표와 설비 계획은 바꾸지 않음</p></div>
+        <button class="btn"><i data-lucide="download"></i>PDF 다운로드</button>
+      </div>
+
+      <section>
+        <h3>발생</h3>
+        <div>
+          <p>L2 프레스 3단이 14:20:12에 장비고장(알람)으로 멈췄습니다. 라인 안 설비는 한 줄로 이어져 있어 L2 전체가 멈춘 것으로 보고 계산했습니다.</p>
+          <dl class="facts"><dt>라인</dt><dt>설비</dt><dt>발생</dt><dt>원인</dt><dd>L2</dd><dd>L2 프레스 3단</dd><dd>14:20:12</dd><dd>Pressure 1 상한 초과 (356 / 상한 350)</dd></dl>
+        </div>
+      </section>
+
+      <section>
+        <h3>부족 수량</h3>
+        <div>
+          <p>L2가 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.</p>
+          <div class="calc">
+            <div><div class="st-l">남은 시간</div><div class="st-v">9:35:29</div><div class="st-sub">14:24:31 ~ 24:00</div></div>
+            <div><div class="st-l">L2 남은 라인 계획</div><div class="st-v">92<small>개</small></div><div class="st-sub">라인 계획 200 − 실적 108</div></div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h3>다른 라인 추가 배정</h3>
+        <div>
+          <p>정상 라인 5개의 남은 능력 비율대로 92개를 나눴습니다. 남은 능력 = 남은 시간 ÷ 라인 CT 120초 − 남은 라인 계획.</p>
+          <table class="tbl">
+            <thead><tr><th>라인</th><th class="num">남은 라인 계획</th><th class="num">남은 능력</th><th class="num">비율</th><th class="num">추가 배정</th></tr></thead>
+            <tbody id="alloc"></tbody>
+            <tfoot><tr><td>합계</td><td class="num">366</td><td class="num">1,069</td><td class="num">100%</td><td class="num">92</td></tr></tfoot>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h3>결과</h3>
+        <div class="result"><span class="grade ok">목표 달성 가능</span><p>남은 능력 합 1,069개가 부족 수량 92개보다 많아 오늘 목표 1,200개를 맞출 수 있을 것으로 예상합니다.</p></div>
+      </section>
+      <p class="note2">값은 데모 값</p>
+    </section>
+  </div>
+</main>
+
+<script src="data.js"></script>
+<script src="b.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  renderTop('리포트')
+  // 데모 값: 남은 시간 34,529초 ÷ 120 = 287개
+  const A = [['L1', 69, 218, 19], ['L3', 73, 214, 18], ['L4', 81, 206, 18], ['L5', 70, 217, 19], ['L6', 73, 214, 18]]
+  alloc.innerHTML = A.map(([l, rp, cap, add]) => `<tr><td>${l}</td><td class="num">${rp}</td><td class="num">${cap}</td><td class="num">${(cap / 1069 * 100).toFixed(1)}%</td><td class="num add">+${add}</td></tr>`).join('')
+  lucide.createIcons()
+</script>
+</body>
+</html>
