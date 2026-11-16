@@ -1,0 +1,35 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "wireframes/후보/B.html"
+        ],
+        "createdAt": "2026-11-16T06:25:58.898Z",
+        "reason": "모눈은 공장 배치도(도면) 표면에만 씀. 규칙이 허용하는 map/blueprint 예외이며 시안 B '도면' 방향(후보 비교 페이지에서 사용자가 고른 방향)의 핵심"
+      },
+      {
+        "rule": "codex-grid-background",
+        "value": "*",
+        "files": [
+          "wireframes/후보/B-line.html"
+        ],
+        "createdAt": "2026-11-16T06:36:36.911Z",
+        "reason": "모눈은 라인 흐름 도면 표면에만 씀. B.html과 같은 map/blueprint 예외, 시안 B '도면' 방향"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "gothic\",sans-serif",
+        "files": [
+          "wireframes/후보/index.html"
+        ],
+        "createdAt": "2026-11-16T07:40:23.107Z",
+        "reason": "index.html 글꼴 스택 'Pretendard','Malgun Gothic',sans-serif는 DESIGN.md typography의 Pretendard와 대체 글꼴 Malgun Gothic 그대로. 탐지기가 스택 꼬리를 별도 글꼴로 읽은 오탐"
+      }
+    ]
+  }
+}
