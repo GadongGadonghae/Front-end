@@ -23,13 +23,14 @@ colors:
   caution-ink: "#7a5c00"
   down-tint: "#fbe9e9"
   idle-tint: "#fdf3d0"
+  inverse-ink-secondary: "#c3c8cf"
 typography:
   body:
     fontFamily: "Pretendard, 'Malgun Gothic', system-ui, sans-serif"
     fontFeature: "\"tnum\" 1"
 ---
 
-<!-- 이 문서는 시안 B(wireframes/후보/)에서 확정한 결정만 담는다. 시안은 화면 구성 확인용이라
+<!-- 이 문서는 시안 B(docs/wireframes/후보/)에서 확정한 결정만 담는다. 시안은 화면 구성 확인용이라
      간격·둥글기·글자 크기 같은 px 수치는 여기에 옮기지 않았다. 그 값들은 Vue 구현 때 src/style.css의
      :root 토큰으로 새로 정하고, 정한 뒤 /impeccable document를 다시 돌려 이 문서에 채운다. -->
 
@@ -65,6 +66,7 @@ typography:
 - **먹 Ink** (`ink`): 본문과 숫자.
 - **보조 먹 Ink Secondary** (`ink-secondary`): 설명·라벨.
 - **흐린 먹 Ink Muted** (`ink-muted`): 메타 정보, 축 라벨. 캔버스 위 4.79:1. 정지 칸의 진한 테두리와 연결선에도 쓴다.
+- **어두운 면 보조 글자 Inverse Ink Secondary** (`inverse-ink-secondary`): 먹색 바탕(고장 토스트) 위 보조 글자. 먹 바탕 대비 10.48:1.
 
 ### State (D-77, 의미 색 · 강조색 아님)
 - **가동 초록 Run** (`state-run` / 글자 `state-run-ink`): R. 꽉 찬 초록 + 흰 글자. 흰 글자 AA를 지키는 가장 밝은 초록이다(4.51:1). 이보다 밝게 하려면 글자를 진한 색으로 바꿔야 한다.
@@ -185,4 +187,4 @@ typography:
 - **Don't** 그라데이션, 빛 번짐(glow), 반복 애니메이션, 카드 hover 확대, 장식 이미지를 쓰지 않는다.
 - **Don't** 1초 갱신마다 깜빡이는 효과를 주지 않는다.
 - **Don't** 강조 파랑을 상태 표시에 쓰거나, 상태 4색을 강조 목적으로 쓰지 않는다.
-- **Don't** 시안 B(`wireframes/후보/`)의 px 수치를 구현에 그대로 옮기지 않는다. 시안은 구성 확인용이다.
+- **Don't** 시안 B(`docs/wireframes/후보/`)의 px 수치를 구현에 그대로 옮기지 않는다. 시안은 구성 확인용이다.

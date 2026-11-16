@@ -1,7 +1,7 @@
 // Stylelint 설정. 색값은 src/styles/tokens.css에만 둔다 (CLAUDE.md 토큰 규칙, FRONTEND.md 7장)
 export default {
   extends: ['stylelint-config-standard', 'stylelint-config-recommended-vue'],
-  ignoreFiles: ['dist/**', 'wireframes/**', 'node_modules/**'],
+  ignoreFiles: ['dist/**', 'docs/**', 'node_modules/**'],
   rules: {
     // 컴포넌트는 var(--…)만 쓴다: hex·이름 색·색 함수 금지
     'color-no-hex': true,

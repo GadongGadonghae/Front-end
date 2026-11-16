@@ -15,7 +15,7 @@ const layer = (files, ...patterns) => ({
 })
 
 export default tseslint.config(
-  { ignores: ['dist/**', 'node_modules/**', 'wireframes/**', 'public/**'] },
+  { ignores: ['dist/**', 'node_modules/**', 'docs/**', 'public/**'] },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
