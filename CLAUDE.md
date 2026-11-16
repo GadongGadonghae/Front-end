@@ -3,6 +3,7 @@
 Vue 3 + Vite + TypeScript. 공장 설비 39대의 상태를 1초마다 보여 주는 관제 대시보드.
 요구사항은 `specs/`(PRD_노션 · 기능명세서 · 화면정의서 · 데이터정의서), 결정 근거는 `인터뷰/02_결정사항_미결.md`(D-xx), 배치 초안은 `wireframes/화면구성.html`.
 명세와 코드가 다르면 명세가 기준이다. 현재 `src/`는 옛 프로토타입이다 (화면정의서 2-1절).
+보이는 모습은 `DESIGN.md`, 코드 구조·층·의존 방향·부품 목록·라우트는 `FRONTEND.md`를 따른다. 화면 구성 확인용 시안은 `wireframes/후보/B*.html`(px 수치는 옮기지 않음).
 
 ## 디자인 스킬 역할
 
@@ -43,3 +44,4 @@ Vue 3 + Vite + TypeScript. 공장 설비 39대의 상태를 1초마다 보여 �
 
 **코드**
 - Vue 3 SFC + TypeScript. UI 라이브러리·차트 라이브러리를 새로 추가하려면 먼저 묻는다.
+- 커밋 전 `npm run check`(타입 검사 + ESLint + Stylelint). 층 사이 의존 방향은 ESLint가 막는다 (FRONTEND.md 2장).
