@@ -63,10 +63,10 @@
 /* 알림 열 */
 .alerts { padding: 0; }
 .alerts .ph { padding: var(--sp-5) var(--sp-5) 0; }
-.toast { position: fixed; right: 40px; bottom: 40px; width: 348px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 14px var(--sp-4); background: var(--text); color: var(--surface); border-radius: var(--r-lg); box-shadow: 0 8px 24px rgba(20,24,31,.18); }
+.toast { position: fixed; right: 40px; bottom: 40px; width: 348px; display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center; padding: 14px var(--sp-4); background: var(--text); color: var(--surface); border-radius: var(--r-lg); box-shadow: var(--shadow-pop); }
 .toast b { font-weight: 600; display: flex; align-items: center; gap: var(--sp-2); }
 .toast b::before { content: 'D'; display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 3px; background: var(--d-bg); font-size: var(--fs-xs); }
-.toast p { margin: var(--sp-1) 0 0; color: #c3c8cf; font-size: var(--fs-sm); }
+.toast p { margin: var(--sp-1) 0 0; color: var(--on-dark-2); font-size: var(--fs-sm); }
 .toast a { height: 32px; padding: 0 14px; display: grid; place-items: center; border-radius: var(--r-md); background: var(--surface); color: var(--text); font-weight: 600; text-decoration: none; }
 </style>
 </head>
@@ -87,7 +87,7 @@
     <section class="panel">
       <div class="ph"><h2>공장 배치도</h2>
         <div class="r">
-          <div class="legend"><span><i class="s-R"></i>R 가동</span><span><i class="s-S"></i>S 정지</span><span><i class="s-I"></i>I 대기</span><span><i class="s-D"></i>D 고장</span><span><i style="outline:2px solid var(--warn);outline-offset:1px;width:9px;height:9px"></i>주의</span><span><i style="outline:2px dashed var(--danger);outline-offset:1px;width:9px;height:9px"></i>위험</span></div>
+          <div class="legend"><span><i class="s-R"></i>R 가동</span><span><i class="s-S"></i>S 정지</span><span><i class="s-I"></i>I 대기</span><span><i class="s-D"></i>D 고장</span><span><i class="lg-warn"></i>주의</span><span><i class="lg-danger"></i>위험</span></div>
           <div class="seg"><button class="on">2D</button><button>3D</button></div>
         </div>
       </div>

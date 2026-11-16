@@ -1,14 +1,17 @@
-/* 시안 B 공용 — 밝은 회색 바탕, 상태는 꽉 찬 색 칸, Pretendard 하나. 브라우저 창에 맞춰 늘고 줄어든다 */
+/* 시안 B 공용 — 밝은 회색 바탕, Pretendard 하나. 브라우저 창에 맞춰 늘고 줄어든다
+   상태 칸: R·I·D는 꽉 찬 색, S만 옅은 회색 면 (R과 밝기 차이를 크게 두어 색약도 구분).
+   --s-bg 진한 회색은 그래프 막대용으로 남겨 둔다 */
 :root {
   --bg: #eef0f2; --surface: #ffffff; --surface-2: #f5f6f8; --surface-3: #e7e9ec;
   --line: rgba(20,24,31,.09); --line-2: rgba(20,24,31,.18); --line-3: #626a75;
   --text: #16191d; --text-2: #4a515b; --text-3: #626a75;
   --accent: #2149c4; --accent-soft: rgba(33,73,196,.08);
-  --r-bg: #2b7a4b; --r-tx: #ffffff;
-  --s-bg: #6b717b; --s-tx: #ffffff;
+  --r-bg: #32864e; --r-tx: #ffffff;
+  --s-bg: #6b717b; --s-tx: #ffffff; --s-soft: #e3e5e9; --s-ink: #3f454e;
   --i-bg: #f1c21b; --i-tx: #1b1600;
   --d-bg: #c62828; --d-tx: #ffffff;
-  --warn: #c99700; --warn-tx: #7a5c00; --danger: #c62828;
+  --warn: #a67c00; --warn-tx: #7a5c00; --danger: #c62828;
+  --on-dark-2: #c3c8cf; --danger-on-dark: #ff9a9a; --shadow-pop: 0 8px 24px rgba(20,24,31,.18);
   --r-sm: 4px; --r-md: 6px; --r-lg: 8px;
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px;
   --fs-2xs: 12px; --fs-xs: 13px; --fs-sm: 14px; --fs-md: 15px; --fs-lg: 17px; --fs-h: 17px; --fs-xl: 22px; --fs-2xl: 30px; --fs-3xl: 38px;
@@ -78,8 +81,9 @@ a { color: inherit; }
 
 /* 상태 */
 .s-R { background: var(--r-bg); color: var(--r-tx); }
-.s-S { background: var(--s-bg); color: var(--s-tx); }
-.s-I { background: var(--i-bg); color: var(--i-tx); }
+.s-S { background: var(--s-soft); color: var(--s-ink); box-shadow: inset 0 0 0 1px var(--line-2); }
+.s-S .c-name { color: var(--text); }
+.s-I { background: var(--i-bg); color: var(--i-tx); box-shadow: inset 0 0 0 1px var(--warn); }
 .s-D { background: var(--d-bg); color: var(--d-tx); }
 .code { display: inline-grid; place-items: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: var(--r-sm); font-size: var(--fs-sm); font-weight: 700; }
 .pdm-warn { outline: 3px solid var(--warn); outline-offset: 2px; }
@@ -123,6 +127,8 @@ a { color: inherit; }
 .legend { display: flex; gap: 14px; color: var(--text-2); font-size: var(--fs-xs); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend i { width: 12px; height: 12px; border-radius: 2px; }
+.legend i.lg-warn, .legend i.lg-danger { width: 9px; height: 9px; outline-offset: 1px; }
+.legend i.lg-warn { outline: 2px solid var(--warn); } .legend i.lg-danger { outline: 2px dashed var(--danger); }
 .cell { container-type: size; position: relative; min-width: 0; height: 100%; padding: 6px var(--sp-2); border-radius: var(--r-sm); cursor: pointer; }
 .c-in { height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
 .c-top { display: flex; justify-content: space-between; gap: var(--sp-1); }
@@ -132,7 +138,7 @@ a { color: inherit; }
 .c-word { font-size: var(--fs-xs); }
 .c-dur, .c-sub { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; }
 .c-num { font-size: 20px; font-weight: 700; line-height: 1; }
-.c-pdm { font-size: var(--fs-2xs); line-height: 1.3; white-space: nowrap; padding: 0 4px; border-radius: 3px; background: var(--surface); color: var(--text); font-weight: 600; }
+.c-pdm { font-size: var(--fs-2xs); line-height: 1.3; white-space: nowrap; padding: 0 4px; border-radius: 3px; background: var(--surface); color: var(--text); font-weight: 600; box-shadow: inset 0 0 0 1px var(--line-2); }
 @container (max-width: 100px) { .c-word { display: none; } }
 /* 창이 낮아 칸이 얕으면 이름과 상태를 한 줄로 */
 @container (max-height: 34px) { .c-in { flex-direction: row; align-items: center; gap: 4px; } .c-top { min-width: 0; } .c-name { overflow: hidden; text-overflow: ellipsis; } .c-row { margin-left: auto; flex: none; } .c-word, .c-sub, .c-pdm-w { display: none; } .c-pdm { flex: none; } }
