@@ -14,7 +14,7 @@ export function useInspections(process: ProcessId, lineId?: LineId, where: 'equi
     key: d.productId,
     time: formatTime(d.t),
     productId: d.productId,
-    where: where === 'line' ? d.productId.slice(0, 2) : equipmentName(d.equipmentId),
+    where: where === 'line' ? d.productId.split('-')[0] : equipmentName(d.equipmentId),
     reason: d.reason,
   })))
   return { data, rows }

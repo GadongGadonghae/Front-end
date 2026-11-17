@@ -48,7 +48,7 @@ export function useProduction(initialQ = '') {
 
   /** 제품 ID로 찾기 (공정 검사 불량 목록에서 들어올 때): 그 제품을 만든 날로 옮기고 펼친다 */
   function findProduct(id: string) {
-    const m = /^L[1-6]-(\d{4})(\d{2})(\d{2})-\d{4}$/.exec(id)
+    const m = /^[A-F]-(\d{4})(\d{2})(\d{2})-\d{4}$/.exec(id)
     q.value = id
     if (m) {
       period.value = 'day'
@@ -74,7 +74,7 @@ export function useProduction(initialQ = '') {
 
   const ngRows = computed(() => {
     const ng = summary.value?.ngByProcess ?? {}
-    return (['B', 'C', 'D', 'E', 'F'] as ProcessId[]).map((p) => ({ process: p, label: p === 'F' ? '출고 (비전)' : PROCESS_NAME[p], value: ng[p] ?? 0 }))
+    return (['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION'] as ProcessId[]).map((p) => ({ process: p, label: p === 'INSPECTION' ? '출고 (비전)' : PROCESS_NAME[p], value: ng[p] ?? 0 }))
   })
   const ngTotal = computed(() => (summary.value ? ngRows.value.reduce((a, r) => a + r.value, 0) : null))
 
@@ -86,7 +86,7 @@ export function useProduction(initialQ = '') {
   })))
   const pickLine = (key: string) => { lineId.value = lineId.value === key ? '' : (key as LineId) }
 
-  const resultText = (p: Product) => (p.result === 'ok' ? '양품' : p.result === 'wip' ? '진행 중' : `${PROCESS_NAME[p.ngProcess ?? 'B']}에서 불량 제외`)
+  const resultText = (p: Product) => (p.result === 'ok' ? '양품' : p.result === 'wip' ? '진행 중' : `${PROCESS_NAME[p.ngProcess ?? 'SLITTING']}에서 불량 제외`)
   const timeText = (iso: string | null) => (iso ? (multiDay.value ? `${iso.slice(5, 10)} ${formatHm(iso)}` : formatTime(iso)) : '-')
 
   const detailRows = computed(() => (detail.value?.records ?? []).map((r) => ({

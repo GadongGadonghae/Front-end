@@ -1,12 +1,15 @@
 // 기준정보 (데이터정의서 3장, 6장 DT-001~007)
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StopState } from '@/types/state'
 
-/** 라인 ID: 생산 라인 L1~L6, 도장 라인 PT. 입고·출고는 라인이 아닌 공용 구역 CM (D-79) */
-export type LineId = 'L1' | 'L2' | 'L3' | 'L4' | 'L5' | 'L6' | 'PT'
-export type AreaId = LineId | 'CM'
+/** 생산 라인 A~F (백엔드 API v3.1 lineId) */
+export type ProductionLineId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
+/** 화면에서 라인처럼 다루는 구역: 생산 라인 A~F + 공용 도장 PT (라인 상세 도장 탭). 백엔드에서 도장은 라인이 없다 */
+export type LineId = ProductionLineId | 'PT'
+/** 설비가 놓인 구역: 라인 + 공용 검사(출고) VI. 프론트 묶음용이며 백엔드 lineId가 아니다 */
+export type AreaId = LineId | 'VI'
 
-/** 공정 A~F: 코일입고 → 슬리팅 → 프레스 → 용접 → 도장 → 출고 (D-02) */
-export type ProcessId = 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
+/** 공정 코드 (백엔드 API v3.1): 코일입고 → 슬리팅 → 프레스 → 용접 → 도장 → 검사(출고) */
+export type ProcessId = 'COIL' | 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING' | 'INSPECTION'
 
 /** 설비 종류 (DT-004) */
 export type EquipmentTypeCode = 'slitter' | 'press' | 'welder' | 'painter' | 'vision'
@@ -26,7 +29,7 @@ export interface Process {
   order: number
 }
 
-/** DT-003 설비. 설비 ID 형식 예: L3-PRS-2 (데이터정의서 4.3) */
+/** DT-003 설비. 설비 ID는 백엔드 형식 (A-SL · A-PR1 · A-WD · PT1 · VI) */
 export interface Equipment {
   id: string
   area: AreaId
@@ -34,11 +37,11 @@ export interface Equipment {
   /** 같은 라인·공정 안 순서 (프레스 1~4단, 도장 #1·#2) */
   order: number
   type: EquipmentTypeCode
-  /** 화면 표시 이름 (라인 + 공정 + 번호, 예: L3 프레스 2단) */
+  /** 화면 표시 이름 (라인 + 공정 + 번호, 예: C라인 프레스 2단) */
   name: string
   /** 짧은 이름 (배치도 칸 안, 예: 2단) */
   shortName: string
-  /** 실설비 여부 (L1 슬리팅 = iG5A 인버터, D-43) */
+  /** 실설비 여부 (A라인 슬리팅 = PLC 연동 인버터, D-43) */
   real: boolean
 }
 
@@ -65,7 +68,7 @@ export interface ControlLimit {
 export interface DowntimeCodeDef {
   code: DowntimeCode
   name: string
-  state: Exclude<StateCode, 'R'>
+  state: StopState
 }
 
 /** 기준정보 묶음 */

@@ -1,7 +1,7 @@
 <!-- SCR-010 라인 상세 (화면정의서 3장 SCR-010, DESIGN.md Layout "라인 상세")
      왼쪽 열 전체: 라인 요약. 오른쪽 위: 라인 흐름(주인공). 아래 가운데: 시간대별 라인 생산, 아래 오른쪽: 라인 오늘 알림 -->
 <script setup lang="ts">
-import { PROCESS_NAME } from '@/lib/status'
+import { PROCESS_NAME, lineName } from '@/lib/status'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
@@ -29,8 +29,8 @@ import { formatNumber } from '@/lib/format'
 import type { LineId, ProcessId } from '@/types/plant'
 import type { AlertRowView } from '@/types/view'
 
-const LINES: LineId[] = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'PT']
-const lineLabel = (id: LineId) => (id === 'PT' ? '도장' : id)
+const LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'PT']
+const lineLabel = (id: LineId) => lineName(id)
 
 const route = useRoute()
 const router = useRouter()

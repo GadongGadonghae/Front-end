@@ -11,7 +11,7 @@ export function useMaster() {
 
   const equipmentById = computed(() => new Map<string, Equipment>((master.value?.equipment ?? []).map((e) => [e.id, e])))
 
-  /** 설비 이름 (예: L2 프레스 3단). 모르면 ID 그대로 */
+  /** 설비 이름 (예: B 프레스 3단). 모르면 ID 그대로 */
   const equipmentName = (id: string) => equipmentById.value.get(id)?.name ?? id
 
   /** 기준정보 다시 부르기 (관리값 기준을 저장한 뒤) */

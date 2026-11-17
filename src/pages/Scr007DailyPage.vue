@@ -17,7 +17,8 @@ import SummaryBlock from '@/components/domain/SummaryBlock.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
 import { useDailyReport } from '@/composables/useReports'
 import { formatNumber } from '@/lib/format'
-import type { StateCode } from '@/types/state'
+import type { StopState } from '@/types/state'
+import { lineName } from '@/lib/status'
 
 const d = useDailyReport()
 const { date } = d
@@ -43,9 +44,9 @@ const PROC_COLS: TableColumn[] = [
   { key: 'rate', label: '불량률', align: 'right' },
   { key: 'wip', label: '앞 재공', align: 'right' },
 ]
-const lineRows = computed(() => (r.value?.lines ?? []).map((l) => ({ ...l, key: l.lineId, name: l.lineId === 'PT' ? '도장' : l.lineId })))
+const lineRows = computed(() => (r.value?.lines ?? []).map((l) => ({ ...l, key: l.lineId, name: lineName(l.lineId) })))
 const pct = (v: number | null | undefined) => (v == null ? '-' : `${formatNumber(v, 1)}%`)
-const stateOf = (key: string): Exclude<StateCode, 'R'> => d.downtime.value.find((x) => x.key === key)?.state ?? 'S'
+const stateOf = (key: string): StopState => d.downtime.value.find((x) => x.key === key)?.state ?? 'S'
 const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
 </script>
 

@@ -9,7 +9,7 @@ import type { TargetRow } from '@/types/report'
 import type { LineId, ProcessId } from '@/types/plant'
 import { MASTER } from '@/data/mock/master'
 import {
-  CURRENT_STATES, HOURLY_WEIGHT, INBOUND, LINE_DETAIL, LINE_DONE, OUTBOUND_NG, PAST_STATES, PAST_TARGET, PDM, PLANT_OEE, RISK_EVENTS, RUN_AGO_SEC, TARGET, TARGET_SEED_DAYS,
+  CURRENT_DC, CURRENT_STATES, HOURLY_WEIGHT, INBOUND, LINE_DETAIL, LINE_DONE, OUTBOUND_NG, PAST_STATES, PAST_TARGET, PDM, PLANT_OEE, RISK_EVENTS, RUN_AGO_SEC, TARGET, TARGET_SEED_DAYS,
 } from '@/data/mock/scenario'
 import { createTelemetry } from '@/data/mock/telemetry'
 import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
@@ -43,6 +43,9 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   }
   for (const s of CURRENT_STATES) {
     live.set(s.equipmentId, { ...live.get(s.equipmentId)!, state: s.state, code: s.code, detail: s.detail, since: ago(s.agoSec) })
+  }
+  for (const d of CURRENT_DC) {
+    live.set(d.equipmentId, { ...live.get(d.equipmentId)!, state: 'DC', code: null, detail: null, since: ago(d.agoSec) })
   }
   for (const p of PDM) {
     live.get(p.equipmentId)!.pdm = { level: p.level, item: p.item, percent: p.percent }
@@ -106,10 +109,10 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       const isPaint = lineId === 'PT'
       return {
         lineId, plan: linePlan, done: lineDone[lineId], rate: pct(lineDone[lineId], linePlan), oee: d.oee, ngByProcess: { ...d.ng },
-        wip: isPaint ? [{ from: 'E', to: 'F', qty: d.wip[0] }] : [{ from: 'B', to: 'C', qty: d.wip[0] }, { from: 'C', to: 'D', qty: d.wip[1] }],
+        wip: isPaint ? [{ from: 'PAINTING', to: 'INSPECTION', qty: d.wip[0] }] : [{ from: 'SLITTING', to: 'PRESS', qty: d.wip[0] }, { from: 'PRESS', to: 'WELDING', qty: d.wip[1] }],
       }
     })
-    const ngByProcess = { B: 0, C: 0, D: 0, E: 0 }
+    const ngByProcess = { SLITTING: 0, PRESS: 0, WELDING: 0, PAINTING: 0 }
     for (const l of lines) for (const [p, n] of Object.entries(l.ngByProcess)) ngByProcess[p as keyof typeof ngByProcess] += n
     const inspected = done + OUTBOUND_NG
     return {
@@ -176,34 +179,34 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const todayProducts = (lines: LineId[]) => lines.flatMap((l) => products.day(today(), l))
 
   const processToday = (lineId: LineId, process: ProcessId): ProcessToday => {
-    const list = todayProducts(process === 'E' ? PRODUCTION_LINES : [lineId])
+    const list = todayProducts(process === 'PAINTING' ? PRODUCTION_LINES : [lineId])
     const at = (p: ProcessId) => countAt(list, p, 'now')
     const output = countAt(list, process, 'ok', 'ng')
     const wipOf: Partial<Record<ProcessId, ProcessToday['wip']>> = {
-      B: { before: null, after: at('C') }, C: { before: at('C'), after: at('D') }, D: { before: at('D'), after: at('E') }, E: { before: at('E'), after: null },
+      SLITTING: { before: null, after: at('PRESS') }, PRESS: { before: at('PRESS'), after: at('WELDING') }, WELDING: { before: at('WELDING'), after: at('PAINTING') }, PAINTING: { before: at('PAINTING'), after: null },
     }
     const eqs = MASTER.equipment.filter((e) => e.area === lineId && e.process === process).sort((a, b) => a.order - b.order)
     // 평균 CT는 표준CT 120초 둘레 데모 값 (프레스 단별만 표시, SCR-002-3 3번)
     const rows = eqs.map((e) => ({
       id: e.id,
       // 프레스: 앞 단일수록 한 개씩 더 지나감. 도장: 두 대가 나눠 받음
-      cycles: process === 'C' ? output + (eqs.length - e.order) : process === 'E' ? Math.round(output / 2 + (e.order === 1 ? 0.5 : -0.5) * (output % 2)) : output,
-      avgCtMs: process === 'C' ? Math.round((117 + noise('ct', e.id, today()) * 9) * 1000) : null,
+      cycles: process === 'PRESS' ? output + (eqs.length - e.order) : process === 'PAINTING' ? Math.round(output / 2 + (e.order === 1 ? 0.5 : -0.5) * (output % 2)) : output,
+      avgCtMs: process === 'PRESS' ? Math.round((117 + noise('ct', e.id, today()) * 9) * 1000) : null,
     }))
     const slowest = Math.max(...rows.map((r) => r.avgCtMs ?? 0))
     return {
       lineId, process, output, good: countAt(list, process, 'ok'), oee: analysis.oeeOf(`${lineId}:${process}`, today()),
       wip: wipOf[process] ?? { before: null, after: null },
       equipment: rows.map((r) => ({ ...r, slowest: r.avgCtMs != null && r.avgCtMs === slowest })),
-      receivedByLine: process === 'E'
-        ? PRODUCTION_LINES.map((l) => ({ lineId: l, qty: countAt(list.filter((x) => x.lineId === l), 'E', 'ok', 'ng', 'now') }))
+      receivedByLine: process === 'PAINTING'
+        ? PRODUCTION_LINES.map((l) => ({ lineId: l, qty: countAt(list.filter((x) => x.lineId === l), 'PAINTING', 'ok', 'ng', 'now') }))
         : undefined,
-      inverter: process === 'B' ? (telemetry.inverter(`${lineId}-SLT`) ?? undefined) : undefined,
+      inverter: process === 'SLITTING' ? (telemetry.inverter(`${lineId}-SL`) ?? undefined) : undefined,
     }
   }
 
   const inspections = (process: ProcessId, lineId?: LineId): InspectionToday => {
-    const list = todayProducts(lineId && process !== 'E' && process !== 'F' ? [lineId] : PRODUCTION_LINES)
+    const list = todayProducts(lineId && process !== 'PAINTING' && process !== 'INSPECTION' ? [lineId] : PRODUCTION_LINES)
     const inspected = countAt(list, process, 'ok', 'ng')
     const ng = countAt(list, process, 'ng')
     const defects = list.filter((x) => x.ngProcess === process).map((x) => {
@@ -249,13 +252,13 @@ export function createMockSource(now: () => number = Date.now): DataSource {
 
   /** 하루들·라인들 수량 합 */
   const tally = (lines: LineId[], days: string[]) => {
-    const t = { done: 0, ng: { B: 0, C: 0, D: 0, E: 0, F: 0 } as Record<'B' | 'C' | 'D' | 'E' | 'F', number>, wip: 0 }
+    const t = { done: 0, ng: { SLITTING: 0, PRESS: 0, WELDING: 0, PAINTING: 0, INSPECTION: 0 } as Record<'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING' | 'INSPECTION', number>, wip: 0 }
     for (const d of days) for (const l of lines) {
       const c = products.counts(d, l)
       if (!c) continue
       t.done += c.done
       for (const p of Object.keys(c.ng) as (keyof typeof c.ng)[]) t.ng[p] += c.ng[p]
-      t.wip += c.wip.C + c.wip.D + c.wip.E
+      t.wip += c.wip.PRESS + c.wip.WELDING + c.wip.PAINTING
     }
     return t
   }
@@ -322,8 +325,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const tickSnapshot = () => {
     for (const lineId of Object.keys(lineDone)) {
       const rate = lineId === 'PT' ? LINE_DONE_PER_SEC * PRODUCTION_LINES.length : LINE_DONE_PER_SEC
-      // 고장 라인(L2)은 멈춰 있다
-      if (lineId !== 'L2' && Math.random() < rate) lineDone[lineId] += 1
+      // 고장 라인(B)은 멈춰 있다
+      if (lineId !== 'B' && Math.random() < rate) lineDone[lineId] += 1
     }
     const s = snapshot()
     subs.snapshot.forEach((cb) => cb(s))

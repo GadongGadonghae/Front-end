@@ -1,6 +1,6 @@
 // 데모 알람·비가동 이력 (API-070)과 예지보전 위험 이력 (API-071).
 // 오늘은 지금 상태 이력 그대로, 지난 날은 가동률 화면과 같은 비가동 구간(analysis.stopsOf)에 상세·메모·발송 결과를 붙인다. 값은 데모용 (CLAUDE.md)
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { HistoryEvent, HistoryQuery, NotifyResult, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
 import type { Equipment } from '@/types/plant'
 import type { Paged } from '@/types/production'
@@ -8,7 +8,7 @@ import { MASTER } from '@/data/mock/master'
 import { PAST_DETAIL, PAST_MEMOS, SLACK_FAIL_TODAY } from '@/data/mock/scenario'
 import { between, dayStart, daysOf, hash, localDate, noise, rng } from '@/data/mock/rand'
 
-type Stop = { state: Exclude<StateCode, 'R'>; code: DowntimeCode; from: number; to: number }
+type Stop = { state: StopState; code: DowntimeCode; from: number; to: number }
 
 interface Ctx {
   now: () => number
@@ -46,7 +46,7 @@ export function createHistory(ctx: Ctx) {
   /** 장비고장(알람) 상세: 그 설비 종류의 상한 있는 관리값 하나 */
   function alarmDetail(e: Equipment, r: () => number) {
     const items = MASTER.controlLimits.filter((l) => l.type === e.type && l.upper != null)
-    if (!items.length) return PAST_DETAIL['fault-alarm'][0]
+    if (!items.length) return PAST_DETAIL['UP_ALARM'][0]
     return `${items[Math.floor(r() * items.length)].item} 상한 초과`
   }
 
@@ -57,7 +57,7 @@ export function createHistory(ctx: Ctx) {
       const id = `EV-${date.replaceAll('-', '')}-${e.id}-${i + 1}`
       const r = rng(hash('hist', id))
       const words = PAST_DETAIL[s.code]
-      const detail = s.code === 'fault-alarm' ? alarmDetail(e, r) : words[Math.floor(r() * words.length)]
+      const detail = s.code === 'UP_ALARM' ? alarmDetail(e, r) : words[Math.floor(r() * words.length)]
       const memos = PAST_MEMOS[s.code] ?? []
       const memo = memos.length && r() < 0.55 ? memos[Math.floor(r() * memos.length)] : null
       const end = start + s.to * 1000

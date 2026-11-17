@@ -27,7 +27,7 @@ import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
 import { useInspections, useMicrostops } from '@/composables/useInspections'
 import { useNow } from '@/composables/useNow'
 import { SEGMENT_PROCESS } from '@/lib/routes'
-import { PROCESS_NAME } from '@/lib/status'
+import { PROCESS_NAME, lineName as lineNameOf } from '@/lib/status'
 import { formatDuration, formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
@@ -36,11 +36,11 @@ const route = useRoute()
 const router = useRouter()
 const now = useNow()
 
-// 주소: /lines/L2/press 또는 /lines/PT/paint (경로가 바뀌면 화면을 새로 만든다)
+// 주소: /lines/B/press 또는 /lines/PT/paint (경로가 바뀌면 화면을 새로 만든다)
 const paint = route.path === '/lines/PT/paint'
 const lineId = (paint ? 'PT' : route.params.lineId) as LineId
-const process = paint ? 'E' : SEGMENT_PROCESS[route.params.process as string]
-const lineName = paint ? '도장' : lineId
+const process = paint ? 'PAINTING' : SEGMENT_PROCESS[route.params.process as string]
+const lineName = paint ? '도장' : lineNameOf(lineId)
 const processName = PROCESS_NAME[process]
 
 const { equipment, cards, head, today } = useProcessDetail(lineId, process)
@@ -65,7 +65,7 @@ const chart = computed(() => telemetryChart(series.value, item.value, range.valu
 // 슬리팅 속도: 지령 vs 출력 + 미세정지 후보 띠 (SCR-002-2 3번)
 const microstops = useMicrostops(selectedId)
 const speed = computed(() => {
-  if (process !== 'B') return null
+  if (process !== 'SLITTING') return null
   const cmd = telemetryChart(series.value, '지령 주파수', range.value, now.value)
   const out = telemetryChart(series.value, '출력 주파수', range.value, now.value)
   const [from, to] = out.x
@@ -76,7 +76,7 @@ const speed = computed(() => {
 // 비가동 이력·조치 메모, 공정 검사
 const history = useEquipmentHistory(selectedId)
 const inspections = useInspections(process, paint ? undefined : lineId)
-const INSPECT_META: Record<string, string> = { B: '슬리팅 끝', C: '4단 뒤 1회', D: '용접 끝', E: '도장 끝' }
+const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
 // 관리값 지금 (슬리팅 시뮬레이터·용접): 항목별 마지막 값과 기준
 const latest = computed(() => (series.value?.items ?? []).filter((i) => !SPEED_ITEMS.includes(i.item)).map((i) => {
@@ -105,7 +105,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <div class="hl">설비 {{ head.total }}대 상태</div>
           <StatusCounts :counts="head.counts" layout="row" :label="`설비 ${head.total}대 상태`" />
         </div>
-        <BaseFigure :label="process === 'B' ? '오늘 생산 · 양품 (환산)' : '오늘 생산 · 양품'" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
+        <BaseFigure :label="process === 'SLITTING' ? '오늘 생산 · 양품 (환산)' : '오늘 생산 · 양품'" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
         <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
         <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
       </BaseFigureRow>
@@ -114,13 +114,13 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
     <div class="body">
       <div class="left" :class="`p-${process}`">
         <!-- 설비 카드: 프레스는 1~4단을 순서대로 가로로, 단 사이 화살표 (D-80) -->
-        <div v-if="process === 'C'" class="cards stages">
+        <div v-if="process === 'PRESS'" class="cards stages">
           <template v-for="(c, i) in cards" :key="c.id">
             <BaseIcon v-if="i" class="arrow" name="chevron-right" :size="20" />
             <EquipCard :card="c" :selected="c.id === selectedId" @select="select" />
           </template>
         </div>
-        <div v-else-if="process === 'E'" class="cards pair">
+        <div v-else-if="process === 'PAINTING'" class="cards pair">
           <EquipCard v-for="c in cards" :key="c.id" :card="c" :selected="c.id === selectedId" @select="select" />
         </div>
         <div v-else class="cards one">
@@ -184,7 +184,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <BaseEmpty v-else />
         </BasePanel>
 
-        <BasePanel v-if="process === 'E'" title="라인별 입고" :meta="`오늘 · 합계 ${formatNumber(receivedTotal)}`">
+        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고" :meta="`오늘 · 합계 ${formatNumber(receivedTotal)}`">
           <ChartBarList label="라인별 도장 입고 수" :rows="received" />
         </BasePanel>
       </div>
@@ -199,7 +199,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
             :ng="inspections.data.value?.ng ?? null"
             :rate="inspections.data.value?.rate ?? null"
             :rows="inspections.rows.value"
-            :show-where="process === 'E'"
+            :show-where="process === 'PAINTING'"
             @open-product="openProduct"
           />
         </BasePanel>

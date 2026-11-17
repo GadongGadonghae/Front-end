@@ -5,7 +5,7 @@ import { STATE_NAME } from '@/lib/status'
 import type { StateCode } from '@/types/state'
 
 withDefaults(defineProps<{ counts: Record<StateCode, number>; layout?: 'grid' | 'row'; label?: string; big?: boolean }>(), { layout: 'grid', label: '상태별 대수', big: false })
-const ORDER: StateCode[] = ['R', 'S', 'I', 'D']
+const ORDER: StateCode[] = ['R', 'S', 'I', 'D', 'DC']
 </script>
 
 <template>

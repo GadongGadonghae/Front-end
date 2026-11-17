@@ -17,7 +17,7 @@ function lastBatchim(word: string): number | null {
 
 type Pair = '이/가' | '은/는' | '을/를' | '으로/로'
 
-/** 이름 + 조사 (예: josa('L2 프레스 3단', '이/가') → 'L2 프레스 3단이') */
+/** 이름 + 조사 (예: josa('B 프레스 3단', '이/가') → 'B 프레스 3단이') */
 export function josa(word: string, pair: Pair): string {
   const [withB, without] = pair.split('/')
   const b = lastBatchim(word)

@@ -11,7 +11,7 @@ defineProps<{
   /** 예지보전 표시를 넣을지 */
   pdm?: boolean
 }>()
-const ORDER: StateCode[] = ['R', 'S', 'I', 'D']
+const ORDER: StateCode[] = ['R', 'S', 'I', 'D', 'DC']
 </script>
 
 <template>

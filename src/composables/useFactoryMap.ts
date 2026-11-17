@@ -7,10 +7,10 @@ import { useMaster } from '@/composables/useMaster'
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
-import { countByState } from '@/lib/status'
+import { countByState, byProcess } from '@/lib/status'
 import { formatDuration } from '@/lib/format'
 
-const PRODUCTION_LINES: LineId[] = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']
+const PRODUCTION_LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F']
 
 export function useFactoryMap() {
   const { master } = useMaster()
@@ -37,7 +37,7 @@ export function useFactoryMap() {
     const s = snapshot.value
     if (!m || !s) return null
     const byArea = (area: string) => m.equipment.filter((e) => e.area === area)
-    const order = (a: Equipment, b: Equipment) => a.process.localeCompare(b.process) || a.order - b.order
+    const order = (a: Equipment, b: Equipment) => byProcess(a.process, b.process) || a.order - b.order
     const planOf = (id: LineId) => summary.value?.lines.find((x) => x.lineId === id)?.plan ?? null
     return {
       inbound: s.inbound,
@@ -48,7 +48,7 @@ export function useFactoryMap() {
         cells: byArea(id).sort(order).map(cell),
       })),
       paint: byArea('PT').sort(order).map(cell),
-      vision: byArea('CM').map(cell)[0] ?? null,
+      vision: byArea('VI').map(cell)[0] ?? null,
     }
   })
 

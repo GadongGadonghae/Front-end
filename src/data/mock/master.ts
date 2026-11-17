@@ -1,22 +1,22 @@
-// 데모 기준정보. 데이터정의서 3장·4장 그대로 (라인 7, 공정 6, 설비 39, 관리값 기준)
+// 데모 기준정보. 라인·설비 ID·공정 코드·비가동 사유 코드는 백엔드 API v3.1 형식 (라인 A~F + 도장, 공정 6, 설비 39, 관리값 기준)
 // 미정인 관리값 기준(슬리터·용접 가압력·전류·도장)은 null로 둔다
 import type { ControlLimit, DowntimeCodeDef, Equipment, EquipmentType, Line, MasterData, Process } from '@/types/plant'
 
-const LINE_IDS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'] as const
+const LINE_IDS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 const PRESS_STAGES = ['1단', '2단', '3단', '4단'] as const
 
 const lines: Line[] = [
-  ...LINE_IDS.map((id, i): Line => ({ id, name: id, kind: 'production', order: i + 1 })),
+  ...LINE_IDS.map((id, i): Line => ({ id, name: `${id}라인`, kind: 'production', order: i + 1 })),
   { id: 'PT', name: '도장', kind: 'paint', order: 7 },
 ]
 
 const processes: Process[] = [
-  { id: 'A', name: '코일입고', order: 1 },
-  { id: 'B', name: '슬리팅', order: 2 },
-  { id: 'C', name: '프레스', order: 3 },
-  { id: 'D', name: '용접', order: 4 },
-  { id: 'E', name: '도장', order: 5 },
-  { id: 'F', name: '출고', order: 6 },
+  { id: 'COIL', name: '코일입고', order: 1 },
+  { id: 'SLITTING', name: '슬리팅', order: 2 },
+  { id: 'PRESS', name: '프레스', order: 3 },
+  { id: 'WELDING', name: '용접', order: 4 },
+  { id: 'PAINTING', name: '도장', order: 5 },
+  { id: 'INSPECTION', name: '출고', order: 6 },
 ]
 
 /** 표준CT [가정] (데이터정의서 4.1) */
@@ -30,15 +30,15 @@ const equipmentTypes: EquipmentType[] = [
 
 const equipment: Equipment[] = [
   ...LINE_IDS.flatMap((line): Equipment[] => [
-    { id: `${line}-SLT`, area: line, process: 'B', order: 1, type: 'slitter', name: `${line} 슬리팅`, shortName: '슬리팅', real: line === 'L1' },
+    { id: `${line}-SL`, area: line, process: 'SLITTING', order: 1, type: 'slitter', name: `${line}라인 슬리팅`, shortName: '슬리팅', real: line === 'A' },
     ...PRESS_STAGES.map((stage, i): Equipment => ({
-      id: `${line}-PRS-${i + 1}`, area: line, process: 'C', order: i + 1, type: 'press', name: `${line} 프레스 ${stage}`, shortName: stage, real: false,
+      id: `${line}-PR${i + 1}`, area: line, process: 'PRESS', order: i + 1, type: 'press', name: `${line}라인 프레스 ${stage}`, shortName: stage, real: false,
     })),
-    { id: `${line}-WLD`, area: line, process: 'D', order: 1, type: 'welder', name: `${line} 용접`, shortName: '용접', real: false },
+    { id: `${line}-WD`, area: line, process: 'WELDING', order: 1, type: 'welder', name: `${line}라인 용접`, shortName: '용접', real: false },
   ]),
-  { id: 'PT-PNT-1', area: 'PT', process: 'E', order: 1, type: 'painter', name: '도장 #1', shortName: '도장 #1', real: false },
-  { id: 'PT-PNT-2', area: 'PT', process: 'E', order: 2, type: 'painter', name: '도장 #2', shortName: '도장 #2', real: false },
-  { id: 'CM-VIS', area: 'CM', process: 'F', order: 1, type: 'vision', name: '비전', shortName: '비전', real: false },
+  { id: 'PT1', area: 'PT', process: 'PAINTING', order: 1, type: 'painter', name: '도장 #1', shortName: '도장 #1', real: false },
+  { id: 'PT2', area: 'PT', process: 'PAINTING', order: 2, type: 'painter', name: '도장 #2', shortName: '도장 #2', real: false },
+  { id: 'VI', area: 'VI', process: 'INSPECTION', order: 1, type: 'vision', name: '비전', shortName: '비전', real: false },
 ]
 
 const limit = (type: ControlLimit['type'], item: string, unit: string, lower: number | null, upper: number | null): ControlLimit =>
@@ -65,13 +65,17 @@ const controlLimits: ControlLimit[] = [
 ]
 
 const downtimeCodes: DowntimeCodeDef[] = [
-  { code: 'planned', name: '계획정지', state: 'S' },
-  { code: 'setup', name: '계획정지(셋업)', state: 'S' },
-  { code: 'starved', name: '재공부족', state: 'I' },
-  { code: 'blocked', name: '작업지연', state: 'I' },
-  { code: 'fault', name: '장비고장', state: 'D' },
-  { code: 'fault-alarm', name: '장비고장(알람)', state: 'D' },
-  { code: 'safety', name: '안전문제', state: 'D' },
+  { code: 'PL_SHIFT', name: '교대', state: 'S' },
+  { code: 'PL_PM', name: '예방보전', state: 'S' },
+  { code: 'PL_CHANGE', name: '모델 교체', state: 'S' },
+  { code: 'PL_SETUP', name: '코일·나이프 교체', state: 'S' },
+  { code: 'UP_SHORTAGE', name: '재공부족', state: 'I' },
+  { code: 'UP_DELAY', name: '작업지연', state: 'I' },
+  { code: 'UP_BREAKDOWN', name: '장비고장', state: 'D' },
+  { code: 'UP_ALARM', name: '알람(관리값 이탈)', state: 'D' },
+  { code: 'UP_SAFETY', name: '안전문제', state: 'D' },
+  { code: 'UP_LABOR', name: '노사협의', state: 'D' },
+  { code: 'UP_ETC', name: '기타', state: 'D' },
 ]
 
 export const MASTER: MasterData = { lines, processes, equipmentTypes, equipment, controlLimits, downtimeCodes }

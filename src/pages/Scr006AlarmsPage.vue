@@ -37,7 +37,7 @@ const timeW = computed(() => (multi.value ? '9.5em' : '6.5em'))
 const ALARM_COLS = computed<TableColumn[]>(() => [
   { key: 'start', label: '발생', width: timeW.value },
   { key: 'end', label: '해제', width: timeW.value },
-  { key: 'line', label: '라인', width: '3.5em' },
+  { key: 'line', label: '라인', width: '4.5em' },
   { key: 'equipment', label: '설비', width: '7em' },
   { key: 'code', label: '상태 · 코드', width: '11em' },
   { key: 'detail', label: '상세' },
@@ -50,7 +50,7 @@ const ALARM_COLS = computed<TableColumn[]>(() => [
 const RISK_COLS = computed<TableColumn[]>(() => [
   { key: 'start', label: '발생', width: timeW.value },
   { key: 'end', label: '해제', width: timeW.value },
-  { key: 'line', label: '라인', width: '3.5em' },
+  { key: 'line', label: '라인', width: '4.5em' },
   { key: 'equipment', label: '설비', width: '8em' },
   { key: 'item', label: '항목' },
   { key: 'max', label: '최고 %', align: 'right', width: '6em' },

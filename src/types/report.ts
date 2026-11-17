@@ -1,5 +1,5 @@
 // 리포트·설정 (SCR-007 일일 생산 리포트·계획수정 보고서, SCR-008 생산 목표). 데이터정의서 DT-016·017·019
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StopState } from '@/types/state'
 import type { Oee } from '@/types/live'
 import type { LineId, ProcessId } from '@/types/plant'
 
@@ -16,11 +16,11 @@ export interface DailyReport {
   oee: Oee
   /** 공정 검사 + 출고 비전 불량 합 */
   ngTotal: number
-  /** L1~L6 + 도장. 도장의 불량 제외는 공정별 표에 있으므로 null */
+  /** A~F + 도장. 도장의 불량 제외는 공정별 표에 있으므로 null */
   lines: { lineId: LineId; plan: number | null; done: number; rate: number | null; oee: number | null; ng: number | null }[]
   /** 공정별 생산(검사 받은 수)·불량 */
-  processes: { process: Exclude<ProcessId, 'A'>; output: number; ng: number }[]
-  downtime: { code: DowntimeCode; state: Exclude<StateCode, 'R'>; sec: number; count: number }[]
+  processes: { process: Exclude<ProcessId, 'COIL'>; output: number; ng: number }[]
+  downtime: { code: DowntimeCode; state: StopState; sec: number; count: number }[]
   /** 공정 사이 재공품. 입고 → 슬리팅은 코일(롤) */
   wip: { from: ProcessId; to: ProcessId; qty: number; unit: 'roll' | 'ea' }[]
 }

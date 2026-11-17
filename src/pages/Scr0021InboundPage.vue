@@ -16,7 +16,7 @@ import { useInbound } from '@/composables/useEndpoints'
 import { useNow } from '@/composables/useNow'
 import { niceTicks, timeTicks } from '@/lib/chart'
 
-const LINES = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']
+const LINES = ['A', 'B', 'C', 'D', 'E', 'F']
 const { data, figures } = useInbound()
 const now = useNow()
 

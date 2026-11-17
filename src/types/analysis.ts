@@ -1,5 +1,5 @@
 // 가동률 화면 (API 명세 4.4, FN-004)
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { Oee } from '@/types/live'
 
 export type Period = 'day' | 'week' | 'month'
@@ -23,7 +23,7 @@ export interface OeeReport {
   /** 라인 전체면 라인별, 라인을 고르면 공정별 막대 */
   bars: { key: string; label: string; oee: number | null }[]
   /** 비가동 코드별 시간(초)·건수 */
-  downtime: { code: DowntimeCode; state: Exclude<StateCode, 'R'>; sec: number; count: number }[]
+  downtime: { code: DowntimeCode; state: StopState; sec: number; count: number }[]
   /** 주·월이면 일별 OEE */
   daily: { date: string; oee: number | null }[]
 }

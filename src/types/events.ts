@@ -1,11 +1,11 @@
 // 이벤트 (데이터정의서 6장 DT-013 상태 이력, DT-020 예지보전 위험 이력)
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StopState } from '@/types/state'
 
 /** DT-013 상태 이력: R이 아닌 구간 1건 (FN-006) */
 export interface StateEvent {
   id: string
   equipmentId: string
-  state: Exclude<StateCode, 'R'>
+  state: StopState
   code: DowntimeCode
   detail: string | null
   start: string
@@ -52,7 +52,7 @@ export interface HistoryQuery {
   to: string
   lineId?: string
   process?: string
-  states: Exclude<StateCode, 'R'>[]
+  states: StopState[]
   code?: DowntimeCode
   ongoing?: boolean
   page: number

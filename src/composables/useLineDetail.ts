@@ -15,7 +15,7 @@ import { formatDuration, formatNumber } from '@/lib/format'
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
 /** 프레스는 4단 뒤 1회 검사 (A-09) */
-const INSPECTION_NOTE: Partial<Record<ProcessId, string>> = { C: '4단 뒤 검사' }
+const INSPECTION_NOTE: Partial<Record<ProcessId, string>> = { PRESS: '4단 뒤 검사' }
 
 export function useLineDetail(lineId: LineId) {
   const { master } = useMaster()
@@ -23,7 +23,7 @@ export function useLineDetail(lineId: LineId) {
   const summary = useLiveSummary()
   const now = useNow()
 
-  const processes: ProcessId[] = lineId === 'PT' ? ['E'] : ['B', 'C', 'D']
+  const processes: ProcessId[] = lineId === 'PT' ? ['PAINTING'] : ['SLITTING', 'PRESS', 'WELDING']
   const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
 
   const equipment = computed(() => (master.value?.equipment ?? []).filter((e) => e.area === lineId))
@@ -39,7 +39,7 @@ export function useLineDetail(lineId: LineId) {
     const row = todayOf(e.process)?.equipment.find((x) => x.id === e.id)
     const info: FlowCellView['info'] = []
     if (row) {
-      info.push({ label: e.process === 'C' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
+      info.push({ label: e.process === 'PRESS' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
       if (row.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초` })
     }
     return {
@@ -61,7 +61,7 @@ export function useLineDetail(lineId: LineId) {
       name: PROCESS_NAME[p],
       cells: equipment.value.filter((e) => e.process === p).sort((a, b) => a.order - b.order).map(cell),
       output: todayOf(p)?.output ?? null,
-      ng: lineSummary.value?.ngByProcess[p as 'B' | 'C' | 'D' | 'E'] ?? null,
+      ng: lineSummary.value?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? null,
       note: INSPECTION_NOTE[p] ?? null,
     }))
     const wip = lineId === 'PT' ? [] : (lineSummary.value?.wip.map((w) => w.qty) ?? [null, null])
@@ -75,7 +75,7 @@ export function useLineDetail(lineId: LineId) {
     const ngRows = processes.map((p) => ({
       process: p,
       label: INSPECTION_NOTE[p] ? `${PROCESS_NAME[p]} (${INSPECTION_NOTE[p]})` : PROCESS_NAME[p],
-      value: ls?.ngByProcess[p as 'B' | 'C' | 'D' | 'E'] ?? 0,
+      value: ls?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? 0,
     }))
     return {
       state: worstState(states.value),

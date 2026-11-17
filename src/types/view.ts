@@ -1,6 +1,6 @@
 // 화면용 모양 (뷰 모델): composable이 만들고 domain 부품이 그린다.
 // domain 부품은 데이터를 직접 부르지 않으므로, 그릴 것을 이 모양으로 받는다 (FRONTEND.md 2장)
-import type { PdmLevel, StateCode } from '@/types/state'
+import type { PdmLevel, StateCode, StopState } from '@/types/state'
 import type { LineId, ProcessId } from '@/types/plant'
 
 /** 설비 칸 하나 (배치도·라인 흐름) */
@@ -28,7 +28,7 @@ export interface AlertRowView {
   id: string
   /** 상태 이력이면 R/S/I/D, 예지보전 위험이면 'risk' */
   kind: StateCode | 'risk'
-  /** 설비 이름 (예: L2 프레스 3단) */
+  /** 설비 이름 (예: B 프레스 3단) */
   title: string
   /** 코드 · 상세 */
   message: string
@@ -103,7 +103,7 @@ export interface EquipCardView {
 /** 비가동 이력 한 줄 + 조치 메모 (SCR-002 5·6번) */
 export interface HistoryRowView {
   id: string
-  state: Exclude<StateCode, 'R'>
+  state: StopState
   code: string
   detail: string | null
   /** 14:20:12 ~ 진행 중 */
@@ -132,5 +132,5 @@ export interface BarRowView {
   sub?: string
   strong?: boolean
   muted?: boolean
-  tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down'
+  tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down' | 'dc'
 }

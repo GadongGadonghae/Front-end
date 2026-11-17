@@ -1,7 +1,7 @@
 // 리포트 (SCR-007): 일일 생산 리포트 (API-080) · 계획수정 보고서 목록·내용·만들기 (API-081~084)
 import { computed, ref, shallowRef, watch, type Ref } from 'vue'
 import { source } from '@/data'
-import type { StateCode } from '@/types/state'
+import type { StopState } from '@/types/state'
 import type { ReplanReport, ReplanSummary } from '@/types/report'
 import type { BarRowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
@@ -15,7 +15,7 @@ const POLL_MS = 60_000
 /** 보고서 목록 기간: 최근 31일 */
 const LIST_DAYS = 31
 const DAY = 86_400_000
-const TONE: Record<Exclude<StateCode, 'R'>, BarRowView['tone']> = { S: 'stop', I: 'idle', D: 'down' }
+const TONE: Record<StopState, BarRowView['tone']> = { S: 'stop', I: 'idle', D: 'down' }
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
 
 /** 2026-11-16 (월) */
@@ -32,7 +32,7 @@ export function useDailyReport() {
     POLL_MS, date,
   )
 
-  const procLabel = (p: string) => (p === 'F' ? '출고 (비전)' : PROCESS_NAME[p as keyof typeof PROCESS_NAME])
+  const procLabel = (p: string) => (p === 'INSPECTION' ? '출고 (비전)' : PROCESS_NAME[p as keyof typeof PROCESS_NAME])
   /** 공정 앞 재공: 그 공정으로 들어오기 전 공정 사이에 쌓인 수 (슬리팅 앞은 코일, 롤) */
   const wipBefore = (p: string) => report.value?.wip.find((w) => w.to === p) ?? null
   const processRows = computed(() => (report.value?.processes ?? []).map((p) => {
@@ -42,7 +42,7 @@ export function useDailyReport() {
       wip: w?.qty ?? null, wipUnit: w ? (w.unit === 'roll' ? '롤' : '개') : '',
     }
   }))
-  const downtime = computed<(BarRowView & { state: Exclude<StateCode, 'R'> })[]>(() => (report.value?.downtime ?? []).map((d) => ({
+  const downtime = computed<(BarRowView & { state: StopState })[]>(() => (report.value?.downtime ?? []).map((d) => ({
     key: d.code, label: DOWNTIME_NAME[d.code], value: d.sec, display: formatDuration(d.sec), sub: `${d.count}건`, tone: TONE[d.state], state: d.state,
   })))
   const stamp = computed(() => {
@@ -100,7 +100,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     const r = report.value
     if (!r) return null
     const name = equipmentName(r.equipmentId)
-    const line = r.kind === 'line' ? r.equipmentId.slice(0, 2) : null
+    const line = r.kind === 'line' ? `${r.equipmentId.split('-')[0]}라인` : null
     const capSum = r.allocations.reduce((a, x) => a + x.capacity, 0)
     const planSum = r.allocations.reduce((a, x) => a + x.remainingPlan, 0)
     const addSum = r.allocations.reduce((a, x) => a + x.add, 0)
@@ -137,7 +137,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
         : r.kind === 'vision' ? '대신할 설비가 없어 나눌 곳이 없습니다.' : '정상인 다른 라인(설비)이 없어 나눌 곳이 없습니다.',
       rows: r.allocations.map((a) => ({
         key: a.target,
-        target: a.target.length === 2 ? a.target : equipmentName(a.target),
+        target: a.target.length === 1 ? `${a.target}라인` : equipmentName(a.target),
         remainingPlan: a.remainingPlan, capacity: a.capacity, share: a.share, add: a.add,
       })),
       sums: { remainingPlan: planSum, capacity: capSum, add: addSum },

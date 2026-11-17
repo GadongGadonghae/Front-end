@@ -20,8 +20,8 @@ declare module 'vue-router' {
 /** 상단 메뉴가 있는 화면들 */
 const appRoutes: RouteRecordRaw[] = [
   { path: '', component: () => import('@/pages/Scr001DashboardPage.vue'), meta: { screen: 'SCR-001', title: '대시보드', menu: '대시보드' } },
-  { path: 'lines/:lineId(L[1-6]|PT)', component: () => import('@/pages/Scr010LinePage.vue'), meta: { screen: 'SCR-010', title: '라인 상세', menu: '대시보드' } },
-  { path: 'lines/:lineId(L[1-6])/:process(slit|press|weld)', component: () => import('@/pages/Scr002ProcessPage.vue'), meta: { screen: 'SCR-002-2~4', title: '공정 상세', menu: '대시보드' } },
+  { path: 'lines/:lineId([A-F]|PT)', component: () => import('@/pages/Scr010LinePage.vue'), meta: { screen: 'SCR-010', title: '라인 상세', menu: '대시보드' } },
+  { path: 'lines/:lineId([A-F])/:process(slit|press|weld)', component: () => import('@/pages/Scr002ProcessPage.vue'), meta: { screen: 'SCR-002-2~4', title: '공정 상세', menu: '대시보드' } },
   { path: 'lines/PT/paint', component: () => import('@/pages/Scr002ProcessPage.vue'), meta: { screen: 'SCR-002-5', title: '도장 상세', menu: '대시보드' } },
   { path: 'inbound', component: () => import('@/pages/Scr0021InboundPage.vue'), meta: { screen: 'SCR-002-1', title: '코일입고 상세', menu: '대시보드' } },
   { path: 'outbound', component: () => import('@/pages/Scr0026OutboundPage.vue'), meta: { screen: 'SCR-002-6', title: '출고 상세', menu: '대시보드' } },

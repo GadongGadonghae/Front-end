@@ -15,7 +15,7 @@ export interface BarRow {
   strong?: boolean
   /** 0건 등 흐리게 */
   muted?: boolean
-  tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down'
+  tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down' | 'dc'
 }
 
 const props = withDefaults(defineProps<{
@@ -134,6 +134,7 @@ li {
 .t-stop { background: var(--c-stop-solid); }
 .t-idle { background: var(--c-idle); }
 .t-down { background: var(--c-down); }
+.t-dc { background: var(--c-dc); }
 
 .marker {
   position: absolute;

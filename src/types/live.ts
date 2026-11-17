@@ -43,7 +43,7 @@ export interface Oee {
 }
 
 /** 공정 ID별 수량 (B 슬리팅 · C 프레스 · D 용접 · E 도장) */
-export type ByProcess = Partial<Record<'B' | 'C' | 'D' | 'E', number>>
+export type ByProcess = Partial<Record<'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING', number>>
 
 /** 라인 오늘 요약 */
 export interface LineSummary {

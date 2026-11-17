@@ -46,7 +46,7 @@ const oeeRows = computed<BarRow[]>(() => {
 })
 
 // 품질: 공정별 불량 수 (공정 검사), 많은 순
-const PROCESS_NAME: Record<string, string> = { B: '슬리팅', C: '프레스', D: '용접', E: '도장' }
+const PROCESS_NAME: Record<string, string> = { SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장' }
 const ngRows = computed<BarRow[]>(() =>
   Object.entries(plant.value?.quality.ngByProcess ?? {})
     .map(([p, n]): BarRow => ({ key: p, label: PROCESS_NAME[p], value: n ?? 0 }))

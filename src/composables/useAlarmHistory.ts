@@ -4,22 +4,22 @@
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { source } from '@/data'
 import type { HistoryEvent, HistoryQuery, RiskEvent, RiskQuery } from '@/types/events'
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StopState } from '@/types/state'
 import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
-import { DOWNTIME_NAME, PROCESS_NAME } from '@/lib/status'
+import { DOWNTIME_NAME, PROCESS_NAME, byProcess, lineName } from '@/lib/status'
 import { formatDuration, formatTime, toDateStr } from '@/lib/format'
 
 export type HistoryTab = 'alarm' | 'risk'
-type StopState = Exclude<StateCode, 'R'>
+
 
 /** 기간 최대 31일 (D-66) */
 export const MAX_DAYS = 31
 const DAY = 86_400_000
 const AREAS = [
-  { value: 'L1', label: 'L1' }, { value: 'L2', label: 'L2' }, { value: 'L3', label: 'L3' }, { value: 'L4', label: 'L4' },
-  { value: 'L5', label: 'L5' }, { value: 'L6', label: 'L6' }, { value: 'PT', label: '도장' }, { value: 'CM', label: '출고' },
+  { value: 'A', label: 'A라인' }, { value: 'B', label: 'B라인' }, { value: 'C', label: 'C라인' }, { value: 'D', label: 'D라인' },
+  { value: 'E', label: 'E라인' }, { value: 'F', label: 'F라인' }, { value: 'PT', label: '도장' }, { value: 'VI', label: '출고' },
 ]
 
 /** 표 한 줄 (알람·비가동) */
@@ -82,11 +82,11 @@ export function useAlarmHistory() {
   })
 
   // ── 고를 것 ──
-  const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'A' && (!lineId.value || e.area === lineId.value)))
+  const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'COIL' && (!lineId.value || e.area === lineId.value)))
   const lineOptions = [{ value: '', label: '전체' }, ...AREAS]
   const processOptions = computed(() => [
     { value: '', label: '전체' },
-    ...[...new Set(scoped.value.map((e) => e.process))].sort().map((p) => ({ value: p, label: PROCESS_NAME[p] })),
+    ...[...new Set(scoped.value.map((e) => e.process))].sort(byProcess).map((p) => ({ value: p, label: PROCESS_NAME[p] })),
   ])
   watch(lineId, () => { if (!processOptions.value.some((o) => o.value === process.value)) process.value = '' })
   /** 코드는 고른 상태의 것만 */
@@ -124,12 +124,12 @@ export function useAlarmHistory() {
   const when = (iso: string) => (multiDay.value ? `${toDateStr(Date.parse(iso)).slice(5).replace('-', '/')} ${formatTime(iso)}` : formatTime(iso))
   const areaLabel = (equipmentId: string) => {
     const a = equipmentById.value.get(equipmentId)?.area
-    return a === 'PT' ? '도장' : a === 'CM' ? '출고' : (a ?? '-')
+    return a ? lineName(a) : '-'
   }
   /** 라인 열이 따로 있으니 설비는 라인 없이 (프레스 3단, 도장 #2) */
   const eqLabel = (equipmentId: string) => {
     const e = equipmentById.value.get(equipmentId)
-    return e ? (e.process === 'C' ? `프레스 ${e.shortName}` : e.shortName) : equipmentId
+    return e ? (e.process === 'PRESS' ? `프레스 ${e.shortName}` : e.shortName) : equipmentId
   }
   const sameDay = (a: string, b: string) => toDateStr(Date.parse(a)) === toDateStr(Date.parse(b))
 

@@ -29,7 +29,7 @@ const pressure: [number, number][] = Array.from({ length: 60 }, (_, i) => [i, 29
   <PageLayout>
     <template #head>
       <h1>부품 견본</h1>
-      <BaseTabs label="예시 탭" active="L2" :items="['L1', 'L2', 'L3'].map((l) => ({ key: l, label: l, to: `/dev/parts?l=${l}` }))" />
+      <BaseTabs label="예시 탭" active="B" :items="['A', 'B', 'C'].map((l) => ({ key: l, label: l, to: `/dev/parts?l=${l}` }))" />
       <BaseSegmented v-model="range" label="기간" :options="[{ value: '1h', label: '1시간' }, { value: '8h', label: '8시간' }, { value: 'day', label: '오늘' }]" />
     </template>
     <template #head-right>
@@ -64,9 +64,9 @@ const pressure: [number, number][] = Array.from({ length: 60 }, (_, i) => [i, 29
           label="라인별 실적"
           :marker="200"
           :rows="[
-            { key: 'L1', label: 'L1', value: 131, display: '131 / 200' },
-            { key: 'L2', label: 'L2 가장 낮음', value: 108, display: '108 / 200', strong: true },
-            { key: 'L3', label: 'L3', value: 127, display: '127 / 200' },
+            { key: 'A', label: 'A', value: 131, display: '131 / 200' },
+            { key: 'B', label: 'B 가장 낮음', value: 108, display: '108 / 200', strong: true },
+            { key: 'C', label: 'C', value: 127, display: '127 / 200' },
             { key: 'PT', label: '도장', value: null, display: '-', muted: true },
           ]"
         />

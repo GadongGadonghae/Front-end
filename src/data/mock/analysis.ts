@@ -1,5 +1,5 @@
 // 데모 가동률·상태 타임라인 (API-050, 051). 오늘은 지금 상태 이력에서, 지난 날은 난수로 만든다. 값은 데모용 (CLAUDE.md)
-import type { DowntimeCode, StateCode } from '@/types/state'
+import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { StateEvent } from '@/types/events'
 import type { Oee } from '@/types/live'
 import type { Equipment } from '@/types/plant'
@@ -8,10 +8,11 @@ import { MASTER } from '@/data/mock/master'
 import { LINE_DETAIL, PLANT_OEE } from '@/data/mock/scenario'
 import { between, dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
-const AREAS = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6', 'PT', 'CM'] as const
-const AREA_LABEL: Record<string, string> = { PT: '도장', CM: '출고' }
-const PROCESS_NAME: Record<string, string> = { B: '슬리팅', C: '프레스', D: '용접', E: '도장', F: '출고' }
-const RANK: Record<StateCode, number> = { R: 0, S: 1, I: 2, D: 3 }
+const AREAS = ['A', 'B', 'C', 'D', 'E', 'F', 'PT', 'VI'] as const
+const AREA_LABEL: Record<string, string> = { PT: '도장', VI: '출고', A: 'A라인', B: 'B라인', C: 'C라인', D: 'D라인', E: 'E라인', F: 'F라인' }
+const PROCESS_NAME: Record<string, string> = { SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '출고' }
+// 대표 상태 순서 D > DC > S > I > R (백엔드 API v3.1)
+const RANK: Record<StateCode, number> = { R: 0, I: 1, S: 2, DC: 3, D: 4 }
 const round1 = (n: number) => Math.round(n * 10) / 10
 
 interface Ctx {
@@ -22,17 +23,20 @@ interface Ctx {
 /** 조회 범위 안 설비 */
 export function scopeEquipment(q: Pick<OeeQuery, 'lineId' | 'process' | 'equipmentId'>): Equipment[] {
   return MASTER.equipment.filter((e) =>
-    e.process !== 'A'
+    e.process !== 'COIL'
     && (!q.equipmentId || e.id === q.equipmentId)
     && (!q.lineId || e.area === q.lineId)
     && (!q.process || e.process === q.process))
 }
 
 /** 지난 날 비가동 코드 비율 (데모): 계획정지·셋업이 많고 안전문제는 드물게 */
-const CODE_WEIGHT: [DowntimeCode, number][] = [['planned', 0.24], ['setup', 0.24], ['starved', 0.2], ['blocked', 0.12], ['fault', 0.08], ['fault-alarm', 0.09], ['safety', 0.03]]
+const CODE_WEIGHT: [DowntimeCode, number][] = [
+  ['PL_SHIFT', 0.06], ['PL_PM', 0.1], ['PL_CHANGE', 0.08], ['PL_SETUP', 0.24], ['UP_SHORTAGE', 0.2], ['UP_DELAY', 0.1],
+  ['UP_BREAKDOWN', 0.08], ['UP_ALARM', 0.09], ['UP_SAFETY', 0.03], ['UP_ETC', 0.02],
+]
 function pickCode(x: number) {
   let acc = 0
-  const code = CODE_WEIGHT.find(([, w]) => (acc += w) > x)?.[0] ?? 'planned'
+  const code = CODE_WEIGHT.find(([, w]) => (acc += w) > x)?.[0] ?? 'PL_PM'
   return MASTER.downtimeCodes.find((d) => d.code === code)!
 }
 
@@ -65,7 +69,7 @@ export function createAnalysis(ctx: Ctx) {
   }
 
   /** 그날 설비의 비가동 구간 (00:00부터 초). 오늘은 실제 이력, 지난 날은 난수 */
-  function stopsOf(e: Equipment, date: string): { state: Exclude<StateCode, 'R'>; code: DowntimeCode; from: number; to: number }[] {
+  function stopsOf(e: Equipment, date: string): { state: StopState; code: DowntimeCode; from: number; to: number }[] {
     if (date > today()) return []
     const start = dayStart(date)
     if (date === today()) {
@@ -123,7 +127,7 @@ export function createAnalysis(ctx: Ctx) {
     }
   }
 
-  /** 여러 설비 구간을 합쳐 각 순간 가장 나쁜 상태로 (D > I > S > R) */
+  /** 여러 설비 구간을 합쳐 각 순간 가장 나쁜 상태로 (D > DC > S > I > R) */
   function merge(lists: { state: StateCode; from: number; to: number }[][], until: number) {
     const all = lists.flat()
     const cuts = [...new Set([0, until, ...all.flatMap((s) => [s.from, s.to])])].filter((t) => t <= until).sort((a, b) => a - b)

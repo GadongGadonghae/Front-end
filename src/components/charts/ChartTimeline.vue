@@ -1,7 +1,7 @@
 <!-- 00~24시 구간 색 띠 (SCR-003 6번). 줄마다 이름 | 띠. until 뒤는 "아직 안 온 시간"(가라앉은 면)
      색만으로 말하지 않게, 넓은 구간에는 글자(letter)를 띠 안에 쓰고 모든 구간에 title을 단다 -->
 <script setup lang="ts">
-export interface TimelineSegment { from: number; to: number; tone: 'run' | 'stop' | 'idle' | 'down'; letter: string; title: string }
+export interface TimelineSegment { from: number; to: number; tone: 'run' | 'stop' | 'idle' | 'down' | 'dc'; letter: string; title: string }
 
 const props = defineProps<{
   label: string
@@ -88,6 +88,7 @@ const wide = (s: TimelineSegment) => (s.to - s.from) / props.span > 0.025
 .t-stop { background: var(--c-stop); color: var(--c-stop-ink); box-shadow: inset 0 0 0 var(--line-w) var(--c-stop-solid); }
 .t-idle { background: var(--c-idle); color: var(--c-idle-ink); }
 .t-down { background: var(--c-down); color: var(--c-down-ink); }
+.t-dc { background: var(--c-dc); color: var(--c-dc-ink); }
 
 .future {
   background: var(--c-surface-sunk);

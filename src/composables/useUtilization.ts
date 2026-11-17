@@ -3,19 +3,19 @@
 import { computed, ref, watch } from 'vue'
 import { source } from '@/data'
 import type { OeeQuery, Period } from '@/types/analysis'
-import type { StateCode } from '@/types/state'
+import type { StateCode, StopState } from '@/types/state'
 import type { BarRowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
 import { usePoll } from '@/composables/usePoll'
-import { DOWNTIME_NAME, PROCESS_NAME, STATE_NAME, longShortName } from '@/lib/status'
+import { DOWNTIME_NAME, PROCESS_NAME, STATE_NAME, longShortName, byProcess } from '@/lib/status'
 import { formatDate, formatDuration, formatHm, formatNumber, toDateStr } from '@/lib/format'
 
 const POLL_MS = 60_000
 const AREAS = [
-  { value: 'L1', label: 'L1' }, { value: 'L2', label: 'L2' }, { value: 'L3', label: 'L3' }, { value: 'L4', label: 'L4' },
-  { value: 'L5', label: 'L5' }, { value: 'L6', label: 'L6' }, { value: 'PT', label: '도장' }, { value: 'CM', label: '출고' },
+  { value: 'A', label: 'A라인' }, { value: 'B', label: 'B라인' }, { value: 'C', label: 'C라인' }, { value: 'D', label: 'D라인' },
+  { value: 'E', label: 'E라인' }, { value: 'F', label: 'F라인' }, { value: 'PT', label: '도장' }, { value: 'VI', label: '출고' },
 ]
-const TONE: Record<StateCode, 'run' | 'stop' | 'idle' | 'down'> = { R: 'run', S: 'stop', I: 'idle', D: 'down' }
+const TONE: Record<StateCode, 'run' | 'stop' | 'idle' | 'down' | 'dc'> = { R: 'run', S: 'stop', I: 'idle', D: 'down', DC: 'dc' }
 const hm = (sec: number) => `${String(Math.floor(sec / 3600)).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`
 
 export function useUtilization() {
@@ -41,15 +41,15 @@ export function useUtilization() {
   )
 
   // ── 고를 것 ──
-  const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'A' && (!lineId.value || e.area === lineId.value)))
+  const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'COIL' && (!lineId.value || e.area === lineId.value)))
   const lineOptions = [{ value: '', label: '전체' }, ...AREAS]
   const processOptions = computed(() => [
     { value: '', label: '전체' },
-    ...[...new Set(scoped.value.map((e) => e.process))].sort().map((p) => ({ value: p, label: PROCESS_NAME[p] })),
+    ...[...new Set(scoped.value.map((e) => e.process))].sort(byProcess).map((p) => ({ value: p, label: PROCESS_NAME[p] })),
   ])
   const equipmentOptions = computed(() => [
     { value: '', label: '전체' },
-    ...(lineId.value ? scoped.value.filter((e) => !process.value || e.process === process.value).sort((a, b) => a.process.localeCompare(b.process) || a.order - b.order).map((e) => ({ value: e.id, label: longShortName(e) })) : []),
+    ...(lineId.value ? scoped.value.filter((e) => !process.value || e.process === process.value).sort((a, b) => byProcess(a.process, b.process) || a.order - b.order).map((e) => ({ value: e.id, label: longShortName(e) })) : []),
   ])
   // 상위 조건이 바뀌면 맞지 않는 하위 조건을 비운다
   watch(lineId, () => { if (!processOptions.value.some((o) => o.value === process.value)) process.value = ''; equipmentId.value = '' })
@@ -81,7 +81,7 @@ export function useUtilization() {
     else equipmentId.value = key
   }
 
-  const downtime = computed<(BarRowView & { state: Exclude<StateCode, 'R'> })[]>(() => (report.value?.downtime ?? []).map((d) => ({
+  const downtime = computed<(BarRowView & { state: StopState })[]>(() => (report.value?.downtime ?? []).map((d) => ({
     key: d.code, label: DOWNTIME_NAME[d.code], value: d.sec, display: d.sec ? formatDuration(d.sec) : '-',
     sub: `${d.count}건`, tone: TONE[d.state], muted: d.sec === 0, state: d.state,
   })))

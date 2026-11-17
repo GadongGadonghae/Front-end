@@ -36,7 +36,7 @@ const s = computed(() => p.summary.value)
 watch(() => route.query.q, (v) => { if (typeof v === 'string' && v) p.findProduct(v) })
 
 const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일' }, { value: 'week', label: '주' }, { value: 'month', label: '월' }]
-const LINES: { value: '' | LineId; label: string }[] = [{ value: '', label: '전체' }, ...(['L1', 'L2', 'L3', 'L4', 'L5', 'L6'] as LineId[]).map((l) => ({ value: l, label: l }))]
+const LINES: { value: '' | LineId; label: string }[] = [{ value: '', label: '전체' }, ...(['A', 'B', 'C', 'D', 'E', 'F'] as LineId[]).map((l) => ({ value: l, label: `${l}라인` }))]
 const RESULTS: { value: ResultFilter; label: string }[] = [{ value: 'all', label: '전체' }, { value: 'ok', label: '양품 출고' }, { value: 'ng', label: '불량 제외' }, { value: 'wip', label: '진행 중' }]
 
 const columns = computed<TableColumn[]>(() => [
@@ -85,7 +85,7 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
         <BaseSelect v-model="lineId" label="라인" :options="LINES" />
         <BaseSelect v-model="result" label="결과" :options="RESULTS" />
         <span class="field search">
-          <BaseInput v-model="q" label="제품 ID" type="search" size="md" placeholder="예: L3-20261116-0412" />
+          <BaseInput v-model="q" label="제품 ID" type="search" size="md" placeholder="예: C-20261116-0412" />
         </span>
       </div>
     </template>

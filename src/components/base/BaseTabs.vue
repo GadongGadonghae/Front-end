@@ -1,4 +1,4 @@
-<!-- 링크 탭: 주소가 바뀌는 탭 (라인 L1~L6·도장, 공정, 리포트 종류). 선택 = 먹색 면 + 흰 글자 (DESIGN.md Components) -->
+<!-- 링크 탭: 주소가 바뀌는 탭 (라인 A~F·도장, 공정, 리포트 종류). 선택 = 먹색 면 + 흰 글자 (DESIGN.md Components) -->
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 

@@ -6,14 +6,14 @@ import type { EquipmentLive } from '@/types/live'
 import { LINE_DETAIL, NG_OVERRIDES, OUTBOUND_NG_BY_LINE, PAINT_NG_BY_LINE, PAST_LINE_DONE } from '@/data/mock/scenario'
 import { between, dayStart, hash, localDate, rng } from '@/data/mock/rand'
 
-export const PRODUCTION_LINES: LineId[] = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6']
+export const PRODUCTION_LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F']
 /** 제품이 지나는 공정 (입고 A는 제품 ID 발급 전) */
-export const STEPS: ProcessId[] = ['B', 'C', 'D', 'E', 'F']
+export const STEPS: ProcessId[] = ['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION']
 /** 제품 내역은 90일까지 (D-86) */
 export const KEEP_DAYS = 90
 
-type NgProcess = 'B' | 'C' | 'D' | 'E' | 'F'
-type WipProcess = 'C' | 'D' | 'E'
+type NgProcess = 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING' | 'INSPECTION'
+type WipProcess = 'PRESS' | 'WELDING' | 'PAINTING'
 
 /** 하루·라인 수량 */
 export interface DayCounts {
@@ -24,8 +24,8 @@ export interface DayCounts {
 }
 
 /** 투입 뒤 공정마다 끝나는 시각(분) [데모]: 슬리팅 4 · 프레스 14 · 용접 22 · 도장 56 · 출고 62 */
-const STEP_END_MIN: Record<ProcessId, number> = { A: 0, B: 4, C: 14, D: 22, E: 56, F: 62 }
-const STEP_START_MIN: Record<ProcessId, number> = { A: 0, B: 0, C: 6, D: 18, E: 26, F: 60 }
+const STEP_END_MIN: Record<ProcessId, number> = { COIL: 0, SLITTING: 4, PRESS: 14, WELDING: 22, PAINTING: 56, INSPECTION: 62 }
+const STEP_START_MIN: Record<ProcessId, number> = { COIL: 0, SLITTING: 0, PRESS: 6, WELDING: 18, PAINTING: 26, INSPECTION: 60 }
 const PRESS_ITEMS = ['Pressure 1', 'Pressure 2', 'Pressure 5', 'Press time']
 const WELD_ITEMS = ['전압', '통전시간']
 
@@ -46,15 +46,15 @@ export function createProducts(ctx: Ctx) {
       const paintWip = LINE_DETAIL.PT.wip[0]
       return {
         done: ctx.lineDone[lineId],
-        ng: { B: d.ng.B ?? 0, C: d.ng.C ?? 0, D: d.ng.D ?? 0, E: PAINT_NG_BY_LINE[lineId] ?? 0, F: OUTBOUND_NG_BY_LINE[lineId] ?? 0 },
-        wip: { C: d.wip[0], D: d.wip[1], E: PRODUCTION_LINES.indexOf(lineId) < paintWip ? 1 : 0 },
+        ng: { SLITTING: d.ng.SLITTING ?? 0, PRESS: d.ng.PRESS ?? 0, WELDING: d.ng.WELDING ?? 0, PAINTING: PAINT_NG_BY_LINE[lineId] ?? 0, INSPECTION: OUTBOUND_NG_BY_LINE[lineId] ?? 0 },
+        wip: { PRESS: d.wip[0], WELDING: d.wip[1], PAINTING: PRODUCTION_LINES.indexOf(lineId) < paintWip ? 1 : 0 },
       }
     }
     const r = rng(hash('day', date, lineId))
     return {
       done: between(r, PAST_LINE_DONE.min, PAST_LINE_DONE.max),
-      ng: { B: between(r, 0, 2), C: between(r, 0, 4), D: between(r, 0, 3), E: between(r, 0, 1), F: between(r, 0, 2) },
-      wip: { C: 0, D: 0, E: 0 },
+      ng: { SLITTING: between(r, 0, 2), PRESS: between(r, 0, 4), WELDING: between(r, 0, 3), PAINTING: between(r, 0, 1), INSPECTION: between(r, 0, 2) },
+      wip: { PRESS: 0, WELDING: 0, PAINTING: 0 },
     }
   }
 
@@ -77,14 +77,14 @@ export function createProducts(ctx: Ctx) {
     }
     const kinds: (NgProcess | 'ok' | `wip-${WipProcess}`)[] = [
       ...finished,
-      ...Array<'wip-E'>(c.wip.E).fill('wip-E'), ...Array<'wip-D'>(c.wip.D).fill('wip-D'), ...Array<'wip-C'>(c.wip.C).fill('wip-C'),
+      ...Array<'wip-PAINTING'>(c.wip.PAINTING).fill('wip-PAINTING'), ...Array<'wip-WELDING'>(c.wip.WELDING).fill('wip-WELDING'), ...Array<'wip-PRESS'>(c.wip.PRESS).fill('wip-PRESS'),
     ]
 
     const start = dayStart(date)
     const isToday = date === today()
     const end = isToday ? ctx.now() : start + 86_400_000
     // 끝난 제품은 지금보다 한 사이클(출고까지 62분) 앞까지 고르게, 재공은 그 뒤 지금까지 고르게 투입
-    const finishedEnd = isToday ? Math.max(start + 60_000, end - (STEP_END_MIN.F + 1) * 60_000) : end
+    const finishedEnd = isToday ? Math.max(start + 60_000, end - (STEP_END_MIN.INSPECTION + 1) * 60_000) : end
     const nFinished = finished.length
     const nWip = kinds.length - nFinished
     const inputOf = (i: number) => (i < nFinished
@@ -111,12 +111,12 @@ export function createProducts(ctx: Ctx) {
       const stage = 1 + Math.floor(r() * 4)
       const ngReason = (p: NgProcess): string => {
         const side = r() < 0.6 ? '상한' : '하한'
-        if (p === 'C') return `${stage}단 · ${PRESS_ITEMS[Math.floor(r() * PRESS_ITEMS.length)]} ${side} 이탈`
-        if (p === 'D') return `${WELD_ITEMS[Math.floor(r() * WELD_ITEMS.length)]} ${side} 이탈`
-        return { B: '슬리팅 끝 검사 불량', E: '도장 끝 검사 불량', F: '비전 검사 불량' }[p]
+        if (p === 'PRESS') return `${stage}단 · ${PRESS_ITEMS[Math.floor(r() * PRESS_ITEMS.length)]} ${side} 이탈`
+        if (p === 'WELDING') return `${WELD_ITEMS[Math.floor(r() * WELD_ITEMS.length)]} ${side} 이탈`
+        return { SLITTING: '슬리팅 끝 검사 불량', PAINTING: '도장 끝 검사 불량', INSPECTION: '비전 검사 불량' }[p]
       }
       const equipmentOf = (p: ProcessId) => ({
-        A: null, B: `${lineId}-SLT`, C: `${lineId}-PRS-${p === ngAt ? stage : 4}`, D: `${lineId}-WLD`, E: `PT-PNT-${(i % 2) + 1}`, F: 'CM-VIS',
+        COIL: null, SLITTING: `${lineId}-SL`, PRESS: `${lineId}-PR${p === ngAt ? stage : 4}`, WELDING: `${lineId}-WD`, PAINTING: `PT${(i % 2) + 1}`, INSPECTION: 'VI',
       })[p]
 
       const isOverride = override && i === finished.length - 1 && ngAt === override.process
@@ -155,9 +155,9 @@ export function createProducts(ctx: Ctx) {
     return past.get(key)!
   }
 
-  /** 제품 ID로 찾기: L2-20261116-0118 */
+  /** 제품 ID로 찾기: B-20261116-0118 */
   function find(id: string): ProductDetail | null {
-    const m = /^(L[1-6])-(\d{4})(\d{2})(\d{2})-\d{4}$/.exec(id)
+    const m = /^([A-F])-(\d{4})(\d{2})(\d{2})-\d{4}$/.exec(id)
     if (!m) return null
     return day(`${m[2]}-${m[3]}-${m[4]}`, m[1] as LineId).find((p) => p.id === id) ?? null
   }

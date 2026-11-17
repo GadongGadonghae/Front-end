@@ -55,20 +55,20 @@ export function createReports(ctx: Ctx) {
     const done = sum(lines.map((x) => x.done))
 
     // 공정별 검사 수: 슬리팅을 지난 수에서 공정마다 불량·재공을 빼 간다 (제품 목록과 같은 셈)
-    const all = { ng: { B: 0, C: 0, D: 0, E: 0, F: 0 }, wip: { C: 0, D: 0, E: 0 } }
+    const all = { ng: { SLITTING: 0, PRESS: 0, WELDING: 0, PAINTING: 0, INSPECTION: 0 }, wip: { PRESS: 0, WELDING: 0, PAINTING: 0 } }
     for (const { c } of counts) {
       if (!c) continue
       for (const k of Object.keys(all.ng) as (keyof typeof all.ng)[]) all.ng[k] += c.ng[k]
       for (const k of Object.keys(all.wip) as (keyof typeof all.wip)[]) all.wip[k] += c.wip[k]
     }
     const outB = done + sum(Object.values(all.ng)) + sum(Object.values(all.wip))
-    const outC = outB - all.ng.B - all.wip.C
-    const outD = outC - all.ng.C - all.wip.D
-    const outE = outD - all.ng.D - all.wip.E
-    const outF = outE - all.ng.E
+    const outC = outB - all.ng.SLITTING - all.wip.PRESS
+    const outD = outC - all.ng.PRESS - all.wip.WELDING
+    const outE = outD - all.ng.WELDING - all.wip.PAINTING
+    const outF = outE - all.ng.PAINTING
     const processes: DailyReport['processes'] = [
-      { process: 'B', output: outB, ng: all.ng.B }, { process: 'C', output: outC, ng: all.ng.C }, { process: 'D', output: outD, ng: all.ng.D },
-      { process: 'E', output: outE, ng: all.ng.E }, { process: 'F', output: outF, ng: all.ng.F },
+      { process: 'SLITTING', output: outB, ng: all.ng.SLITTING }, { process: 'PRESS', output: outC, ng: all.ng.PRESS }, { process: 'WELDING', output: outD, ng: all.ng.WELDING },
+      { process: 'PAINTING', output: outE, ng: all.ng.PAINTING }, { process: 'INSPECTION', output: outF, ng: all.ng.INSPECTION },
     ]
     // 도장 줄: 도장을 지난 수 = 출고 검사 받은 수
     lines.push({ lineId: 'PT', plan: target, done: outF, rate: pct(outF, target), oee: ctx.oeeOf('PT', date), ng: null })
@@ -83,11 +83,11 @@ export function createReports(ctx: Ctx) {
       lines, processes,
       downtime: report.downtime.filter((d) => d.count > 0),
       wip: [
-        { from: 'A', to: 'B', qty: stock, unit: 'roll' },
-        { from: 'B', to: 'C', qty: all.wip.C, unit: 'ea' },
-        { from: 'C', to: 'D', qty: all.wip.D, unit: 'ea' },
-        { from: 'D', to: 'E', qty: all.wip.E, unit: 'ea' },
-        { from: 'E', to: 'F', qty: 0, unit: 'ea' },
+        { from: 'COIL', to: 'SLITTING', qty: stock, unit: 'roll' },
+        { from: 'SLITTING', to: 'PRESS', qty: all.wip.PRESS, unit: 'ea' },
+        { from: 'PRESS', to: 'WELDING', qty: all.wip.WELDING, unit: 'ea' },
+        { from: 'WELDING', to: 'PAINTING', qty: all.wip.PAINTING, unit: 'ea' },
+        { from: 'PAINTING', to: 'INSPECTION', qty: 0, unit: 'ea' },
       ],
     }
   }
@@ -123,7 +123,7 @@ export function createReports(ctx: Ctx) {
     const target = ctx.targetOf(date)
     const head = { id, createdAt: iso(createdAt), createdBy, equipmentId: e.id, code: ev.code, stateEventId: ev.id, start: ev.start, detail: ev.detail, baseAt: iso(base), remainingSec, target }
 
-    if (e.area === 'CM') {
+    if (e.area === 'VI') {
       // 비전은 1대라 대체 없음 → 남은 출고 전량 미달 예상 [가정 A-13]
       const plantDone = sum(PRODUCTION_LINES.map(doneAt))
       const shortage = Math.max(0, (target ?? 0) - plantDone)

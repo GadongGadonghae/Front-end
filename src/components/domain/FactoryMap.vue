@@ -1,5 +1,5 @@
 <!-- 공장 배치도 (화면정의서 SCR-001 1~5번, D-81): 설비 하나 = 칸 하나, 모눈 위에 왼쪽에서 오른쪽으로
-     입고 1칸 → 6갈래 → 라인 L1~L6 (슬리팅 1 · 프레스 4 · 용접 1) → 도장 2칸으로 합류 → 비전 1칸(출고)
+     입고 1칸 → 6갈래 → 라인 A~F (슬리팅 1 · 프레스 4 · 용접 1) → 도장 2칸으로 합류 → 비전 1칸(출고)
      라인 줄·도장 칸 → 라인 상세, 입고 칸 → 입고 상세, 비전 칸 → 출고 상세 (이벤트로 알림, 이동은 화면이 함) -->
 <script setup lang="ts">
 import EquipCell from '@/components/domain/EquipCell.vue'
@@ -12,7 +12,7 @@ import type { EquipCellView, FactoryMapView } from '@/types/view'
 defineProps<{ view: FactoryMapView }>()
 const emit = defineEmits<{ openLine: [id: LineId]; openInbound: []; openOutbound: [] }>()
 
-/** 화면 낭독기용 이름: 줄 안 설비 상태를 요약 (예: L2 라인 상세, 고장 1, 대기 2, 위험 1) */
+/** 화면 낭독기용 이름: 줄 안 설비 상태를 요약 (예: B 라인 상세, 고장 1, 대기 2, 위험 1) */
 function lineLabel(id: string, cells: EquipCellView[]) {
   const c = countByState(cells.map((x) => x.state))
   const parts = (['D', 'I', 'S'] as StateCode[]).filter((s) => c[s] > 0).map((s) => `${STATE_NAME[s]} ${c[s]}`)

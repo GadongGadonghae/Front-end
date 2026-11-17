@@ -33,7 +33,7 @@ export function useProcessDetail(area: AreaId, process: ProcessId) {
   const now = useNow()
 
   const { data: today } = usePoll(
-    () => (area === 'CM' ? Promise.resolve(null) : source.q.getProcessToday(area, process)),
+    () => (area === 'VI' ? Promise.resolve(null) : source.q.getProcessToday(area, process)),
     PROCESS_POLL_MS,
   )
 
@@ -43,7 +43,7 @@ export function useProcessDetail(area: AreaId, process: ProcessId) {
   const cards = computed<EquipCardView[]>(() => equipment.value.map((e) => {
     const row = today.value?.equipment.find((x) => x.id === e.id)
     const info: EquipCardView['info'] = []
-    if (process === 'B') {
+    if (process === 'SLITTING') {
       info.push({ label: '오늘 생산', value: formatNumber(today.value?.output) })
       const inv = today.value?.inverter
       if (inv) info.push({ label: '출력 주파수', value: `${formatNumber(inv.outputHz, 2)} Hz` })
@@ -51,8 +51,8 @@ export function useProcessDetail(area: AreaId, process: ProcessId) {
       info.push({ label: '오늘 사이클', value: formatNumber(row?.cycles) })
       if (row?.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초`, mark: row.slowest ? '가장 느림' : undefined })
     }
-    // 슬리팅은 실설비(L1, iG5A)와 시뮬레이터를 구분해 표시 (D-43)
-    const tag = process === 'B' ? (e.real ? '실설비 · LS iG5A' : '시뮬레이터') : null
+    // 슬리팅은 실설비(A, iG5A)와 시뮬레이터를 구분해 표시 (D-43)
+    const tag = process === 'SLITTING' ? (e.real ? '실설비 · LS iG5A' : '시뮬레이터') : null
     return toEquipCard(e, liveById.value.get(e.id), now.value, info, tag)
   }))
 

@@ -24,6 +24,12 @@
   color: var(--c-down-ink);
 }
 
+/* DC 통신 끊김: 보라 (백엔드 제안). 값이 안 들어오는 상태라 상태 4색과 겹치지 않는 색조 */
+.st-DC {
+  background: var(--c-dc);
+  color: var(--c-dc-ink);
+}
+
 /* 예지보전: 칸 바깥에 떨어진 테두리. 주의 = 노랑 실선, 위험 = 빨강 점선 (D-77) */
 .pdm-warn {
   outline: var(--mark-w) solid var(--c-idle-edge);

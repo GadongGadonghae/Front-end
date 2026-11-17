@@ -23,8 +23,8 @@ export function useInbound() {
 
 /** 출고: 비전 1대 + 출고 검사 (D-90) */
 export function useOutbound() {
-  const { equipment, liveById } = useProcessDetail('CM', 'F')
-  const inspections = useInspections('F', undefined, 'line')
+  const { equipment, liveById } = useProcessDetail('VI', 'INSPECTION')
+  const inspections = useInspections('INSPECTION', undefined, 'line')
   const now = useNow()
 
   const card = computed<EquipCardView | null>(() => {
@@ -38,7 +38,7 @@ export function useOutbound() {
   })
 
   const byLine = computed<BarRowView[]>(() => {
-    const counts = new Map<string, number>(['L1', 'L2', 'L3', 'L4', 'L5', 'L6'].map((l) => [l, 0]))
+    const counts = new Map<string, number>(['A', 'B', 'C', 'D', 'E', 'F'].map((l) => [l, 0]))
     for (const r of inspections.rows.value) counts.set(r.where, (counts.get(r.where) ?? 0) + 1)
     return [...counts].map(([l, n]) => ({ key: l, label: l, value: n, muted: n === 0 }))
   })

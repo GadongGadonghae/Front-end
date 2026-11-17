@@ -19,7 +19,7 @@ import StateLegend from '@/components/domain/StateLegend.vue'
 import { useUtilization } from '@/composables/useUtilization'
 import { niceTicks } from '@/lib/chart'
 import type { Period } from '@/types/analysis'
-import type { StateCode } from '@/types/state'
+import type { StopState } from '@/types/state'
 
 const u = useUtilization()
 const { period, date, lineId, process, equipmentId } = u
@@ -29,7 +29,7 @@ const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일
 const HOUR_TICKS = [0, 6, 12, 18, 24].map((h) => ({ value: h * 3600, label: `${String(h).padStart(2, '0')}시` }))
 const dailyY = computed(() => niceTicks(Math.min(60, ...u.daily.value.points.map((p) => p[1])), 100, 4))
 /** 비가동 코드 행 → 그 코드의 상태 (S·I·D) */
-const stateOf = (key: string): Exclude<StateCode, 'R'> => u.downtime.value.find((d) => d.key === key)?.state ?? 'S'
+const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key === key)?.state ?? 'S'
 </script>
 
 <template>
@@ -77,7 +77,7 @@ const stateOf = (key: string): Exclude<StateCode, 'R'> => u.downtime.value.find(
           </BasePanel>
         </div>
 
-        <BasePanel v-if="period === 'day'" title="상태 타임라인" :meta="lineId ? '설비별' : '라인 대표 상태 (D > I > S > R)'">
+        <BasePanel v-if="period === 'day'" title="상태 타임라인" :meta="lineId ? '설비별' : '라인 대표 상태 (D > DC > S > I > R)'">
           <template #tools>
             <StateLegend />
             <span class="future-key"><i></i>아직 안 온 시간</span>
