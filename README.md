@@ -28,7 +28,7 @@ Node 20 이상.
 | `VITE_DATA_SOURCE` | 채우는 쪽 | 상태 |
 |---|---|---|
 | `mock` (기본) | `src/data/mock/` 프론트 데모 공급기. 백엔드 없이 1초 갱신·고장·예지보전 장면을 흉내 냄 | 동작함. 화면 오른쪽 위에 "데모 데이터" 표시 |
-| `api` | `src/data/api/` 실제 백엔드 어댑터 (REST + WebSocket) | **아직 없음.** 3장 순서로 만든다 |
+| `api` | `src/data/api/` 실제 백엔드 어댑터 | 엔드포인트는 명세 v3.1과 1:1(`endpoints.ts`). 실시간은 STOMP 결정 전까지 REST 주기 조회. 실서버 검증 전 |
 
 ```bash
 cp .env.example .env.local     # .env.local 은 커밋하지 않음

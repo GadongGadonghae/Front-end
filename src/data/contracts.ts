@@ -1,4 +1,4 @@
-// 데이터 층 계약 (FRONTEND.md 6장). 형식·주기는 docs/specs/API명세서.md가 기준이고, 함수는 API와 1:1로 맞춘다.
+// 데이터 층 계약 (FRONTEND.md 6장). 화면이 아는 유일한 인터페이스. 백엔드 엔드포인트(docs/api-spec-v3.1.md)는 data/api/endpoints.ts에 1:1로 두고, 이 계약으로 바꾸는 일은 data/api/source.ts가 한다.
 // 화면은 이 인터페이스만 안다. 지금 구현은 mock, 나중에 api가 같은 계약으로 들어온다.
 // 조회·저장 함수는 화면을 만들 때 그 화면에 필요한 것만 추가한다.
 import type { LineId, MasterData } from '@/types/plant'
