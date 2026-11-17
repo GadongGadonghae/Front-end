@@ -19,7 +19,10 @@ export interface OeeReport {
   /** 집계 구간 (예: 00:00~14:32 기준) */
   from: string
   to: string
+  /** OEE와 3요소. 양품률은 공정 양품 ÷ 처리 수 (표준, D-92) */
   oee: Oee
+  /** 라인 수율 = 출고 양품 ÷ 슬리팅 투입 (백엔드 lineYield, D-92). 공장·라인 단위일 때만, 공정·설비를 고르면 null */
+  lineYield: number | null
   /** 라인 전체면 라인별, 라인을 고르면 공정별 막대 */
   bars: { key: string; label: string; oee: number | null }[]
   /** 비가동 코드별 시간(초)·건수 */

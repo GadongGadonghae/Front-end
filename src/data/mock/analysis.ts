@@ -117,6 +117,7 @@ export function createAnalysis(ctx: Ctx) {
     const value = over(key)
     const lastDay = days.at(-1)
     return {
+      lineYield: null,
       query: q,
       from: new Date(dayStart(first)).toISOString(),
       to: new Date(lastDay === today() ? ctx.now() : dayStart(last) + 86_400_000).toISOString(),

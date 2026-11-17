@@ -57,7 +57,11 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
           <BaseFigure label="성능가동률" :value="oee?.performance" :digits="1" unit="%" sub="표준CT × 생산수량 ÷ 가동시간" />
         </SummaryBlock>
         <SummaryBlock>
-          <BaseFigure label="양품률" :value="oee?.quality" :digits="1" unit="%" sub="출고 양품 ÷ 슬리팅 투입" />
+          <BaseFigure label="양품률" :value="oee?.quality" :digits="1" unit="%" sub="공정 양품 ÷ 공정 처리 수" />
+        </SummaryBlock>
+        <!-- 라인 수율 (D-92): OEE와 다른 지표. 공장·라인 단위일 때만 -->
+        <SummaryBlock v-if="u.report.value?.lineYield != null">
+          <BaseFigure label="라인 수율" :value="u.report.value.lineYield" :digits="1" unit="%" sub="출고 양품 ÷ 슬리팅 투입 (OEE와 별도)" />
         </SummaryBlock>
         <!-- FN-004 예외, D-55 -->
         <p class="note">부하시간이 0이면 "-" · 코일입고는 설비가 없어 제외</p>

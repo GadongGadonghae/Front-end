@@ -81,7 +81,8 @@ export function useUtilization() {
     else equipmentId.value = key
   }
 
-  const downtime = computed<(BarRowView & { state: StopState })[]>(() => (report.value?.downtime ?? []).map((d) => ({
+  // 0건 코드는 뺀다 (사유 코드 11개라 다 보이면 칸이 넘친다)
+  const downtime = computed<(BarRowView & { state: StopState })[]>(() => (report.value?.downtime ?? []).filter((d) => d.count > 0).map((d) => ({
     key: d.code, label: DOWNTIME_NAME[d.code], value: d.sec, display: d.sec ? formatDuration(d.sec) : '-',
     sub: `${d.count}건`, tone: TONE[d.state], muted: d.sec === 0, state: d.state,
   })))

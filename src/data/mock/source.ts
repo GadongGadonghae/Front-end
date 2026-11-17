@@ -404,7 +404,15 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getInspectionsToday: async (process, lineId) => inspections(process, lineId),
       getMicrostopsToday: async (equipmentId) => telemetry.microstops(equipmentId),
       getInboundToday: async () => inboundToday(),
-      getOee: async (q) => analysis.oee(q),
+      // 라인 수율 = 출고 양품 ÷ 슬리팅 투입 (D-92). 공장·생산 라인 단위만
+      getOee: async (q) => {
+        const r = analysis.oee(q)
+        if (q.process || q.equipmentId || (q.lineId && !PRODUCTION_LINES.includes(q.lineId as LineId))) return r
+        const { first, last } = periodRange(q.period, q.date)
+        const t = tally(linesOf(q.lineId as LineId | undefined), daysOf(first, last).filter((d) => d <= today()))
+        const input = t.done + sum(Object.values(t.ng)) + t.wip
+        return { ...r, lineYield: input ? round1((t.done / input) * 100) : null }
+      },
       getStateTimeline: async (q) => analysis.timeline(q),
       getHistory: async (q) => history.list(q),
       getRiskHistory: async (q) => history.risks(q),
