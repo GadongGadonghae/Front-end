@@ -73,7 +73,7 @@ function onKey(e: KeyboardEvent, go: () => void) {
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  padding: var(--sp-3) var(--panel-pad);
+  padding: var(--sp-4) var(--panel-pad);
   border: var(--line-w) solid var(--c-line);
   border-radius: var(--r-2);
   background-color: var(--c-surface);

@@ -35,7 +35,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
   align-items: center;
   gap: var(--sp-3);
   min-height: var(--control-h-sm);
-  margin-bottom: var(--sp-3);
+  margin-bottom: var(--sp-4);
 }
 
 h2 {
