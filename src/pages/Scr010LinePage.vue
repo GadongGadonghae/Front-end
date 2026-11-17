@@ -1,6 +1,7 @@
 <!-- SCR-010 라인 상세 (화면정의서 3장 SCR-010, DESIGN.md Layout "라인 상세")
      왼쪽 열 전체: 라인 요약. 오른쪽 위: 라인 흐름(주인공). 아래 가운데: 시간대별 라인 생산, 아래 오른쪽: 라인 오늘 알림 -->
 <script setup lang="ts">
+import { PROCESS_NAME } from '@/lib/status'
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
@@ -8,7 +9,6 @@ import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
-import ChartPie from '@/components/charts/ChartPie.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import ChartLine from '@/components/charts/ChartLine.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
@@ -87,16 +87,13 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
           <BaseFigure label="라인 OEE" :value="now.oee" :digits="1" unit="%" />
         </SummaryBlock>
         <SummaryBlock>
-          <!-- 숫자 옆 파이: 공정별 몫. 아래 목록에 같은 색 칸 + 이름 + 개수 (색만으로 말하지 않게) -->
+          <!-- 숫자 옆에 공정별 개수 (검사 위치 설명은 마우스를 올리면) -->
           <div class="ngrow">
             <BaseFigure label="오늘 불량 제외" :value="now.ngTotal" />
-            <ChartPie label="공정별 불량 제외" :slices="now.ngRows.map((r) => ({ key: r.process, label: r.label, value: r.value }))" />
+            <ul class="ng" aria-label="공정별 불량 제외">
+              <li v-for="r in now.ngRows" :key="r.process" :title="r.label"><span>{{ PROCESS_NAME[r.process] }}</span><b>{{ r.value }}</b></li>
+            </ul>
           </div>
-          <ul class="ng">
-            <li v-for="(r, i) in now.ngRows" :key="r.process">
-              <span class="sw" :class="`cat-${(i % 4) + 1}`" aria-hidden="true"></span><span class="nm">{{ r.label }}</span><b>{{ r.value }}</b>
-            </li>
-          </ul>
         </SummaryBlock>
       </SummaryColumn>
 
@@ -190,7 +187,9 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 
 .ng {
   display: grid;
+  flex: 1;
   gap: var(--sp-1);
+  max-width: 10em;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -202,31 +201,14 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sp-3);
+  gap: var(--sp-5);
 }
 
 .ng li {
   display: flex;
-  align-items: center;
-  gap: var(--sp-2);
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
-
-.nm {
-  flex: 1;
-}
-
-/* 파이 조각과 같은 색 칸 */
-.sw {
-  flex: none;
-  width: var(--sp-3);
-  height: var(--sp-3);
-  border-radius: 2px;
-}
-
-.cat-1 { background: var(--c-cat-1); }
-.cat-2 { background: var(--c-cat-2); }
-.cat-3 { background: var(--c-cat-3); }
-.cat-4 { background: var(--c-cat-4); box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong); }
 
 .ng b {
   color: var(--c-ink);
