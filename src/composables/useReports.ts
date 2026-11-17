@@ -33,14 +33,17 @@ export function useDailyReport() {
   )
 
   const procLabel = (p: string) => (p === 'F' ? '출고 (비전)' : PROCESS_NAME[p as keyof typeof PROCESS_NAME])
-  const processRows = computed(() => (report.value?.processes ?? []).map((p) => ({
-    key: p.process, label: procLabel(p.process), output: p.output, ng: p.ng, rate: p.output ? Math.round((p.ng / p.output) * 1000) / 10 : null,
-  })))
+  /** 공정 앞 재공: 그 공정으로 들어오기 전 공정 사이에 쌓인 수 (슬리팅 앞은 코일, 롤) */
+  const wipBefore = (p: string) => report.value?.wip.find((w) => w.to === p) ?? null
+  const processRows = computed(() => (report.value?.processes ?? []).map((p) => {
+    const w = wipBefore(p.process)
+    return {
+      key: p.process, label: procLabel(p.process), output: p.output, ng: p.ng, rate: p.output ? Math.round((p.ng / p.output) * 1000) / 10 : null,
+      wip: w?.qty ?? null, wipUnit: w ? (w.unit === 'roll' ? '롤' : '개') : '',
+    }
+  }))
   const downtime = computed<(BarRowView & { state: Exclude<StateCode, 'R'> })[]>(() => (report.value?.downtime ?? []).map((d) => ({
     key: d.code, label: DOWNTIME_NAME[d.code], value: d.sec, display: formatDuration(d.sec), sub: `${d.count}건`, tone: TONE[d.state], state: d.state,
-  })))
-  const wipRows = computed(() => (report.value?.wip ?? []).map((w) => ({
-    key: `${w.from}${w.to}`, from: PROCESS_NAME[w.from], to: PROCESS_NAME[w.to], qty: w.qty, unit: w.unit === 'roll' ? '롤' : '개',
   })))
   const stamp = computed(() => {
     const r = report.value
@@ -48,7 +51,7 @@ export function useDailyReport() {
     return r.closed ? `${r.date.slice(5)} 마감` : `00:00 ~ ${formatTime(r.at).slice(0, 5)} 기준`
   })
 
-  return { date, today, report, processRows, downtime, wipRows, stamp }
+  return { date, today, report, processRows, downtime, stamp }
 }
 
 export function useReplanReports(selectedId: Ref<string | null>) {

@@ -26,7 +26,10 @@ const props = withDefaults(defineProps<{
   thick?: boolean
   /** 행을 누를 수 있게 (예: 라인 막대를 누르면 그 라인으로 거르기) */
   clickable?: boolean
-}>(), { thick: false, clickable: false })
+  /** 2: 넓은 칸에서 목록을 두 열로 (위에서 아래로 읽고 오른쪽 열로 이어짐). 높이가 모자랄 때 */
+  columns?: 1 | 2
+}>(), { thick: false, clickable: false, columns: 1 })
+
 const emit = defineEmits<{ pick: [row: BarRow] }>()
 function onKey(e: KeyboardEvent, r: BarRow) {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('pick', r) }
@@ -35,14 +38,22 @@ function onKey(e: KeyboardEvent, r: BarRow) {
 const top = computed(() => props.max ?? Math.max(1, ...props.rows.map((r) => r.value ?? 0), props.marker ?? 0))
 const pct = (v: number | null) => `${Math.max(0, Math.min(100, ((v ?? 0) / top.value) * 100))}%`
 const hasSub = computed(() => props.rows.some((r) => r.sub))
+/** 두 열일 때 행의 자리: 앞 절반은 왼쪽 열, 나머지는 오른쪽 열 */
+const half = computed(() => Math.ceil(props.rows.length / 2))
+const place = (i: number) => {
+  if (props.columns !== 2) return undefined
+  const n = hasSub.value ? 4 : 3
+  return { gridRow: String((i % half.value) + 1), gridColumn: `${i < half.value ? 1 : n + 2} / span ${n}` }
+}
 </script>
 
 <template>
-  <ul class="bars" :class="{ thick, 'has-sub': hasSub }" :aria-label="label">
+  <ul class="bars" :class="{ thick, 'has-sub': hasSub, two: columns === 2 }" :aria-label="label">
     <li
-      v-for="r in rows"
+      v-for="(r, i) in rows"
       :key="r.key"
       :class="{ strong: r.strong, muted: r.muted, click: clickable }"
+      :style="place(i)"
       :role="clickable ? 'button' : undefined"
       :tabindex="clickable ? 0 : undefined"
       @click="clickable && emit('pick', r)"
@@ -74,6 +85,15 @@ const hasSub = computed(() => props.rows.some((r) => r.sub))
 
 .bars.has-sub {
   grid-template-columns: max-content minmax(0, 1fr) max-content max-content;
+}
+
+/* 두 열: 같은 칸 구성을 옆에 한 번 더, 사이에 빈 칸 하나 (두 열을 떼어 놓는다) */
+.bars.two {
+  grid-template-columns: max-content minmax(0, 1fr) max-content var(--sp-5) max-content minmax(0, 1fr) max-content;
+}
+
+.bars.two.has-sub {
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content var(--sp-5) max-content minmax(0, 1fr) max-content max-content;
 }
 
 li {

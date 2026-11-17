@@ -15,7 +15,6 @@ import ChartProgress from '@/components/charts/ChartProgress.vue'
 import SummaryColumn from '@/components/domain/SummaryColumn.vue'
 import SummaryBlock from '@/components/domain/SummaryBlock.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
 import { useDailyReport } from '@/composables/useReports'
 import { formatNumber } from '@/lib/format'
 import type { StateCode } from '@/types/state'
@@ -42,6 +41,7 @@ const PROC_COLS: TableColumn[] = [
   { key: 'output', label: '생산', align: 'right' },
   { key: 'ng', label: '불량', align: 'right' },
   { key: 'rate', label: '불량률', align: 'right' },
+  { key: 'wip', label: '앞 재공', align: 'right' },
 ]
 const lineRows = computed(() => (r.value?.lines ?? []).map((l) => ({ ...l, key: l.lineId, name: l.lineId === 'PT' ? '도장' : l.lineId })))
 const pct = (v: number | null | undefined) => (v == null ? '-' : `${formatNumber(v, 1)}%`)
@@ -93,34 +93,25 @@ const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
               <template #cell-ng="{ row }"><span class="n">{{ formatNumber(row.ng) }}</span></template>
             </BaseTable>
           </BasePanel>
-          <BasePanel title="공정별 생산량 · 불량" meta="공정 검사 기준">
+          <BasePanel title="공정별 생산량 · 불량 · 재공" :meta="r?.closed ? '공정 검사 기준 · 재공은 24:00 마감 시점' : '공정 검사 기준 · 재공은 지금'">
             <div class="scroll">
               <BaseTable label="공정별 생산량과 불량" :columns="PROC_COLS" :rows="d.processRows.value" :row-key="(x) => x.key">
                 <template #cell-output="{ row }"><span class="n">{{ formatNumber(row.output) }}</span></template>
                 <template #cell-ng="{ row }"><b class="n">{{ formatNumber(row.ng) }}</b></template>
                 <template #cell-rate="{ row }"><span class="n">{{ pct(row.rate) }}</span></template>
+                <template #cell-wip="{ row }"><span class="n">{{ formatNumber(row.wip) }}</span><small class="unit">{{ row.wipUnit }}</small></template>
               </BaseTable>
               <div v-if="d.processRows.value.length" class="total"><span>불량 합계</span><b class="n">{{ formatNumber(ngSum) }}</b></div>
             </div>
           </BasePanel>
         </div>
-        <div class="row">
-          <BasePanel title="비가동 코드별 시간 · 건수" meta="39대 합계 · 계획정지는 회색">
-            <ChartBarList v-if="d.downtime.value.length" label="비가동 코드별 시간" :rows="d.downtime.value">
-              <template #lead="{ row }"><StatusKey :state="stateOf(row.key)" size="sm" /></template>
-            </ChartBarList>
-            <BaseEmpty v-else />
-          </BasePanel>
-          <BasePanel title="재공품" :meta="r?.closed ? '공정 사이 · 24:00 마감 시점' : '공정 사이 · 지금'">
-            <ul v-if="d.wipRows.value.length" class="wip">
-              <li v-for="w in d.wipRows.value" :key="w.key">
-                <span class="between">{{ w.from }}<BaseIcon name="chevron-right" :size="14" />{{ w.to }}</span>
-                <b class="n">{{ formatNumber(w.qty) }}<small>{{ w.unit }}</small></b>
-              </li>
-            </ul>
-            <BaseEmpty v-else />
-          </BasePanel>
-        </div>
+        <!-- 아래 줄 전체 폭: 코드가 7개까지라 두 열로 (낮은 창에서도 한 칸에 들어간다) -->
+        <BasePanel title="비가동 코드별 시간 · 건수" meta="39대 합계 · 계획정지는 회색 · 시간 많은 순">
+          <ChartBarList v-if="d.downtime.value.length" label="비가동 코드별 시간" :rows="d.downtime.value" :columns="2">
+            <template #lead="{ row }"><StatusKey :state="stateOf(row.key)" size="sm" /></template>
+          </ChartBarList>
+          <BaseEmpty v-else />
+        </BasePanel>
       </div>
     </div>
   </PageLayout>
@@ -203,6 +194,12 @@ b.n {
   color: var(--c-ink-2);
 }
 
+.unit {
+  margin-left: 2px;
+  color: var(--c-ink-3);
+  font-size: var(--fs-caption);
+}
+
 .scroll {
   min-height: 0;
   overflow-y: auto;
@@ -214,48 +211,4 @@ b.n {
   font-size: var(--fs-body);
 }
 
-.wip {
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wip li {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: var(--sp-2) 0;
-  border-top: var(--line-w) solid var(--c-line);
-}
-
-.wip li:first-child {
-  border-top: 0;
-}
-
-.between {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  color: var(--c-ink-2);
-}
-
-.wip b {
-  font-size: var(--fs-title);
-}
-
-.wip small {
-  margin-left: 2px;
-  color: var(--c-ink-3);
-  font-size: var(--fs-caption);
-  font-weight: var(--fw-regular);
-}
-
-/* 낮은 창: 재공품 줄 간격을 줄여 다섯 줄이 칸 안에 들어가게 */
-@media (height <= 860px) {
-  .wip li {
-    padding: var(--sp-1) 0;
-  }
-}
 </style>
