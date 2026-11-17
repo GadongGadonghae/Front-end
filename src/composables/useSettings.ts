@@ -1,5 +1,5 @@
 // 설정 (SCR-008 생산 목표 API-090·091, SCR-009 관리값 기준 API-092·093)
-import { computed, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, reactive, ref, shallowReactive, shallowRef, watch } from 'vue'
 import { source } from '@/data'
 import type { ControlLimit, EquipmentTypeCode } from '@/types/plant'
 import type { TargetRow } from '@/types/report'
@@ -82,7 +82,9 @@ interface Draft { lower: string; upper: string }
 export function useControlLimits() {
   const { master, reload } = useMaster()
   const type = ref<EquipmentTypeCode>('press')
-  const limits = shallowRef<ControlLimit[]>([])
+  /** 종류마다 불러온(저장된) 값 */
+  const loaded = shallowReactive<Partial<Record<EquipmentTypeCode, ControlLimit[]>>>({})
+  const limits = computed(() => loaded[type.value] ?? [])
   /** 종류마다 고치는 중인 값 (종류를 바꿔도 남는다) */
   const drafts = reactive<Partial<Record<EquipmentTypeCode, Record<string, Draft>>>>({})
   const error = ref('')
@@ -92,8 +94,7 @@ export function useControlLimits() {
   const toText = (n: number | null) => (n == null ? '' : String(n))
   function load(t: EquipmentTypeCode) {
     return source.q.getControlLimits(t).then((l) => {
-      if (type.value !== t) return
-      limits.value = l
+      loaded[t] = l
       if (!drafts[t]) drafts[t] = Object.fromEntries(l.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
     })
   }
@@ -104,10 +105,22 @@ export function useControlLimits() {
     for (const e of master.value?.equipment ?? []) c[e.type] = (c[e.type] ?? 0) + 1
     return c
   })
-  const typeOptions = computed(() => LIMIT_TYPES.map((t) => ({ ...t, label: `${t.label} ${counts.value[t.value] ?? ''}대`.replace(' 대', '') })))
-
   /** 빈 칸 = 미정(null). 숫자가 아니면 NaN */
   const parse = (s: string) => { const t = s.replace(/[,\s]/g, ''); return t === '' ? null : /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN }
+  /** 종류마다 저장하지 않은 항목 수 */
+  const dirtyOf = (t: EquipmentTypeCode) => (loaded[t] ?? []).filter((l) => {
+    const d = drafts[t]?.[l.item]
+    return d && (parse(d.lower) !== l.lower || parse(d.upper) !== l.upper)
+  }).length
+  // 종류 버튼에 대수와, 고쳐 놓고 저장하지 않은 항목 수를 같이 보인다
+  const typeOptions = computed(() => LIMIT_TYPES.map((t) => {
+    const n = dirtyOf(t.value)
+    return { ...t, label: `${t.label} ${counts.value[t.value] ?? ''}대`.replace(' 대', '') + (n ? ` · 바뀜 ${n}` : '') }
+  }))
+  /** 지금 보지 않는 종류에 저장하지 않은 값 (저장은 지금 종류만 한다) */
+  const otherDirty = computed(() => LIMIT_TYPES.filter((t) => t.value !== type.value && dirtyOf(t.value))
+    .map((t) => `${t.label} ${dirtyOf(t.value)}개`).join(', '))
+
   const rows = computed(() => limits.value.map((l) => {
     const d = drafts[type.value]?.[l.item] ?? { lower: '', upper: '' }
     const lower = parse(d.lower)
@@ -139,12 +152,12 @@ export function useControlLimits() {
     const r = await source.cmd.saveControlLimits(t, rows.value.map((x) => ({ item: x.item, lower: x.lower as number | null, upper: x.upper as number | null })))
     saving.value = false
     if (!r.ok) { error.value = `${r.error}. 저장되지 않았습니다`; return }
-    limits.value = r.value
+    loaded[t] = r.value
     drafts[t] = Object.fromEntries(r.value.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
-    saved.value = '저장했습니다. 상태 판정과 예지보전 위험도에 바로 반영됩니다'
+    saved.value = `${LIMIT_TYPES.find((x) => x.value === t)?.label} 기준을 저장했습니다. 상태 판정과 예지보전 위험도에 바로 반영됩니다`
     // 관리값 그래프의 상·하한선이 새 값을 쓰도록 기준정보를 다시 부른다
     reload()
   }
 
-  return { type, typeOptions, rows, dirtyCount, invalidCount, error, saved, saving, save, revert }
+  return { type, typeOptions, rows, dirtyCount, invalidCount, otherDirty, error, saved, saving, save, revert }
 }

@@ -89,7 +89,11 @@ a {
     background: var(--c-surface) !important;
   }
 
+  /* 화면 틀의 테두리·여백도 빼서 보고서가 종이 폭에 맞게 */
   .print-flow {
     display: block !important;
+    max-width: none !important;
+    padding: 0 !important;
+    border: 0 !important;
   }
 }

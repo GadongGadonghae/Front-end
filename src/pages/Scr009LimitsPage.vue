@@ -28,6 +28,7 @@ const TABS = [
     <div class="layout">
       <BasePanel>
         <template #head>
+          <h2 class="sr-only">관리값 기준</h2>
           <div class="types">
             <BaseSegmented v-model="type" label="설비 종류" :options="c.typeOptions.value" />
             <span class="note">같은 종류의 설비 모두에 같은 기준이 적용됨 · 빈 칸은 기준 미정</span>
@@ -63,6 +64,7 @@ const TABS = [
                       inputmode="decimal"
                       :aria-label="`${r.item} 상한`"
                       :aria-invalid="!!r.invalid || undefined"
+                      :aria-describedby="r.invalid ? `err-${r.key}` : undefined"
                       placeholder="미정"
                     />
                   </td>
@@ -83,6 +85,7 @@ const TABS = [
 
           <div class="foot">
             <p v-if="c.error.value" class="msg err" role="alert">{{ c.error.value }}</p>
+            <p v-else-if="c.otherDirty.value" class="msg warn" role="status">다른 종류에 저장하지 않은 값이 있습니다: {{ c.otherDirty.value }}. 저장은 지금 고른 종류만 합니다</p>
             <p v-else-if="c.saved.value" class="msg" role="status">{{ c.saved.value }}</p>
             <p v-else class="msg">저장하면 상태 판정(상·하한 이탈 → D)과 예지보전 위험도에 바로 반영됩니다</p>
             <BaseButton :disabled="!c.dirtyCount.value" @click="c.revert">되돌리기</BaseButton>
@@ -229,6 +232,11 @@ tr.err-row td {
   margin: 0 auto 0 0;
   color: var(--c-ink-3);
   font-size: var(--fs-label);
+}
+
+.msg.warn {
+  color: var(--c-caution-ink);
+  font-weight: var(--fw-strong);
 }
 
 .msg.err {

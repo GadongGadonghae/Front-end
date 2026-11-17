@@ -244,7 +244,7 @@ async function downloadPdf() {
 }
 
 .paper {
-  max-width: 920px;
+  max-width: var(--doc-w);
 }
 
 .doc-head {
@@ -269,7 +269,7 @@ async function downloadPdf() {
 
 section {
   display: grid;
-  grid-template-columns: 9em minmax(0, 1fr);
+  grid-template-columns: var(--doc-label-w) minmax(0, 1fr);
   gap: var(--sp-4);
   padding: var(--sp-5) 0;
   border-bottom: var(--line-w) solid var(--c-line);

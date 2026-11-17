@@ -2,7 +2,7 @@
      제목 줄: 제목 + 탭 [알람·비가동] / [예지보전 위험] (D-65). 본문: 패널 하나 = 필터 줄 → 표 → 페이지 (50건씩, D-66)
      진행 중 고장 행은 고장 바탕, 대기 행은 대기 바탕 (DESIGN.md). 메일·슬랙은 고장(D)만 보내므로 다른 건은 "-" -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -16,6 +16,7 @@ import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import BasePager from '@/components/base/BasePager.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
+import { useInlineEdit } from '@/components/base/inlineEdit'
 import { useAlarmHistory, MAX_DAYS, type AlarmRow, type HistoryTab, type RiskRow } from '@/composables/useAlarmHistory'
 
 const route = useRoute()
@@ -58,16 +59,12 @@ const RISK_COLS = computed<TableColumn[]>(() => [
 const tone = (r: AlarmRow) => (r.ongoing && r.state === 'D' ? 'down' : r.ongoing && r.state === 'I' ? 'idle' : null)
 const riskTone = (r: RiskRow) => (r.ongoing ? 'down' : null)
 
-// 조치 메모: 한 번에 한 건만 고친다
-const editing = ref<string | null>(null)
-const draft = ref('')
-function edit(r: AlarmRow) {
-  editing.value = r.id
-  draft.value = r.memo ?? ''
-}
+// 조치 메모: 한 번에 한 건만 고친다. 열면 입력에 초점, 닫으면 연 버튼으로
+const memo = useInlineEdit('alarm-memo')
+const { draft } = memo
 async function save(id: string) {
   await h.saveMemo(id, draft.value)
-  editing.value = null
+  memo.close()
 }
 
 const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
@@ -83,6 +80,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 
     <BasePanel class="list">
       <template #head>
+        <h2 class="sr-only">{{ tab === 'alarm' ? '알람·비가동 이력 표' : '예지보전 위험 이력 표' }}</h2>
         <div class="filters">
           <span class="field range">
             <BaseDateField v-model="from" label="기간" :max="h.today" />
@@ -132,14 +130,14 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
           <span v-else class="none">-</span>
         </template>
         <template #cell-memo="{ row }">
-          <form v-if="editing === row.id" class="memo-edit" @submit.prevent="save(row.id)">
+          <form v-if="memo.editing.value === row.id" class="memo-edit" :data-edit="memo.attr(row.id, 'form')" @submit.prevent="save(row.id)" @keydown.esc.prevent="memo.close()">
             <BaseInput v-model="draft" label="조치 메모" hide-label size="md" placeholder="조치 메모 (선택)" />
             <BaseButton type="submit" variant="primary">저장</BaseButton>
-            <BaseButton @click="editing = null">취소</BaseButton>
+            <BaseButton @click="memo.close()">취소</BaseButton>
           </form>
           <span v-else class="memo">
             <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
-            <button class="link" type="button" @click="edit(row)">{{ row.memo ? '고치기' : '쓰기' }}</button>
+            <button class="link" type="button" :data-edit="memo.attr(row.id, 'open')" @click="memo.open(row.id, row.memo ?? '')">{{ row.memo ? '고치기' : '쓰기' }}</button>
           </span>
         </template>
         <template #cell-memoBy="{ row }">

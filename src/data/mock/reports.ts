@@ -34,8 +34,8 @@ const pct = (a: number, b: number | null) => (b ? round1((a / b) * 100) : null)
 /** 라인 CT [가정] (FN-009 2번, 표준CT 120초) */
 const LINE_CT = MASTER.equipmentTypes.find((t) => t.code === 'press')?.standardCtSec ?? 120
 const PAINT_CT = MASTER.equipmentTypes.find((t) => t.code === 'painter')?.standardCtSec ?? 40
-/** 지난 날 고장 건 중 보고서를 만들어 둔 비율 (데모) */
-const PAST_REPORT_RATE = 0.4
+/** 지난 날 고장 건 중 보고서를 만들어 둔 비율 (데모). 사람이 눌러야 생기므로 일부만 (D-68) */
+const PAST_REPORT_RATE = 0.12
 const PAST_REPORT_USERS = ['김현수', '박서연', '이민재']
 
 export function createReports(ctx: Ctx) {

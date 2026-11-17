@@ -76,6 +76,8 @@
   --col-summary: clamp(280px, 17vw, 320px);
   --col-side: clamp(340px, 22vw, 440px);
   --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
+  --doc-w: 920px;                           /* 계획수정 보고서 본문 최대 폭 (읽기 좋은 줄 길이) */
+  --doc-label-w: 9em;                       /* 보고서 절 제목 칸 */
   --limits-w: 960px;                        /* 관리값 기준 표 최대 폭 (입력 칸이 멀리 흩어지지 않게) */
   --control-h-sm: 28px;   /* 작은 버튼 */
   --control-h: 36px;      /* 버튼·탭·선택 */

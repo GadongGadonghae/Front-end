@@ -1,7 +1,7 @@
 <!-- 비가동 이력 + 조치 메모 (SCR-002 5·6번): 상태 열쇠 칸 · 코드와 사유 · 시각 범위와 지속시간
      진행 중 고장·대기는 이상 행 바탕. 메모는 선택 입력이고, 저장하면 담당자는 로그인한 사람 (D-33, D-84) -->
 <script setup lang="ts">
-import { ref } from 'vue'
+import { useInlineEdit } from '@/components/base/inlineEdit'
 import StatusKey from '@/components/domain/StatusKey.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -11,17 +11,12 @@ import type { HistoryRowView } from '@/types/view'
 defineProps<{ rows: HistoryRowView[] }>()
 const emit = defineEmits<{ save: [id: string, memo: string] }>()
 
-/** 메모를 쓰고 있는 행과 그 글 */
-const editing = ref<string | null>(null)
-const draft = ref('')
-
-function edit(r: HistoryRowView) {
-  editing.value = r.id
-  draft.value = r.memo?.text ?? ''
-}
+/** 메모를 쓰고 있는 행과 그 글. 열면 입력에 초점, 닫으면 연 버튼으로 */
+const memo = useInlineEdit('downtime-memo')
+const { draft } = memo
 function save(id: string) {
   emit('save', id, draft.value)
-  editing.value = null
+  memo.close()
 }
 const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r.ongoing && r.state === 'I' ? 't-idle' : '')
 </script>
@@ -36,16 +31,16 @@ const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r
       </div>
       <div class="when">{{ r.range }}<b>{{ r.duration }}</b></div>
 
-      <form v-if="editing === r.id" class="memo" @submit.prevent="save(r.id)">
+      <form v-if="memo.editing.value === r.id" class="memo" :data-edit="memo.attr(r.id, 'form')" @submit.prevent="save(r.id)" @keydown.esc.prevent="memo.close()">
         <BaseInput v-model="draft" label="조치 메모" hide-label size="md" placeholder="조치 메모 (선택)" />
         <BaseButton type="submit" variant="primary">저장</BaseButton>
-        <BaseButton @click="editing = null">취소</BaseButton>
+        <BaseButton @click="memo.close()">취소</BaseButton>
         <p class="note">저장하면 조치 담당자는 로그인한 사람으로 기록</p>
       </form>
       <div v-else class="memo-line">
         <span v-if="r.memo" class="memo-text">{{ r.memo.text }} <span class="by">· {{ r.memo.by ?? '-' }} {{ r.memo.at }}</span></span>
         <span v-else class="memo-none">조치 메모 없음</span>
-        <button class="link" type="button" @click="edit(r)">{{ r.memo ? '메모 고치기' : '메모 쓰기' }}</button>
+        <button class="link" type="button" :data-edit="memo.attr(r.id, 'open')" @click="memo.open(r.id, r.memo?.text ?? '')">{{ r.memo ? '메모 고치기' : '메모 쓰기' }}</button>
       </div>
     </li>
   </ul>
