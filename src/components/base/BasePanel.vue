@@ -23,7 +23,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: var(--sp-5);
+  padding: var(--sp-3);
   border: var(--line-w) solid var(--c-line);
   border-radius: var(--r-3);
   background: var(--c-surface);
