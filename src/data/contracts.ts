@@ -8,6 +8,7 @@ import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, Prod
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, EquipmentTypeCode, ProcessId } from '@/types/plant'
+import type { EquipmentRisk, PdmEta } from '@/types/pdm'
 import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
 
 export type Unsubscribe = () => void
@@ -27,6 +28,8 @@ export interface LiveChannel {
   onAlarm(cb: (alarm: AlarmEvent) => void): Unsubscribe
   /** risk.changed 이벤트: 예지보전 위험(90%) 진입·해제 */
   onRiskChanged(cb: (risk: RiskEvent) => void): Unsubscribe
+  /** 주제 risk: 관리값 있는 설비 38대의 항목별 위험도, 5초마다. 구독하자마자 한 번 준다 (예지보전 화면을 연 동안) */
+  onRisk(cb: (risks: EquipmentRisk[]) => void): Unsubscribe
   /** 주제 telemetry:{설비}: 선택 설비의 새 관리값. 슬리터 1초·도장 5초·프레스·용접 사이클마다 */
   onTelemetry(equipmentId: string, cb: (tick: TelemetryTick) => void): Unsubscribe
 }
@@ -41,6 +44,10 @@ export interface Queries {
   getTodayStateEvents(filter?: { area?: string }): Promise<StateEvent[]>
   /** API-023 오늘 예지보전 위험 이력 */
   getTodayRiskEvents(filter?: { area?: string }): Promise<RiskEvent[]>
+  /** API-060 예지보전 위험도 처음 목록 */
+  getRisks(): Promise<EquipmentRisk[]>
+  /** API-061 상한 도달 예상 [차순위] */
+  getPdmEta(equipmentId: string): Promise<PdmEta | null>
   /** API-030 공정 오늘 요약 */
   getProcessToday(lineId: LineId, process: ProcessId): Promise<ProcessToday>
   /** API-040 관리값 추이 */

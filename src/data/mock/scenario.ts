@@ -24,7 +24,8 @@ export const RUN_AGO_SEC = 4 * 3600 + 2 * 60 + 15
 
 /** 예지보전 80% 이상인 설비 */
 export const PDM: { equipmentId: string; level: PdmLevel; item: string; percent: number }[] = [
-  { equipmentId: 'L1-WLD', level: 'warn', item: '전류', percent: 84 },
+  // 용접 전류는 기준이 미정이라 위험도를 낼 수 없다 → 기준이 있는 통전시간으로 둔다
+  { equipmentId: 'L1-WLD', level: 'warn', item: '통전시간', percent: 84 },
   { equipmentId: 'L5-PRS-2', level: 'danger', item: 'Pressure 1', percent: 92 },
 ]
 

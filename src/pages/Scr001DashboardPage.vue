@@ -54,6 +54,8 @@ const ngRows = computed<BarRow[]>(() =>
 )
 
 function openAlert(r: AlertRowView) {
+  // 예지보전 위험 건은 예지보전 화면에서 그 설비를 골라 연다
+  if (r.kind === 'risk') { router.push({ path: '/pdm', query: { eq: r.equipmentId } }); return }
   const e = equipmentById.value.get(r.equipmentId)
   if (e) router.push(equipmentPath(e))
 }

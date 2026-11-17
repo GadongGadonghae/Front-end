@@ -54,7 +54,7 @@ function openEquipment(id: string) {
   if (e) router.push(equipmentPath(e))
 }
 const openGroup = (p: ProcessId) => router.push(processPath(lineId, p))
-const openAlert = (r: AlertRowView) => openEquipment(r.equipmentId)
+const openAlert = (r: AlertRowView) => (r.kind === 'risk' ? router.push({ path: '/pdm', query: { eq: r.equipmentId } }) : openEquipment(r.equipmentId))
 const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
 </script>
 

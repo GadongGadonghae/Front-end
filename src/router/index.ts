@@ -1,4 +1,4 @@
-// 라우트 표 (FRONTEND.md 5장). 화면이 만들어지기 전까지는 자리표시 페이지를 쓴다.
+// 라우트 표 (FRONTEND.md 5장).
 // 로그인 확인 (FN-016): /login 외에는 로그인해야 들어가고, 안 했으면 /login?redirect=원래경로
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { isLoggedIn } from '@/composables/useAuth'
@@ -16,7 +16,6 @@ declare module 'vue-router' {
   }
 }
 
-const Placeholder = () => import('@/pages/ScrPlaceholderPage.vue')
 
 /** 상단 메뉴가 있는 화면들 */
 const appRoutes: RouteRecordRaw[] = [
@@ -28,7 +27,7 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'outbound', component: () => import('@/pages/Scr0026OutboundPage.vue'), meta: { screen: 'SCR-002-6', title: '출고 상세', menu: '대시보드' } },
   { path: 'production', component: () => import('@/pages/Scr011ProductionPage.vue'), meta: { screen: 'SCR-011', title: '생산 조회', menu: '생산' } },
   { path: 'utilization', component: () => import('@/pages/Scr003UtilizationPage.vue'), meta: { screen: 'SCR-003', title: '가동률', menu: '가동률' } },
-  { path: 'pdm', component: Placeholder, meta: { screen: 'SCR-004', title: '예지보전', menu: '예지보전' } },
+  { path: 'pdm', component: () => import('@/pages/Scr004PdmPage.vue'), meta: { screen: 'SCR-004', title: '예지보전', menu: '예지보전' } },
   { path: 'alarms', component: () => import('@/pages/Scr006AlarmsPage.vue'), meta: { screen: 'SCR-006', title: '알람·비가동 이력', menu: '알람이력' } },
   { path: 'reports/daily', component: () => import('@/pages/Scr007DailyPage.vue'), meta: { screen: 'SCR-007', title: '일일 생산 리포트', menu: '리포트' } },
   { path: 'reports/replan/:id?', component: () => import('@/pages/Scr007ReplanPage.vue'), meta: { screen: 'SCR-007', title: '계획수정 보고서', menu: '리포트' } },

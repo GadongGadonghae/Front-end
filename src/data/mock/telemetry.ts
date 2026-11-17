@@ -15,6 +15,8 @@ const MAX_POINTS = 360
 const RANGE_SEC: Record<Exclude<TelemetryRange, 'today'>, number> = { '1h': 3600, '8h': 8 * 3600 }
 /** 슬리팅 미세정지 후보: 10분 창마다 30% 확률로 15~55초 출력 저하 (데모) */
 const MS_WINDOW = 600
+/** 예지보전 데모 항목이 오르는 시간 */
+const PDM_DRIFT_SEC = 8 * 3600
 
 interface Ctx {
   now: () => number
@@ -66,11 +68,13 @@ export function createTelemetry(ctx: Ctx) {
 
     if (def.item === '출력 주파수' && bandsBetween(e, t, t + 1).length) v = 60 - 4 - noise('dip', k, Math.floor(t)) * 4
 
-    // 예지보전 주의·위험 항목: 최근 40분 동안 상한 쪽으로 오른다
+    // 예지보전 주의·위험 항목: 8시간 동안 천천히 상한 쪽으로 올라 지금 그 비율(%) 자리에 닿는다 (D-58). 마모처럼 서서히
     const pdm = ctx.live.get(e.id)?.pdm
     if (pdm && pdm.item === def.item) {
-      const top = (def.upper ?? base.center + base.amp * 6) - base.center
-      v += top * (pdm.percent / 100) * 0.8 * clamp01((t - (ctx.now() / 1000 - 2400)) / 2400)
+      const target = def.lower != null && def.upper != null
+        ? (def.lower + def.upper) / 2 + ((def.upper - def.lower) / 2) * (pdm.percent / 100)
+        : base.center + base.amp * 6 * (pdm.percent / 100)
+      v += (target - base.center) * clamp01((t - (ctx.now() / 1000 - PDM_DRIFT_SEC)) / PDM_DRIFT_SEC)
     }
     // 지금 고장과 이어진 이탈: 고장 시각에 to가 된다
     const ramp = TELEMETRY_RAMPS.find((r) => r.equipmentId === e.id && r.item === def.item)
@@ -140,5 +144,13 @@ export function createTelemetry(ctx: Ctx) {
     }
   }
 
-  return { series, tick, microstops, inverter, cadenceOf: (id: string) => { const e = eqOf(id); return e ? CADENCE_SEC[e.type] : 0 } }
+  /** 한 항목의 그 시각 값. 멈춰 있었으면 null (예지보전 평균용) */
+  function valueOf(equipmentId: string, item: string, t: number): number | null {
+    const e = eqOf(equipmentId)
+    const def = e && itemsOf(e).find((d) => d.item === item)
+    if (!e || !def || stopped(e, t)) return null
+    return valueAt(e, def, t)
+  }
+
+  return { series, tick, microstops, inverter, valueOf, itemsOf: (id: string) => { const e = eqOf(id); return e ? itemsOf(e) : [] }, cadenceOf: (id: string) => { const e = eqOf(id); return e ? CADENCE_SEC[e.type] : 0 } }
 }

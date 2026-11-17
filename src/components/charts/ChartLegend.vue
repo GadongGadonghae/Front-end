@@ -1,6 +1,6 @@
 <!-- 선 그래프 범례: 실선(주 계열, 강조 파랑) · 점선(목표·계획·기준) · 가는 선(보조 계열) · 띠(미세정지 후보 등 구간) -->
 <script setup lang="ts">
-defineProps<{ items: { label: string; kind: 'main' | 'ref' | 'thin' | 'band' }[] }>()
+defineProps<{ items: { label: string; kind: 'main' | 'ref' | 'thin' | 'band' | 'warn' | 'danger' }[] }>()
 </script>
 
 <template>
@@ -34,6 +34,15 @@ i {
 
 i.ref {
   border-top: var(--line-w-strong) dashed var(--c-ink-3);
+}
+
+/* 예지보전 80%·90% 옅은 선 (ChartLine의 warn·danger와 같은 색) */
+i.warn {
+  border-top: var(--line-w-strong) solid var(--c-idle-edge);
+}
+
+i.danger {
+  border-top: var(--line-w-strong) solid var(--c-down);
 }
 
 i.thin {

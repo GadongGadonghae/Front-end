@@ -16,10 +16,12 @@ import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
 import { createAnalysis } from '@/data/mock/analysis'
 import { createHistory } from '@/data/mock/history'
 import { createReports } from '@/data/mock/reports'
+import { createPdm } from '@/data/mock/pdm'
 import { addDays, dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
 const SNAPSHOT_MS = 1000 // snapshot 1초
 const SUMMARY_MS = 10_000 // summary 10초 [제안]
+const RISK_MS = 5000 // risk 5초 [제안]
 /** 라인 CT 120초 [가정] → 1초에 1/120 확률로 라인 실적 +1 (데모) */
 const LINE_DONE_PER_SEC = 1 / 120
 /** 데모 계정 이름. 조치 메모 담당자도 이 이름 (실제는 서버가 로그인 사용자로 기록, D-84) */
@@ -143,6 +145,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   // ── 상세 화면 (공정·가동률·생산) ──
   const telemetry = createTelemetry({ now, live, events: () => events })
   const products = createProducts({ now, lineDone, live })
+  const pdm = createPdm({ now, live, valueOf: telemetry.valueOf, itemsOf: telemetry.itemsOf })
   const analysis = createAnalysis({ now, events: () => events })
   // history와 reports는 서로를 부른다 (이력의 보고서 ID ↔ 보고서의 원인 이력). 부르는 때는 둘 다 만든 뒤
   const history = createHistory({
@@ -356,6 +359,12 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       onProductMove: (cb) => subscribe(subs.move, cb),
       onAlarm: (cb) => subscribe(subs.alarm, cb),
       onRiskChanged: (cb) => subscribe(subs.risk, cb),
+      // 예지보전 위험도 5초 (API 명세 3.1). 위험도는 최근 10분 평균이라 자주 바뀌지 않는다
+      onRisk(cb) {
+        cb(pdm.risks())
+        const timer = setInterval(() => cb(pdm.risks()), RISK_MS)
+        return () => clearInterval(timer)
+      },
       // 설비 하나의 관리값: 수집 주기마다 (슬리터 1초 · 도장 5초 · 프레스·용접 사이클)
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
         const sec = telemetry.cadenceOf(equipmentId)
@@ -373,6 +382,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getTodayHourly: async (lineId) => hourly(lineId),
       getTodayStateEvents: async (filter) => events.filter((e) => inArea(filter?.area)(e.equipmentId)).map((e) => ({ ...e })),
       getTodayRiskEvents: async (filter) => risks.filter((r) => inArea(filter?.area)(r.equipmentId)).map((r) => ({ ...r })),
+      getRisks: async () => pdm.risks(),
+      getPdmEta: async (id) => pdm.eta(id),
       getProcessToday: async (lineId, process) => processToday(lineId, process),
       getTelemetry: async (equipmentId, range) => telemetry.series(equipmentId, range),
       getStateEvents: async ({ equipmentId }) => events.filter((e) => e.equipmentId === equipmentId).map((e) => ({ ...e })),
