@@ -122,15 +122,22 @@ li.t-idle + li {
   grid-column: 2 / -1;
 }
 
+/* 열이 좁아 입력과 버튼이 한 줄에 들어가지 않는다 → 입력 한 줄, 저장·취소는 그 아래 오른쪽, 안내는 맨 아래 */
 .memo {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--sp-2);
   margin-top: var(--sp-1);
 }
 
+.memo > .field {
+  flex: 1 0 100%;
+  min-width: 0;
+}
+
 .note {
-  grid-column: 1 / -1;
+  flex: 1 0 100%;
   color: var(--c-ink-3);
   font-size: var(--fs-caption);
 }

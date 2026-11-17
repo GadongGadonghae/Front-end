@@ -139,6 +139,10 @@ function onKey(e: KeyboardEvent, go: () => void) {
 .hit {
   position: relative;
   min-width: 0;
+
+  /* 칸이 내용 때문에 줄보다 길어져 아래 '생산 · 불량' 글자를 덮지 않게: 줄 높이에 맞추고 넘치면 칸 안에서 자른다 */
+  min-height: 0;
+  overflow: hidden;
   border-radius: var(--r-2);
   cursor: pointer;
 }

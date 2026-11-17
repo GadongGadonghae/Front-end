@@ -133,7 +133,9 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 .layout {
   display: grid;
   grid-template-columns: var(--col-summary) minmax(0, 1fr) var(--col-side);
-  grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr);
+
+  /* 위 줄(라인 흐름)은 내용만큼, 다만 화면의 62%까지. 큰 화면에서 흐름 상자가 빈 모눈으로 길어지지 않고 남는 높이는 아래 줄로 */
+  grid-template-rows: fit-content(62%) minmax(0, 1fr);
   gap: var(--sp-4);
   height: 100%;
   min-height: 0;

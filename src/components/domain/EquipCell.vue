@@ -201,6 +201,9 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 @container (max-width: 100px) {
   .info { grid-template-columns: 1fr; }
   .info dd { margin-bottom: 2px; text-align: left; }
+
+  /* 쌓으면 길어지니 '가장 느린 단' 같은 보조 글은 뺀다 (공정 상세에 있다) */
+  .lg .note { display: none; }
 }
 
 /* 낮은 창: 사유 상세·메모·두 번째 숫자(평균 CT)를 숨기고 간격을 줄인다. 숨긴 값은 공정 상세에 있다 */
