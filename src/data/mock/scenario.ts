@@ -66,3 +66,42 @@ export const HOURLY_WEIGHT = [48, 50, 51, 47, 52, 50, 49, 53, 51, 46, 52, 50, 54
 
 /** 오늘 예지보전 위험(90%) 이력: 지금 진행 중 */
 export const RISK_EVENTS = [{ equipmentId: 'L5-PRS-2', item: 'Pressure 1', agoSec: 29 * 60 + 37, maxPercent: 92 }]
+
+/** 지금 고장 난 설비의 관리값 이탈: 고장 전 rampSec 동안 값이 올라 고장 시각에 to가 된다 (데모) */
+export const TELEMETRY_RAMPS = [{ equipmentId: 'L2-PRS-3', item: 'Pressure 1', to: 356, rampSec: 15 * 60 }]
+
+/** 지금 고장과 이어진 공정 검사 불량 (데모): 고장 직전 마지막 검사에서 걸린 제품 */
+export const NG_OVERRIDES = [{ lineId: 'L2', process: 'C', equipmentId: 'L2-PRS-3', reason: '3단 · Pressure 1 상한 이탈', beforeFaultSec: 14 }]
+
+/** 관리값 기준이 미정인 항목의 데모 중심값·흔들림 (기준선 없이 그린다) */
+export const TELEMETRY_BASE: Record<string, { center: number; amp: number }> = {
+  '출력 전류': { center: 18.4, amp: 0.9 },
+  '출력 토크': { center: 6.2, amp: 0.35 },
+  'DC Link 전압': { center: 311, amp: 2.5 },
+  '지령 주파수': { center: 60, amp: 0 },
+  '출력 주파수': { center: 59.92, amp: 0.05 },
+  '가압력': { center: 3.1, amp: 0.12 },
+  '전류': { center: 9.6, amp: 0.4 },
+  'pH': { center: 6.8, amp: 0.08 },
+  '온도': { center: 28.5, amp: 0.6 },
+  '건조로 온도': { center: 182, amp: 2.4 },
+  // 기준은 있지만 기준 가운데보다 실제 운전값이 치우친 항목
+  'Pressure 1': { center: 288, amp: 6 },
+  'Pressure 2': { center: 281, amp: 6 },
+  'Pressure 5 (합계)': { center: 569, amp: 10 },
+  'Press time': { center: 560, amp: 14 },
+  '전압': { center: 2.6, amp: 0.08 },
+  '통전시간': { center: 78, amp: 2.5 },
+}
+
+/** 다른 날·주·월 생산의 데모 범위 (하루 라인별 출고 양품) */
+export const PAST_LINE_DONE = { min: 182, max: 201 }
+
+/** 출고 불량을 라인에 나눈 수 (합 = OUTBOUND_NG) */
+export const OUTBOUND_NG_BY_LINE: Record<string, number> = { L1: 2, L2: 1, L3: 2, L4: 1, L5: 2, L6: 1 }
+
+/** 도장 불량을 라인에 나눈 수 (합 = 도장 E 불량 3) */
+export const PAINT_NG_BY_LINE: Record<string, number> = { L1: 1, L3: 1, L5: 1 }
+
+/** 실설비 슬리터(L1) 최근 트립 (데모): 지금보다 며칠 전 */
+export const INVERTER_LAST_TRIP = { name: 'OCT 과전류', agoSec: 2 * 86400 + 22 * 3600 + 31 * 60, recoveredAfterSec: 180 }

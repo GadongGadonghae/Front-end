@@ -66,7 +66,8 @@ function viewFault() {
       </div>
     </header>
 
-    <main class="main"><RouterView /></main>
+    <!-- 주소(경로)가 바뀌면 화면을 새로 만든다: 라인·공정 탭 전환. ?eq= 같은 쿼리만 바뀌면 그대로 -->
+    <main class="main"><RouterView :key="route.path" /></main>
 
     <FaultToast
       v-if="toast.current.value"

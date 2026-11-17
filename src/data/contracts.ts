@@ -4,7 +4,10 @@
 import type { LineId, MasterData } from '@/types/plant'
 import type { PlantSnapshot, PlantSummary, ProductMove } from '@/types/live'
 import type { AlarmEvent, RiskEvent, StateEvent } from '@/types/events'
-import type { HourlyOutput } from '@/types/production'
+import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
+import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
+import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
+import type { ProcessId } from '@/types/plant'
 
 export type Unsubscribe = () => void
 
@@ -20,6 +23,8 @@ export interface LiveChannel {
   onAlarm(cb: (alarm: AlarmEvent) => void): Unsubscribe
   /** risk.changed 이벤트: 예지보전 위험(90%) 진입·해제 */
   onRiskChanged(cb: (risk: RiskEvent) => void): Unsubscribe
+  /** 주제 telemetry:{설비}: 선택 설비의 새 관리값. 슬리터 1초·도장 5초·프레스·용접 사이클마다 */
+  onTelemetry(equipmentId: string, cb: (tick: TelemetryTick) => void): Unsubscribe
 }
 
 /** 조회 (REST) */
@@ -32,6 +37,28 @@ export interface Queries {
   getTodayStateEvents(filter?: { area?: string }): Promise<StateEvent[]>
   /** API-023 오늘 예지보전 위험 이력 */
   getTodayRiskEvents(filter?: { area?: string }): Promise<RiskEvent[]>
+  /** API-030 공정 오늘 요약 */
+  getProcessToday(lineId: LineId, process: ProcessId): Promise<ProcessToday>
+  /** API-040 관리값 추이 */
+  getTelemetry(equipmentId: string, range: TelemetryRange): Promise<TelemetrySeries>
+  /** API-041·070 상태 이력 (지금은 설비 하나의 오늘 이력) */
+  getStateEvents(filter: { equipmentId: string }): Promise<StateEvent[]>
+  /** API-043 오늘 공정 검사. 출고는 process F, lineId 없음 */
+  getInspectionsToday(process: ProcessId, lineId?: LineId): Promise<InspectionToday>
+  /** API-044 오늘 미세정지 [차순위] */
+  getMicrostopsToday(equipmentId: string): Promise<MicrostopToday>
+  /** API-045 코일입고 */
+  getInboundToday(): Promise<InboundToday>
+  /** API-050 가동률 */
+  getOee(query: OeeQuery): Promise<OeeReport>
+  /** API-051 상태 타임라인 (일) */
+  getStateTimeline(query: OeeQuery): Promise<StateTimeline>
+  /** API-100 생산 요약 */
+  getProductionSummary(query: ProductionQuery): Promise<ProductionSummary>
+  /** API-101 제품 내역 (50건씩) */
+  getProducts(query: ProductionQuery): Promise<Paged<Product>>
+  /** API-102 제품 공정별 기록 */
+  getProduct(productId: string): Promise<ProductDetail | null>
 }
 
 /** 저장 (REST) */
@@ -40,6 +67,8 @@ export interface Commands {
   login(userId: string, password: string): Promise<{ ok: true; name: string } | { ok: false }>
   /** API-002 로그아웃 */
   logout(): Promise<void>
+  /** API-042 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
+  saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
 }
 
 export interface DataSource {
