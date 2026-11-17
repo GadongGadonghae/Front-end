@@ -20,7 +20,7 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
 
 <template>
   <span class="status" :class="[size, { muted }]">
-    <span class="key" :class="`s-${state}`" :aria-label="text ? undefined : STATE_NAME[state]">{{ state }}</span>
+    <span class="key" :class="`st-${state}`" :aria-label="text ? undefined : STATE_NAME[state]">{{ state }}</span>
     <span v-if="text" class="text">{{ text }}</span>
   </span>
 </template>
@@ -63,10 +63,6 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
   font-weight: var(--fw-strong);
 }
 
-.s-R { background: var(--c-run); color: var(--c-run-ink); }
-.s-S { background: var(--c-stop); color: var(--c-stop-ink); box-shadow: inset 0 0 0 var(--line-w) var(--c-line-ink); }
-.s-I { background: var(--c-idle); color: var(--c-idle-ink); box-shadow: inset 0 0 0 var(--line-w) var(--c-idle-edge); }
-.s-D { background: var(--c-down); color: var(--c-down-ink); }
 
 .muted .key {
   opacity: 0.45;

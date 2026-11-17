@@ -22,14 +22,57 @@ export interface LineOutput {
   done: number
 }
 
-/** 1초마다 오는 공장 전체 스냅샷 */
+/** 1초마다 오는 공장 전체 스냅샷 (API 명세 3.3 snapshot) */
 export interface PlantSnapshot {
   /** 이 스냅샷의 시각 (ISO) */
   at: string
   equipment: EquipmentLive[]
+  /** 공장 오늘 실적 = 출고 양품 수 (D-47) */
+  plant: { done: number }
   lines: LineOutput[]
   /** 코일입고: 오늘 입고 코일 수, 슬리팅 앞 재고 (D-48) */
   inbound: { today: number; stock: number }
+}
+
+/** OEE와 3요소 (%). 부하시간 0이면 null (FN-004) */
+export interface Oee {
+  oee: number | null
+  availability: number | null
+  performance: number | null
+  quality: number | null
+}
+
+/** 공정 ID별 수량 (B 슬리팅 · C 프레스 · D 용접 · E 도장) */
+export type ByProcess = Partial<Record<'B' | 'C' | 'D' | 'E', number>>
+
+/** 라인 오늘 요약 */
+export interface LineSummary {
+  lineId: LineId
+  /** 목표 ÷ 가동 라인 수 (D-87). 목표 없으면 null */
+  plan: number | null
+  done: number
+  rate: number | null
+  oee: number | null
+  ngByProcess: ByProcess
+  /** 공정 사이 재공 */
+  wip: { from: string; to: string; qty: number }[]
+}
+
+/** 10초마다 오는 오늘 요약 (API 명세 3.3 summary) */
+export interface PlantSummary {
+  at: string
+  plant: {
+    /** 오늘 목표. 없으면 null → "목표 미설정" (D-72) */
+    target: number | null
+    done: number
+    rate: number | null
+    oee: Oee
+    quality: {
+      ngByProcess: ByProcess
+      outbound: { inspected: number; ok: number; ng: number; rate: number | null }
+    }
+  }
+  lines: LineSummary[]
 }
 
 /** 제품이 다음 설비로 넘어갈 때 (물류 점, D-81) */

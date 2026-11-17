@@ -20,7 +20,7 @@ const Placeholder = () => import('@/pages/ScrPlaceholderPage.vue')
 
 /** 상단 메뉴가 있는 화면들 */
 const appRoutes: RouteRecordRaw[] = [
-  { path: '', component: Placeholder, meta: { screen: 'SCR-001', title: '대시보드', menu: '대시보드' } },
+  { path: '', component: () => import('@/pages/Scr001DashboardPage.vue'), meta: { screen: 'SCR-001', title: '대시보드', menu: '대시보드' } },
   { path: 'lines/:lineId(L[1-6]|PT)', component: Placeholder, meta: { screen: 'SCR-010', title: '라인 상세', menu: '대시보드' } },
   { path: 'lines/:lineId(L[1-6])/:process(slit|press|weld)', component: Placeholder, meta: { screen: 'SCR-002-2~4', title: '공정 상세', menu: '대시보드' } },
   { path: 'lines/PT/paint', component: Placeholder, meta: { screen: 'SCR-002-5', title: '도장 상세', menu: '대시보드' } },

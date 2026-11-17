@@ -89,6 +89,12 @@
   --toast-w: 400px;       /* 고장 토스트 */
   --mark-w: 3px;   /* 예지보전 테두리 굵기 */
 
+  /* ── 공장 배치도 (D-81) ── */
+  --map-grid: var(--sp-6);     /* 모눈 한 칸 */
+  --map-conn: var(--sp-6);     /* 구역 사이 연결선 칸 */
+  --map-lid: 88px;             /* 라인 이름·실적 칸 */
+  --map-end-min: 96px;         /* 입고·도장·비전 칸 최소 폭 */
+
   /* ── 차트 ── */
   --chart-stroke: 2px;       /* 주 계열 (실적·측정값) */
   --chart-stroke-thin: 1.25px;

@@ -40,3 +40,29 @@ export const PAST_STATES: (Omit<ScenarioState, 'agoSec'> & { agoSec: number; dur
 export const LINE_DONE: Record<string, number> = { L1: 131, L2: 108, L3: 127, L4: 119, L5: 130, L6: 127, PT: 751 }
 
 export const INBOUND = { today: 24, stock: 37 }
+
+/** 오늘 공장 목표 (DT-016). 라인 계획 = 목표 ÷ 가동 라인 6 = 200 (D-87) */
+export const TARGET = 1200
+
+/** 오늘 OEE (데모). 3요소 곱 ≈ OEE */
+export const PLANT_OEE = { oee: 78.4, availability: 89.1, performance: 92.0, quality: 95.6 }
+
+/** 라인별 OEE·공정별 불량 제외·공정 사이 재공 (데모) */
+export const LINE_DETAIL: Record<string, { oee: number; ng: { B?: number; C?: number; D?: number; E?: number }; wip: [number, number] }> = {
+  L1: { oee: 81.2, ng: { B: 1, C: 1, D: 1 }, wip: [5, 2] },
+  L2: { oee: 68.9, ng: { B: 1, C: 3, D: 3 }, wip: [6, 0] },
+  L3: { oee: 80.4, ng: { B: 1, C: 2, D: 1 }, wip: [4, 1] },
+  L4: { oee: 76.0, ng: { B: 0, C: 2, D: 0 }, wip: [0, 2] },
+  L5: { oee: 79.3, ng: { B: 1, C: 2, D: 0 }, wip: [5, 1] },
+  L6: { oee: 82.1, ng: { B: 0, C: 1, D: 1 }, wip: [3, 1] },
+  PT: { oee: 84.0, ng: { E: 3 }, wip: [5, 0] },
+}
+
+/** 출고 비전 불량 수 (데모) */
+export const OUTBOUND_NG = 9
+
+/** 시간대별 생산 비율 (데모). 지난 시간에 실적을 이 비율로 나눠 그린다 */
+export const HOURLY_WEIGHT = [48, 50, 51, 47, 52, 50, 49, 53, 51, 46, 52, 50, 54, 51, 49, 52, 50, 48, 51, 50, 49, 52, 50, 51]
+
+/** 오늘 예지보전 위험(90%) 이력: 지금 진행 중 */
+export const RISK_EVENTS = [{ equipmentId: 'L5-PRS-2', item: 'Pressure 1', agoSec: 29 * 60 + 37, maxPercent: 92 }]

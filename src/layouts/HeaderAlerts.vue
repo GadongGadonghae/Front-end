@@ -4,14 +4,11 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
+import PdmMark from '@/components/domain/PdmMark.vue'
 import { useTodayAlerts } from '@/composables/useTodayAlerts'
-import { useMaster } from '@/composables/useMaster'
-import { DOWNTIME_NAME } from '@/lib/status'
-import { formatTime } from '@/lib/format'
 
-const { alerts, inProgressCount } = useTodayAlerts()
-const { equipmentName } = useMaster()
-const recent = computed(() => alerts.value.slice(0, 5))
+const { rows, ongoingCount } = useTodayAlerts()
+const recent = computed(() => rows.value.slice(0, 5))
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -28,16 +25,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="root" class="alerts">
-    <button class="bell" type="button" :aria-expanded="open" :aria-label="`알림, 진행 중 ${inProgressCount}건`" @click="open = !open">
+    <button class="bell" type="button" :aria-expanded="open" :aria-label="`알림, 진행 중 ${ongoingCount}건`" @click="open = !open">
       <BaseIcon name="bell" />
-      <span v-if="inProgressCount > 0" class="count">{{ inProgressCount }}</span>
+      <span v-if="ongoingCount > 0" class="count">{{ ongoingCount }}</span>
     </button>
     <div v-if="open" class="pop" role="dialog" aria-label="최근 알림">
       <ul>
-        <li v-for="a in recent" :key="a.id" :class="{ off: a.end }">
-          <StatusKey :state="a.state" size="sm" :muted="!!a.end" />
-          <span class="what"><b>{{ equipmentName(a.equipmentId) }}</b>{{ DOWNTIME_NAME[a.code] }}</span>
-          <span class="when">{{ formatTime(a.start) }}</span>
+        <li v-for="a in recent" :key="a.id" :class="{ off: !a.ongoing }">
+          <PdmMark v-if="a.kind === 'risk'" level="danger" :muted="!a.ongoing" />
+          <StatusKey v-else :state="a.kind" size="sm" :muted="!a.ongoing" />
+          <span class="what"><b>{{ a.title }}</b>{{ a.message }}</span>
+          <span class="when">{{ a.time }}</span>
         </li>
         <li v-if="recent.length === 0" class="empty">데이터 없음</li>
       </ul>
