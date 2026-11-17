@@ -276,11 +276,12 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 }
 
 .inb {
+  container-type: size;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: var(--sp-2);
-  border-radius: var(--r-2);
+  padding: var(--map-cell-pad);
+  border-radius: var(--r-1);
   background: var(--c-surface);
   box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-line-ink);
 }
@@ -303,5 +304,12 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   color: var(--c-ink);
   font-size: var(--fs-heading);
   line-height: 1;
+}
+
+/* 낮은 칸 (1440×810 이하): 이름은 위 구역 이름 줄("입고")에 있으니 숨기고 수량·재고만 한 줄로 */
+@container (max-height: 40px) {
+  .inb-name { display: none; }
+  .inb-row { margin: auto 0; }
+  .inb-row b { font-size: var(--fs-title); }
 }
 </style>
