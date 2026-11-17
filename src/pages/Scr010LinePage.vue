@@ -8,6 +8,7 @@ import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
+import ChartPie from '@/components/charts/ChartPie.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import ChartLine from '@/components/charts/ChartLine.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
@@ -86,9 +87,15 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
           <BaseFigure label="라인 OEE" :value="now.oee" :digits="1" unit="%" />
         </SummaryBlock>
         <SummaryBlock>
-          <BaseFigure label="오늘 불량 제외" :value="now.ngTotal" />
+          <!-- 숫자 옆 파이: 공정별 몫. 아래 목록에 같은 색 칸 + 이름 + 개수 (색만으로 말하지 않게) -->
+          <div class="ngrow">
+            <BaseFigure label="오늘 불량 제외" :value="now.ngTotal" />
+            <ChartPie label="공정별 불량 제외" :slices="now.ngRows.map((r) => ({ key: r.process, label: r.label, value: r.value }))" />
+          </div>
           <ul class="ng">
-            <li v-for="r in now.ngRows" :key="r.process"><span>{{ r.label }}</span><b>{{ r.value }}</b></li>
+            <li v-for="(r, i) in now.ngRows" :key="r.process">
+              <span class="sw" :class="`cat-${(i % 4) + 1}`" aria-hidden="true"></span><span class="nm">{{ r.label }}</span><b>{{ r.value }}</b>
+            </li>
           </ul>
         </SummaryBlock>
       </SummaryColumn>
@@ -191,11 +198,35 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   font-size: var(--fs-body);
 }
 
-.ng li {
+.ngrow {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: var(--sp-3);
 }
+
+.ng li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.nm {
+  flex: 1;
+}
+
+/* 파이 조각과 같은 색 칸 */
+.sw {
+  flex: none;
+  width: var(--sp-3);
+  height: var(--sp-3);
+  border-radius: 2px;
+}
+
+.cat-1 { background: var(--c-cat-1); }
+.cat-2 { background: var(--c-cat-2); }
+.cat-3 { background: var(--c-cat-3); }
+.cat-4 { background: var(--c-cat-4); box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong); }
 
 .ng b {
   color: var(--c-ink);
