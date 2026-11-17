@@ -28,6 +28,14 @@ export function scopeEquipment(q: Pick<OeeQuery, 'lineId' | 'process' | 'equipme
     && (!q.process || e.process === q.process))
 }
 
+/** 지난 날 비가동 코드 비율 (데모): 계획정지·셋업이 많고 안전문제는 드물게 */
+const CODE_WEIGHT: [DowntimeCode, number][] = [['planned', 0.24], ['setup', 0.24], ['starved', 0.2], ['blocked', 0.12], ['fault', 0.08], ['fault-alarm', 0.09], ['safety', 0.03]]
+function pickCode(x: number) {
+  let acc = 0
+  const code = CODE_WEIGHT.find(([, w]) => (acc += w) > x)?.[0] ?? 'planned'
+  return MASTER.downtimeCodes.find((d) => d.code === code)!
+}
+
 export function createAnalysis(ctx: Ctx) {
   const today = () => localDate(ctx.now())
 
@@ -69,9 +77,8 @@ export function createAnalysis(ctx: Ctx) {
       })).filter((s) => s.to > s.from)
     }
     const r = rng(hash('stops', e.id, date))
-    const codes = MASTER.downtimeCodes
-    return Array.from({ length: between(r, 0, 3) }, () => {
-      const def = codes[Math.floor(r() * codes.length)]
+    return Array.from({ length: between(r, 0, 2) }, () => {
+      const def = pickCode(r())
       const from = Math.floor(r() * 80_000)
       return { state: def.state, code: def.code, from, to: Math.min(86_400, from + 120 + Math.floor(r() * 1500)) }
     })

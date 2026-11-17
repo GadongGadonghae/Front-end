@@ -38,3 +38,14 @@ export function formatDate(isoString: string | null | undefined): string {
   const d = new Date(isoString)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} (${WEEKDAY[d.getDay()]})`
 }
+
+/** 현지 날짜 문자열 YYYY-MM-DD (조회 조건용) */
+export function toDateStr(ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** 시각 HH:mm */
+export function formatHm(isoString: string | null | undefined): string {
+  return isoString ? formatTime(isoString).slice(0, 5) : EMPTY
+}

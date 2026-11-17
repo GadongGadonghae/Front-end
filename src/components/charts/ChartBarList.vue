@@ -18,7 +18,19 @@ export interface BarRow {
   tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down'
 }
 
-const props = withDefaults(defineProps<{ rows: BarRow[]; max?: number; marker?: number; label: string; thick?: boolean }>(), { thick: false })
+const props = withDefaults(defineProps<{
+  rows: BarRow[]
+  max?: number
+  marker?: number
+  label: string
+  thick?: boolean
+  /** 행을 누를 수 있게 (예: 라인 막대를 누르면 그 라인으로 거르기) */
+  clickable?: boolean
+}>(), { thick: false, clickable: false })
+const emit = defineEmits<{ pick: [row: BarRow] }>()
+function onKey(e: KeyboardEvent, r: BarRow) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); emit('pick', r) }
+}
 
 const top = computed(() => props.max ?? Math.max(1, ...props.rows.map((r) => r.value ?? 0), props.marker ?? 0))
 const pct = (v: number | null) => `${Math.max(0, Math.min(100, ((v ?? 0) / top.value) * 100))}%`
@@ -27,7 +39,15 @@ const hasSub = computed(() => props.rows.some((r) => r.sub))
 
 <template>
   <ul class="bars" :class="{ thick, 'has-sub': hasSub }" :aria-label="label">
-    <li v-for="r in rows" :key="r.key" :class="{ strong: r.strong, muted: r.muted }">
+    <li
+      v-for="r in rows"
+      :key="r.key"
+      :class="{ strong: r.strong, muted: r.muted, click: clickable }"
+      :role="clickable ? 'button' : undefined"
+      :tabindex="clickable ? 0 : undefined"
+      @click="clickable && emit('pick', r)"
+      @keydown="clickable && onKey($event, r)"
+    >
       <span class="name"><slot name="lead" :row="r" />{{ r.label }}</span>
       <span class="track">
         <i :class="`t-${r.tone ?? 'ink'}`" :style="{ width: pct(r.value) }"></i>
@@ -127,5 +147,15 @@ li {
 .muted,
 .muted .val {
   color: var(--c-ink-3);
+}
+
+li.click {
+  border-radius: var(--r-1);
+  cursor: pointer;
+}
+
+li.click:hover .name {
+  color: var(--c-ink);
+  text-decoration: underline;
 }
 </style>
