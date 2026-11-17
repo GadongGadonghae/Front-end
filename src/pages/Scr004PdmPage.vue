@@ -245,7 +245,9 @@ const topGroups = computed(() => [
 
 .it.on {
   background: var(--c-surface-sunk);
-  box-shadow: inset var(--indicator-w) 0 0 var(--c-inverse);
+
+  /* 고른 칸: 가라앉은 면 + 네 변 가는 테두리 (hover는 면만) */
+  box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
 }
 
 .nm {
