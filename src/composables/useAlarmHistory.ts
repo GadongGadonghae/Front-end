@@ -10,6 +10,7 @@ import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { DOWNTIME_NAME, PROCESS_NAME, byProcess, lineName } from '@/lib/status'
 import { formatDuration, formatTime, toDateStr } from '@/lib/format'
+import { metricLabel } from '@/lib/metrics'
 
 export type HistoryTab = 'alarm' | 'risk'
 
@@ -160,7 +161,7 @@ export function useAlarmHistory() {
     end: r.end ? when(r.end) : '',
     line: areaLabel(r.equipmentId),
     equipment: eqLabel(r.equipmentId),
-    item: r.item,
+    item: metricLabel(r.item),
     max: `${r.maxPercent}%`,
   })))
 

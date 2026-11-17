@@ -10,6 +10,7 @@ import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { telemetryChart, useTelemetry } from '@/composables/useTelemetry'
 import { formatDuration, formatNumber, formatTime } from '@/lib/format'
+import { metricLabel } from '@/lib/metrics'
 
 /** 80% 주의 · 90% 위험 (D-29) */
 export const WARN = 80
@@ -43,7 +44,7 @@ export function usePdm(selectedId: Ref<string | null>) {
   const stateOf = (id: string): StateCode => snap.value?.equipment.find((e) => e.id === id)?.state ?? 'R'
   const rows = computed<RiskRow[]>(() => [...risks.value]
     .sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1))
-    .map((r) => ({ id: r.equipmentId, name: equipmentName(r.equipmentId), percent: r.percent, item: r.item, grade: gradeOf(r.percent), state: stateOf(r.equipmentId) })))
+    .map((r) => ({ id: r.equipmentId, name: equipmentName(r.equipmentId), percent: r.percent, item: r.item ? metricLabel(r.item) : null, grade: gradeOf(r.percent), state: stateOf(r.equipmentId) })))
 
   // 지금 고장(D)인 설비는 이미 멈췄으므로 위험·주의 묶음과 따로 보인다 (값은 멈추기 전 10분 평균)
   const groups = computed(() => {
@@ -92,6 +93,7 @@ export function usePdm(selectedId: Ref<string | null>) {
   const itemRows = computed(() => (selected.value?.items ?? []).map((i) => ({
     key: i.item,
     item: i.item,
+    label: metricLabel(i.item),
     avg: i.avg10 == null ? '-' : `${formatNumber(i.avg10, Math.abs(i.avg10) < 10 ? 2 : 1)}${i.unit ? ` ${i.unit}` : ''}`,
     limit: i.lower == null || i.upper == null ? '기준 미정' : `${formatNumber(i.lower, dig(i.lower))} ~ ${formatNumber(i.upper, dig(i.upper))}`,
     percent: i.percent,
@@ -104,10 +106,10 @@ export function usePdm(selectedId: Ref<string | null>) {
     const e = eta.value
     if (!e) return null
     const side = e.toward === 'lower' ? '하한' : '상한'
-    if (e.etaSec == null) return { main: `${side}에 다가가지 않음`, sub: `${e.item} · 최근 1시간 기울기 기준` }
+    if (e.etaSec == null) return { main: `${side}에 다가가지 않음`, sub: `${metricLabel(e.item)} · 최근 1시간 기울기 기준` }
     const h = e.etaSec / 3600
     const when = h < 1 ? `약 ${Math.max(1, Math.round(e.etaSec / 60))}분 뒤` : h < 48 ? `약 ${Math.round(h)}시간 뒤` : `약 ${Math.round(h / 24)}일 뒤`
-    return { main: `이대로면 ${when} ${side} 도달`, sub: `${e.item} · 최근 1시간 기울기 시간당 ${e.slopePerHour! > 0 ? '+' : ''}${formatNumber(e.slopePerHour, 2)}` }
+    return { main: `이대로면 ${when} ${side} 도달`, sub: `${metricLabel(e.item)} · 최근 1시간 기울기 시간당 ${e.slopePerHour! > 0 ? '+' : ''}${formatNumber(e.slopePerHour, 2)}` }
   })
 
   // 위험 진입 시각: 오늘 위험 이력에서 진행 중인 건

@@ -53,9 +53,13 @@ export interface EquipmentType {
   standardCtSec: number
 }
 
-/** DT-005 관리값 기준. 하한·상한이 미정이면 null */
+/** DT-005 관리값 기준 = 백엔드 M-10 기준치. 설비별이다. 하한·상한이 미정이면 null */
 export interface ControlLimit {
+  /** 백엔드 기준치 번호 (M-11 수정에 씀) */
+  id: number
+  equipmentId: string
   type: EquipmentTypeCode
+  /** 항목 이름 (백엔드 metric, camelCase). 화면 이름은 lib/metrics */
   item: string
   unit: string
   lower: number | null

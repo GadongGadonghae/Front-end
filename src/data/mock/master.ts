@@ -19,13 +19,13 @@ const processes: Process[] = [
   { id: 'INSPECTION', name: '출고', order: 6 },
 ]
 
-/** 표준CT [가정] (데이터정의서 4.1) */
+/** 제품 1개 처리 시간(초) — 백엔드 API v3.1 공통 규칙 (11/17 갱신). 라인 능력은 가장 느린 프레스·용접 17초 → 시간당 약 211개 */
 const equipmentTypes: EquipmentType[] = [
-  { code: 'slitter', name: '슬리터', standardCtSec: 120 },
-  { code: 'press', name: '프레스', standardCtSec: 120 },
-  { code: 'welder', name: '용접로봇', standardCtSec: 120 },
-  { code: 'painter', name: '도장라인', standardCtSec: 40 },
-  { code: 'vision', name: '비전검사기', standardCtSec: 20 },
+  { code: 'slitter', name: '슬리터', standardCtSec: 16 },
+  { code: 'press', name: '프레스', standardCtSec: 17 },
+  { code: 'welder', name: '용접로봇', standardCtSec: 17 },
+  { code: 'painter', name: '도장라인', standardCtSec: 4 },
+  { code: 'vision', name: '비전검사기', standardCtSec: 7 },
 ]
 
 const equipment: Equipment[] = [
@@ -41,28 +41,30 @@ const equipment: Equipment[] = [
   { id: 'VI', area: 'VI', process: 'INSPECTION', order: 1, type: 'vision', name: '비전', shortName: '비전', real: false },
 ]
 
-const limit = (type: ControlLimit['type'], item: string, unit: string, lower: number | null, upper: number | null): ControlLimit =>
-  ({ type, item, unit, lower, upper, updatedAt: null, updatedBy: null })
-
-/** 관리값 기준 (데이터정의서 3.1). null = 미정 */
-const controlLimits: ControlLimit[] = [
-  limit('slitter', '출력 전류', 'A', null, null),
-  limit('slitter', '출력 토크', 'kgfm', null, null),
-  limit('slitter', 'DC Link 전압', 'V', null, null),
-  limit('press', 'Pressure 1', '', 200, 350),
-  limit('press', 'Pressure 2', '', 200, 350),
-  limit('press', 'Pressure 5 (합계)', '', 400, 700),
-  limit('press', 'Press time', 'ms', 50, 2000),
-  limit('welder', '가압력', 'bar', null, null),
-  limit('welder', '전류', 'kA', null, null),
-  limit('welder', '전압', 'V', 1.5, 3.5),
-  limit('welder', '통전시간', 'ms', 30, 120),
-  limit('painter', 'pH', '', null, null),
-  limit('painter', '온도', '℃', null, null),
-  limit('painter', '전류', 'A', null, null),
-  limit('painter', '전압', 'V', null, null),
-  limit('painter', '건조로 온도', '℃', null, null),
+/** 설비 종류별 기본 기준 (백엔드 API v3.1 항목 이름). null = 미정
+ *  프레스·용접 전압·통전시간은 데이터셋 설명서 정상 범위, 용접 전류는 백엔드 명세 예시(DB 초안) 값. 슬리터·도장은 데이터 확정 전이라 미정 */
+const DEFAULT_LIMITS: [ControlLimit['type'], string, string, number | null, number | null][] = [
+  ['slitter', 'torque', 'kgfm', null, null],
+  ['slitter', 'current', 'A', null, null],
+  ['slitter', 'voltage', 'V', null, null],
+  ['press', 'pressureLeft', 'bar', 200, 350],
+  ['press', 'pressureRight', 'bar', 200, 350],
+  ['press', 'pressureTotal', 'bar', 400, 700],
+  ['press', 'pressTime', '×0.01초', 50, 2000],
+  ['welder', 'pressForce', 'bar', null, null],
+  ['welder', 'current', 'kA', 14.52, 15.07],
+  ['welder', 'voltage', 'V', 1.5, 3.5],
+  ['welder', 'weldTime', 'ms', 30, 120],
+  ['painter', 'ph', '', null, null],
+  ['painter', 'temperature', '℃', null, null],
+  ['painter', 'current', 'A', null, null],
+  ['painter', 'voltage', 'V', null, null],
 ]
+
+/** 관리값 기준 = 백엔드 M-10 기준치: 설비마다 한 벌 (비전은 없음) */
+let limitSeq = 0
+const controlLimits: ControlLimit[] = equipment.flatMap((e) => DEFAULT_LIMITS.filter(([t]) => t === e.type).map(([type, item, unit, lower, upper]): ControlLimit =>
+  ({ id: ++limitSeq, equipmentId: e.id, type, item, unit, lower, upper, updatedAt: null, updatedBy: null })))
 
 const downtimeCodes: DowntimeCodeDef[] = [
   { code: 'PL_SHIFT', name: '교대', state: 'S' },

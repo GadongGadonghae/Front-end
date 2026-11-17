@@ -1,5 +1,5 @@
-<!-- SCR-009 관리값 기준 설정 (화면정의서 SCR-009, 시안 B-limit)
-     설비 종류 고르기 → 관리값 표 (항목 · 단위 · 하한 · 상한 · 마지막 수정). 변경 이력 목록 없음 (D-73)
+<!-- SCR-009 관리값 기준 설정 (화면정의서 SCR-009, 시안 B-limit). 기준은 설비별 (백엔드 M-10·M-11)
+     설비 종류 → 설비 고르기 → 관리값 표 (항목 · 단위 · 하한 · 상한 · 마지막 수정). 변경 이력 목록 없음 (D-73)
      하한 > 상한이면 그 줄 아래에 오류를 보이고 저장하지 않는다. 저장하면 상태 판정·위험도에 바로 반영 (D-28) -->
 <script setup lang="ts">
 import PageLayout from '@/layouts/PageLayout.vue'
@@ -7,10 +7,12 @@ import BasePanel from '@/components/base/BasePanel.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import { useControlLimits } from '@/composables/useSettings'
+import { metricLabel } from '@/lib/metrics'
 
 const c = useControlLimits()
-const { type } = c
+const { type, equipmentId } = c
 
 const TABS = [
   { key: 'target', label: '생산 목표', to: '/settings/target' },
@@ -31,7 +33,8 @@ const TABS = [
           <h2 class="sr-only">관리값 기준</h2>
           <div class="types">
             <BaseSegmented v-model="type" label="설비 종류" :options="c.typeOptions.value" />
-            <span class="note">같은 종류의 설비 모두에 같은 기준이 적용됨 · 빈 칸은 기준 미정</span>
+            <BaseSelect v-model="equipmentId" label="설비" :options="c.equipmentOptions.value" />
+            <span class="note">설비마다 기준이 따로 있음 · 빈 칸은 기준 미정</span>
           </div>
         </template>
 
@@ -44,7 +47,7 @@ const TABS = [
             <tbody>
               <template v-for="r in c.rows.value" :key="r.key">
                 <tr :class="{ bad: r.invalid, dirty: r.dirty }">
-                  <td class="item">{{ r.item }}<span v-if="r.dirty" class="changed">바뀜</span></td>
+                  <td class="item">{{ metricLabel(r.item) }}<span v-if="r.dirty" class="changed">바뀜</span></td>
                   <td class="unit">{{ r.unit }}</td>
                   <td>
                     <input
@@ -85,7 +88,7 @@ const TABS = [
 
           <div class="foot">
             <p v-if="c.error.value" class="msg err" role="alert">{{ c.error.value }}</p>
-            <p v-else-if="c.otherDirty.value" class="msg warn" role="status">다른 종류에 저장하지 않은 값이 있습니다: {{ c.otherDirty.value }}. 저장은 지금 고른 종류만 합니다</p>
+            <p v-else-if="c.otherDirty.value" class="msg warn" role="status">다른 설비에 저장하지 않은 값이 있습니다: {{ c.otherDirty.value }}. 저장은 지금 고른 설비만 합니다</p>
             <p v-else-if="c.saved.value" class="msg" role="status">{{ c.saved.value }}</p>
             <p v-else class="msg">저장하면 상태 판정(상·하한 이탈 → D)과 예지보전 위험도에 바로 반영됩니다</p>
             <BaseButton :disabled="!c.dirtyCount.value" @click="c.revert">되돌리기</BaseButton>

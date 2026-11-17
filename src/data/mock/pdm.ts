@@ -18,7 +18,7 @@ const SAMPLE_SEC = 20
 /** 상한 도달 예상에 쓰는 기울기 구간 */
 const ETA_BASIS_SEC = 3600
 /** 슬리팅 속도 그래프용 항목은 위험도 대상이 아니다 */
-const NOT_LIMIT = new Set(['지령 주파수', '출력 주파수'])
+const NOT_LIMIT = new Set(['commandHz', 'outputHz'])
 
 export function createPdm(ctx: Ctx) {
   /** 최근 10분 평균. 지금 멈춰 있으면 멈추기 전 10분 */

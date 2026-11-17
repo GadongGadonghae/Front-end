@@ -8,8 +8,8 @@ import { MASTER } from '@/data/mock/master'
 import { INVERTER_LAST_TRIP, TELEMETRY_BASE, TELEMETRY_RAMPS } from '@/data/mock/scenario'
 import { dayStart, hash, localDate, noise } from '@/data/mock/rand'
 
-/** 수집 주기(초): 슬리터 1초, 도장 5초, 프레스·용접 사이클마다 = 표준CT 120초 [가정] (API 명세 3.1). 비전은 관리값 없음 (D-51) */
-export const CADENCE_SEC: Record<EquipmentTypeCode, number> = { slitter: 1, painter: 5, press: 120, welder: 120, vision: 0 }
+/** 수집 주기(초): 슬리터 1초, 도장 5초, 프레스·용접 사이클마다 = 처리 시간 17초 (백엔드 v3.1) (API 명세 3.1). 비전은 관리값 없음 (D-51) */
+export const CADENCE_SEC: Record<EquipmentTypeCode, number> = { slitter: 1, painter: 5, press: 17, welder: 17, vision: 0 }
 /** 한 번에 보내는 점 수 상한 (긴 구간은 성기게) */
 const MAX_POINTS = 360
 const RANGE_SEC: Record<Exclude<TelemetryRange, 'today'>, number> = { '1h': 3600, '8h': 8 * 3600 }
@@ -33,9 +33,9 @@ export function createTelemetry(ctx: Ctx) {
   const eqOf = (id: string) => MASTER.equipment.find((e) => e.id === id)
 
   function itemsOf(e: Equipment): ItemDef[] {
-    const defs = MASTER.controlLimits.filter((l) => l.type === e.type).map((l): ItemDef => ({ item: l.item, unit: l.unit, lower: l.lower, upper: l.upper }))
-    // 슬리팅 속도 그래프 (SCR-002-2 3번)
-    if (e.type === 'slitter') defs.push({ item: '지령 주파수', unit: 'Hz', lower: null, upper: null }, { item: '출력 주파수', unit: 'Hz', lower: null, upper: null })
+    const defs = MASTER.controlLimits.filter((l) => l.equipmentId === e.id).map((l): ItemDef => ({ item: l.item, unit: l.unit, lower: l.lower, upper: l.upper }))
+    // 실설비 슬리팅 속도 그래프 (SCR-002-2 3번, D-43). 백엔드 항목에는 없다
+    if (e.type === 'slitter') defs.push({ item: 'commandHz', unit: 'Hz', lower: null, upper: null }, { item: 'outputHz', unit: 'Hz', lower: null, upper: null })
     return defs
   }
 
@@ -59,14 +59,14 @@ export function createTelemetry(ctx: Ctx) {
   }
 
   function valueAt(e: Equipment, def: ItemDef, t: number): number {
-    const base = TELEMETRY_BASE[def.item]
+    const base = TELEMETRY_BASE[`${e.type}.${def.item}`]
       ?? (def.lower != null && def.upper != null ? { center: (def.lower + def.upper) / 2, amp: (def.upper - def.lower) * 0.05 } : { center: 50, amp: 1 })
-    if (def.item === '지령 주파수') return base.center
+    if (def.item === 'commandHz') return base.center
     const k = hash(e.id, def.item)
     const slow = Math.sin((t / 1800) * Math.PI * 2 + (k % 628) / 100) * 0.5 + Math.sin(t / 420 + (k % 97)) * 0.25
     let v = base.center + base.amp * (slow + (noise(k, Math.floor(t)) - 0.5) * 0.6)
 
-    if (def.item === '출력 주파수' && bandsBetween(e, t, t + 1).length) v = 60 - 4 - noise('dip', k, Math.floor(t)) * 4
+    if (def.item === 'outputHz' && bandsBetween(e, t, t + 1).length) v = 60 - 4 - noise('dip', k, Math.floor(t)) * 4
 
     // 예지보전 주의·위험 항목: 8시간 동안 천천히 상한 쪽으로 올라 지금 그 비율(%) 자리에 닿는다 (D-58). 마모처럼 서서히
     const pdm = ctx.live.get(e.id)?.pdm
@@ -137,7 +137,7 @@ export function createTelemetry(ctx: Ctx) {
     const e = eqOf(equipmentId)
     if (!e?.real) return null
     const running = ctx.live.get(e.id)?.state === 'R'
-    const out = running ? valueAt(e, { item: '출력 주파수', unit: 'Hz', lower: null, upper: null }, Math.floor(ctx.now() / 1000)) : 0
+    const out = running ? valueAt(e, { item: 'outputHz', unit: 'Hz', lower: null, upper: null }, Math.floor(ctx.now() / 1000)) : 0
     return {
       running, direction: running ? 'forward' : null, commandHz: running ? 60 : 0, outputHz: out, rpm: Math.round(out * 30),
       lastTrip: { name: INVERTER_LAST_TRIP.name, at: new Date(ctx.now() - INVERTER_LAST_TRIP.agoSec * 1000).toISOString(), recoveredAfterSec: INVERTER_LAST_TRIP.recoveredAfterSec },

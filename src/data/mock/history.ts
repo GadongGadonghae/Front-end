@@ -23,6 +23,8 @@ interface Ctx {
 const iso = (ms: number) => new Date(ms).toISOString()
 /** 데모 조회 상한: 기간이 길어도 31일까지만 (D-66) */
 const MAX_DAYS = 31
+/** 데모 상세 문구에 쓸 항목 한국어 이름 (화면용 이름 표는 lib/metrics. data는 lib을 쓰지 않는다) */
+const ITEM_KO: Record<string, string> = { pressureLeft: '압력(좌)', pressureRight: '압력(우)', pressureTotal: '압력 합계', pressTime: '프레스 시간', current: '전류', voltage: '전압', weldTime: '통전시간' }
 /** 예지보전 대상: 관리값이 있는 설비 (비전 제외) */
 const PDM_TYPES = new Set(['slitter', 'press', 'welder', 'painter'])
 
@@ -45,9 +47,9 @@ export function createHistory(ctx: Ctx) {
 
   /** 장비고장(알람) 상세: 그 설비 종류의 상한 있는 관리값 하나 */
   function alarmDetail(e: Equipment, r: () => number) {
-    const items = MASTER.controlLimits.filter((l) => l.type === e.type && l.upper != null)
+    const items = MASTER.controlLimits.filter((l) => l.equipmentId === e.id && l.upper != null)
     if (!items.length) return PAST_DETAIL['UP_ALARM'][0]
-    return `${items[Math.floor(r() * items.length)].item} 상한 초과`
+    return `${ITEM_KO[items[Math.floor(r() * items.length)].item] ?? '관리값'} 상한 초과`
   }
 
   /** 지난 하루의 이력 (설비마다 analysis와 같은 구간) */

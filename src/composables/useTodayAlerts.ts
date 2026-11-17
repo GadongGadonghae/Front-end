@@ -10,6 +10,7 @@ import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDuration, formatTime } from '@/lib/format'
+import { metricLabel } from '@/lib/metrics'
 
 interface Shared {
   users: number
@@ -71,7 +72,7 @@ function create(area: string | undefined): Shared {
         id: r.id,
         kind: 'risk',
         title: equipmentName(r.equipmentId),
-        message: `예지보전 위험 · ${r.item} ${r.maxPercent}%`,
+        message: `예지보전 위험 · ${metricLabel(r.item)} ${r.maxPercent}%`,
         start: r.start,
         time: formatTime(r.start),
         duration: duration(r.start, r.end),

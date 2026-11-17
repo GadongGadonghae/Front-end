@@ -22,8 +22,8 @@ import { addDays, dayStart, daysOf, hash, localDate, noise, periodRange, rng } f
 const SNAPSHOT_MS = 1000 // snapshot 1초
 const SUMMARY_MS = 10_000 // summary 10초 [제안]
 const RISK_MS = 5000 // risk 5초 [제안]
-/** 라인 CT 120초 [가정] → 1초에 1/120 확률로 라인 실적 +1 (데모) */
-const LINE_DONE_PER_SEC = 1 / 120
+/** 라인 능력 17초에 1개 (백엔드 v3.1) → 1초에 1/17 확률로 라인 실적 +1 (데모) */
+const LINE_DONE_PER_SEC = 1 / 17
 /** 데모 계정 이름. 조치 메모 담당자도 이 이름 (실제는 서버가 로그인 사용자로 기록, D-84) */
 const DEMO_USER = '김현수'
 const PAGE_SIZE = 50
@@ -186,12 +186,12 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       SLITTING: { before: null, after: at('PRESS') }, PRESS: { before: at('PRESS'), after: at('WELDING') }, WELDING: { before: at('WELDING'), after: at('PAINTING') }, PAINTING: { before: at('PAINTING'), after: null },
     }
     const eqs = MASTER.equipment.filter((e) => e.area === lineId && e.process === process).sort((a, b) => a.order - b.order)
-    // 평균 CT는 표준CT 120초 둘레 데모 값 (프레스 단별만 표시, SCR-002-3 3번)
+    // 평균 CT는 처리 시간 17초 둘레 데모 값 (프레스 단별만 표시, SCR-002-3 3번)
     const rows = eqs.map((e) => ({
       id: e.id,
       // 프레스: 앞 단일수록 한 개씩 더 지나감. 도장: 두 대가 나눠 받음
       cycles: process === 'PRESS' ? output + (eqs.length - e.order) : process === 'PAINTING' ? Math.round(output / 2 + (e.order === 1 ? 0.5 : -0.5) * (output % 2)) : output,
-      avgCtMs: process === 'PRESS' ? Math.round((117 + noise('ct', e.id, today()) * 9) * 1000) : null,
+      avgCtMs: process === 'PRESS' ? Math.round((16.6 + noise('ct', e.id, today()) * 1.4) * 1000) : null,
     }))
     const slowest = Math.max(...rows.map((r) => r.avgCtMs ?? 0))
     return {
@@ -223,13 +223,14 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     const r = rng(hash('inbound', today()))
     const receipts: { t: string; coils: number }[] = []
     for (let left = inbound.today; left > 0;) {
-      const coils = Math.min(left, 1 + Math.floor(r() * 3))
+      const coils = Math.min(left, 8 + Math.floor(r() * 9))
       left -= coils
       receipts.push({ t: '', coils })
     }
     receipts.forEach((x, i) => { x.t = iso(start + ((i + 0.3 + r() * 0.4) / receipts.length) * elapsed) })
     const input = todayProducts(PRODUCTION_LINES).length
-    const consumed = Math.round(input / 24)
+    // 코일 1롤 = 제품 20개 (백엔드 M-13)
+    const consumed = Math.round(input / 20)
     const first = inbound.stock + consumed - inbound.today
     const weights = PRODUCTION_LINES.map((l) => 0.8 + noise('stock-w', l) * 0.4)
     const wsum = sum(weights)
@@ -403,7 +404,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),
-      getControlLimits: async (type) => MASTER.controlLimits.filter((l) => l.type === type).map((l) => ({ ...l })),
+      getControlLimits: async (equipmentId) => MASTER.controlLimits.filter((l) => l.equipmentId === equipmentId).map((l) => ({ ...l })),
       getProductionSummary: async (q) => productionSummary(q),
       getProducts: async (q) => productList(q),
       getProduct: async (id) => products.find(id),
@@ -429,16 +430,16 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         tickSummary()
         return { ok: true, value: targetRows(date, date)[0] }
       },
-      async saveControlLimits(type, rows) {
+      async saveControlLimits(equipmentId, rows) {
         const bad = rows.find((x) => x.lower != null && x.upper != null && x.lower > x.upper)
         if (bad) return { ok: false, error: `${bad.item}: 하한이 상한보다 큽니다` }
         const at = iso(now())
         for (const x of rows) {
-          const l = MASTER.controlLimits.find((c) => c.type === type && c.item === x.item)
+          const l = MASTER.controlLimits.find((c) => c.equipmentId === equipmentId && c.item === x.item)
           if (!l || (l.lower === x.lower && l.upper === x.upper)) continue
           Object.assign(l, { lower: x.lower, upper: x.upper, updatedAt: at, updatedBy: DEMO_USER })
         }
-        return { ok: true, value: MASTER.controlLimits.filter((l) => l.type === type).map((l) => ({ ...l })) }
+        return { ok: true, value: MASTER.controlLimits.filter((l) => l.equipmentId === equipmentId).map((l) => ({ ...l })) }
       },
     },
   }

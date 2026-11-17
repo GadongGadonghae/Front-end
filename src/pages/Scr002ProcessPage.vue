@@ -31,6 +31,7 @@ import { PROCESS_NAME, lineName as lineNameOf } from '@/lib/status'
 import { formatDuration, formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
+import { metricLabel } from '@/lib/metrics'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,7 +57,7 @@ const select = (id: string) => router.replace({ query: { ...route.query, eq: id 
 // 관리값 그래프
 const range = ref<TelemetryRange>('1h')
 const series = useTelemetry(selectedId, range)
-const SPEED_ITEMS = ['지령 주파수', '출력 주파수']
+const SPEED_ITEMS = ['commandHz', 'outputHz']
 const items = computed(() => (series.value?.items ?? []).map((i) => i.item).filter((n) => !SPEED_ITEMS.includes(n)))
 const item = ref('')
 watch(items, (list) => { if (!list.includes(item.value)) item.value = list[0] ?? '' }, { immediate: true })
@@ -66,8 +67,8 @@ const chart = computed(() => telemetryChart(series.value, item.value, range.valu
 const microstops = useMicrostops(selectedId)
 const speed = computed(() => {
   if (process !== 'SLITTING') return null
-  const cmd = telemetryChart(series.value, '지령 주파수', range.value, now.value)
-  const out = telemetryChart(series.value, '출력 주파수', range.value, now.value)
+  const cmd = telemetryChart(series.value, 'commandHz', range.value, now.value)
+  const out = telemetryChart(series.value, 'outputHz', range.value, now.value)
   const [from, to] = out.x
   const bands = (microstops.value?.bands ?? []).map((b) => ({ from: Date.parse(b.from), to: Date.parse(b.to) })).filter((b) => b.to >= from && b.from <= to)
   return { ...out, cmd: cmd.points, bands }
@@ -133,7 +134,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
               <thead><tr><th>항목</th><th class="r">값</th><th class="r">하한 ~ 상한</th></tr></thead>
               <tbody>
                 <tr v-for="l in latest" :key="l.item" :class="{ out: l.out }">
-                  <td>{{ l.item }}</td>
+                  <td>{{ metricLabel(l.item) }}</td>
                   <td class="r">{{ formatNumber(l.value, 2) }}<small v-if="l.unit">{{ l.unit }}</small></td>
                   <td class="r">{{ l.limit }}</td>
                 </tr>
@@ -145,13 +146,13 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
         <BasePanel class="chartp" :title="`관리값 · ${selected?.name ?? '-'}`">
           <template #tools>
-            <BaseSegmented v-if="items.length > 1" v-model="item" label="관리값 항목" size="sm" :options="items.map((i) => ({ value: i, label: i }))" />
+            <BaseSegmented v-if="items.length > 1" v-model="item" label="관리값 항목" size="sm" :options="items.map((i) => ({ value: i, label: metricLabel(i) }))" />
             <ChartLegend :items="[{ label: `측정값${chart.unit ? ` (${chart.unit.trim()})` : ''}`, kind: 'main' }, { label: chart.hasLimits ? '상·하한' : '기준 미정', kind: 'ref' }]" />
             <BaseSegmented v-model="range" label="구간" size="sm" :options="[{ value: '1h', label: '1시간' }, { value: '8h', label: '8시간' }, { value: 'today', label: '오늘' }]" />
           </template>
           <ChartLine
             v-if="chart.points.length"
-            :label="`${selected?.name} ${item} 추이`"
+            :label="`${selected?.name} ${metricLabel(item)} 추이`"
             :x="chart.x"
             :y="chart.y"
             :x-ticks="chart.xTicks"

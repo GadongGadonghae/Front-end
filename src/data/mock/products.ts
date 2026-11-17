@@ -26,8 +26,8 @@ export interface DayCounts {
 /** 투입 뒤 공정마다 끝나는 시각(분) [데모]: 슬리팅 4 · 프레스 14 · 용접 22 · 도장 56 · 출고 62 */
 const STEP_END_MIN: Record<ProcessId, number> = { COIL: 0, SLITTING: 4, PRESS: 14, WELDING: 22, PAINTING: 56, INSPECTION: 62 }
 const STEP_START_MIN: Record<ProcessId, number> = { COIL: 0, SLITTING: 0, PRESS: 6, WELDING: 18, PAINTING: 26, INSPECTION: 60 }
-const PRESS_ITEMS = ['Pressure 1', 'Pressure 2', 'Pressure 5', 'Press time']
-const WELD_ITEMS = ['전압', '통전시간']
+const PRESS_ITEMS = ['압력(좌)', '압력(우)', '압력 합계', '프레스 시간']
+const WELD_ITEMS = ['전류', '전압', '통전시간']
 
 interface Ctx {
   now: () => number
@@ -53,7 +53,7 @@ export function createProducts(ctx: Ctx) {
     const r = rng(hash('day', date, lineId))
     return {
       done: between(r, PAST_LINE_DONE.min, PAST_LINE_DONE.max),
-      ng: { SLITTING: between(r, 0, 2), PRESS: between(r, 0, 4), WELDING: between(r, 0, 3), PAINTING: between(r, 0, 1), INSPECTION: between(r, 0, 2) },
+      ng: { SLITTING: between(r, 2, 10), PRESS: between(r, 6, 22), WELDING: between(r, 3, 15), PAINTING: between(r, 1, 6), INSPECTION: between(r, 3, 12) },
       wip: { PRESS: 0, WELDING: 0, PAINTING: 0 },
     }
   }

@@ -15,6 +15,7 @@ import ChartLegend from '@/components/charts/ChartLegend.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
 import { usePdm, DANGER, WARN, type Grade, type RiskRow } from '@/composables/usePdm'
 import { STATE_NAME } from '@/lib/status'
+import { metricLabel } from '@/lib/metrics'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,7 +32,7 @@ const sel = computed(() => p.selectedRow.value)
 const GRADE_WORD: Record<Grade, string> = { danger: '위험', warn: '주의', normal: '정상', unset: '기준 미정' }
 const pct = (v: number | null) => (v == null ? '-' : `${v}%`)
 const meter = (v: number | null) => `${Math.min(100, v ?? 0)}%`
-const itemOptions = computed(() => (p.selected.value?.items ?? []).map((i) => ({ value: i.item, label: i.percent == null ? i.item : `${i.item} ${i.percent}%` })))
+const itemOptions = computed(() => (p.selected.value?.items ?? []).map((i) => ({ value: i.item, label: i.percent == null ? metricLabel(i.item) : `${metricLabel(i.item)} ${i.percent}%` })))
 const RANGES = [{ value: '1h' as const, label: '1시간' }, { value: '8h' as const, label: '8시간' }, { value: 'today' as const, label: '오늘' }]
 const legend = computed(() => [
   { label: `측정값${p.chart.value.unit ? ` (${p.chart.value.unit.trim()})` : ''}`, kind: 'main' as const },
@@ -125,7 +126,7 @@ const topGroups = computed(() => [
           <ChartLine
             v-if="p.chart.value.points.length"
             class="chart"
-            :label="`${sel?.name} ${item} 추이`"
+            :label="`${sel?.name} ${metricLabel(item)} 추이`"
             :x="p.chart.value.x"
             :y="p.chart.value.y"
             :x-ticks="p.chart.value.xTicks"
@@ -150,7 +151,7 @@ const topGroups = computed(() => [
               <thead><tr><th scope="col">항목</th><th scope="col" class="num">최근 10분 평균</th><th scope="col" class="num">하한 ~ 상한</th><th scope="col" class="num">위험도</th></tr></thead>
               <tbody>
                 <tr v-for="r in p.itemRows.value" :key="r.key" :class="{ on: r.item === item }" @click="item = r.item">
-                  <td>{{ r.item }}</td>
+                  <td>{{ r.label }}</td>
                   <td class="num">{{ r.avg }}</td>
                   <td class="num">{{ r.limit }}</td>
                   <td class="num"><span v-if="r.grade === 'danger' || r.grade === 'warn'" :class="['tag', r.grade]">{{ GRADE_WORD[r.grade] }}</span><b>{{ pct(r.percent) }}</b></td>

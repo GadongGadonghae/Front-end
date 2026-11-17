@@ -7,7 +7,7 @@ import type { AlarmEvent, HistoryEvent, HistoryQuery, RiskEvent, RiskQuery, Stat
 import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
-import type { ControlLimit, EquipmentTypeCode, ProcessId } from '@/types/plant'
+import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
 import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
 
@@ -78,8 +78,8 @@ export interface Queries {
   getReplanPdf(id: string): Promise<Blob | null>
   /** API-090 날짜별 목표·실적 */
   getTargets(from: string, to: string): Promise<TargetRow[]>
-  /** API-092 설비 종류별 관리값 기준 */
-  getControlLimits(type: EquipmentTypeCode): Promise<ControlLimit[]>
+  /** 백엔드 M-10 설비별 관리값 기준치 */
+  getControlLimits(equipmentId: string): Promise<ControlLimit[]>
   /** API-100 생산 요약 */
   getProductionSummary(query: ProductionQuery): Promise<ProductionSummary>
   /** API-101 제품 내역 (50건씩) */
@@ -100,8 +100,8 @@ export interface Commands {
   createReplanReport(stateEventId: string): Promise<ReplanReport>
   /** API-091 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
-  /** API-093 관리값 기준 저장. 하한 > 상한이면 실패 (422) */
-  saveControlLimits(type: EquipmentTypeCode, rows: { item: string; lower: number | null; upper: number | null }[]): Promise<SaveResult<ControlLimit[]>>
+  /** 백엔드 M-11 기준치 수정 (항목마다 1건씩, 바뀐 것만). 하한 > 상한이면 실패 */
+  saveControlLimits(equipmentId: string, rows: { item: string; lower: number | null; upper: number | null }[]): Promise<SaveResult<ControlLimit[]>>
 }
 
 export interface DataSource {

@@ -10,6 +10,7 @@ import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { countByState, longShortName } from '@/lib/status'
 import { formatDuration, formatNumber } from '@/lib/format'
+import { metricLabel } from '@/lib/metrics'
 
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
@@ -21,7 +22,7 @@ export function toEquipCard(e: Equipment, live: EquipmentLive | undefined, nowMs
     name: longShortName(e),
     state: live?.state ?? 'R',
     duration: live ? formatDuration((nowMs - Date.parse(live.since)) / 1000) : '-',
-    pdm: live?.pdm ? { level: live.pdm.level, text: `${live.pdm.level === 'danger' ? '위험' : '주의'} · ${live.pdm.item} ${live.pdm.percent}%` } : null,
+    pdm: live?.pdm ? { level: live.pdm.level, text: `${live.pdm.level === 'danger' ? '위험' : '주의'} · ${metricLabel(live.pdm.item)} ${live.pdm.percent}%` } : null,
     tag,
     info,
   }

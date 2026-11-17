@@ -79,50 +79,59 @@ export const LIMIT_TYPES: { value: EquipmentTypeCode; label: string }[] = [
 
 interface Draft { lower: string; upper: string }
 
+/** 관리값 기준 (백엔드 M-10·M-11): 설비 종류 → 설비를 고르고 그 설비의 항목별 하한·상한을 고친다 */
 export function useControlLimits() {
-  const { master, reload } = useMaster()
+  const { master, reload, equipmentName } = useMaster()
   const type = ref<EquipmentTypeCode>('press')
-  /** 종류마다 불러온(저장된) 값 */
-  const loaded = shallowReactive<Partial<Record<EquipmentTypeCode, ControlLimit[]>>>({})
-  const limits = computed(() => loaded[type.value] ?? [])
-  /** 종류마다 고치는 중인 값 (종류를 바꿔도 남는다) */
-  const drafts = reactive<Partial<Record<EquipmentTypeCode, Record<string, Draft>>>>({})
+  const equipmentId = ref('')
+  /** 설비마다 불러온(저장된) 값 */
+  const loaded = shallowReactive<Record<string, ControlLimit[]>>({})
+  const limits = computed(() => loaded[equipmentId.value] ?? [])
+  /** 설비마다 고치는 중인 값 (설비·종류를 바꿔도 남는다) */
+  const drafts = reactive<Record<string, Record<string, Draft>>>({})
   const error = ref('')
   const saved = ref('')
   const saving = ref(false)
 
   const toText = (n: number | null) => (n == null ? '' : String(n))
-  function load(t: EquipmentTypeCode) {
-    return source.q.getControlLimits(t).then((l) => {
-      loaded[t] = l
-      if (!drafts[t]) drafts[t] = Object.fromEntries(l.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
+  const draftOf = (l: ControlLimit[]) => Object.fromEntries(l.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
+  function load(id: string) {
+    if (!id) return
+    source.q.getControlLimits(id).then((l) => {
+      loaded[id] = l
+      if (!drafts[id]) drafts[id] = draftOf(l)
     })
   }
-  watch(type, (t) => { error.value = ''; saved.value = ''; load(t) }, { immediate: true })
 
-  const counts = computed(() => {
-    const c: Partial<Record<EquipmentTypeCode, number>> = {}
-    for (const e of master.value?.equipment ?? []) c[e.type] = (c[e.type] ?? 0) + 1
-    return c
-  })
+  const ofType = (t: EquipmentTypeCode) => (master.value?.equipment ?? []).filter((e) => e.type === t)
+  // 종류를 바꾸면 그 종류의 첫 설비
+  watch([type, master], () => {
+    if (!ofType(type.value).some((e) => e.id === equipmentId.value)) equipmentId.value = ofType(type.value)[0]?.id ?? ''
+  }, { immediate: true })
+  watch(equipmentId, (id) => { error.value = ''; saved.value = ''; load(id) }, { immediate: true })
+
   /** 빈 칸 = 미정(null). 숫자가 아니면 NaN */
   const parse = (s: string) => { const t = s.replace(/[,\s]/g, ''); return t === '' ? null : /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN }
-  /** 종류마다 저장하지 않은 항목 수 */
-  const dirtyOf = (t: EquipmentTypeCode) => (loaded[t] ?? []).filter((l) => {
-    const d = drafts[t]?.[l.item]
+  /** 설비마다 저장하지 않은 항목 수 */
+  const dirtyOf = (id: string) => (loaded[id] ?? []).filter((l) => {
+    const d = drafts[id]?.[l.item]
     return d && (parse(d.lower) !== l.lower || parse(d.upper) !== l.upper)
   }).length
-  // 종류 버튼에 대수와, 고쳐 놓고 저장하지 않은 항목 수를 같이 보인다
+  const dirtyIds = computed(() => Object.keys(loaded).filter((id) => dirtyOf(id)))
+
   const typeOptions = computed(() => LIMIT_TYPES.map((t) => {
-    const n = dirtyOf(t.value)
-    return { ...t, label: `${t.label} ${counts.value[t.value] ?? ''}대`.replace(' 대', '') + (n ? ` · 바뀜 ${n}` : '') }
+    const n = dirtyIds.value.filter((id) => ofType(t.value).some((e) => e.id === id)).length
+    return { ...t, label: `${t.label} ${ofType(t.value).length}대` + (n ? ` · 바뀜 ${n}` : '') }
   }))
-  /** 지금 보지 않는 종류에 저장하지 않은 값 (저장은 지금 종류만 한다) */
-  const otherDirty = computed(() => LIMIT_TYPES.filter((t) => t.value !== type.value && dirtyOf(t.value))
-    .map((t) => `${t.label} ${dirtyOf(t.value)}개`).join(', '))
+  const equipmentOptions = computed(() => ofType(type.value).map((e) => {
+    const n = dirtyOf(e.id)
+    return { value: e.id, label: equipmentName(e.id) + (n ? ` · 바뀜 ${n}` : '') }
+  }))
+  /** 지금 보지 않는 설비에 저장하지 않은 값 (저장은 지금 설비만 한다) */
+  const otherDirty = computed(() => dirtyIds.value.filter((id) => id !== equipmentId.value).map((id) => `${equipmentName(id)} ${dirtyOf(id)}개`).join(', '))
 
   const rows = computed(() => limits.value.map((l) => {
-    const d = drafts[type.value]?.[l.item] ?? { lower: '', upper: '' }
+    const d = drafts[equipmentId.value]?.[l.item] ?? { lower: '', upper: '' }
     const lower = parse(d.lower)
     const upper = parse(d.upper)
     const invalid = Number.isNaN(lower) || Number.isNaN(upper)
@@ -139,7 +148,7 @@ export function useControlLimits() {
   const invalidCount = computed(() => rows.value.filter((r) => r.invalid).length)
 
   function revert() {
-    drafts[type.value] = Object.fromEntries(limits.value.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
+    drafts[equipmentId.value] = draftOf(limits.value)
     error.value = ''
   }
 
@@ -148,16 +157,16 @@ export function useControlLimits() {
     saved.value = ''
     if (invalidCount.value) { error.value = `${invalidCount.value}개 항목을 고친 뒤 저장하세요. 저장되지 않았습니다`; return }
     saving.value = true
-    const t = type.value
-    const r = await source.cmd.saveControlLimits(t, rows.value.map((x) => ({ item: x.item, lower: x.lower as number | null, upper: x.upper as number | null })))
+    const id = equipmentId.value
+    const r = await source.cmd.saveControlLimits(id, rows.value.filter((x) => x.dirty).map((x) => ({ item: x.item, lower: x.lower as number | null, upper: x.upper as number | null })))
     saving.value = false
     if (!r.ok) { error.value = `${r.error}. 저장되지 않았습니다`; return }
-    loaded[t] = r.value
-    drafts[t] = Object.fromEntries(r.value.map((x) => [x.item, { lower: toText(x.lower), upper: toText(x.upper) }]))
-    saved.value = `${LIMIT_TYPES.find((x) => x.value === t)?.label} 기준을 저장했습니다. 상태 판정과 예지보전 위험도에 바로 반영됩니다`
+    loaded[id] = r.value
+    drafts[id] = draftOf(r.value)
+    saved.value = `${equipmentName(id)} 기준을 저장했습니다. 상태 판정과 예지보전 위험도에 바로 반영됩니다`
     // 관리값 그래프의 상·하한선이 새 값을 쓰도록 기준정보를 다시 부른다
     reload()
   }
 
-  return { type, typeOptions, rows, dirtyCount, invalidCount, otherDirty, error, saved, saving, save, revert }
+  return { type, equipmentId, typeOptions, equipmentOptions, rows, dirtyCount, invalidCount, otherDirty, error, saved, saving, save, revert }
 }
