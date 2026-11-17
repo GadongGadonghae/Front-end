@@ -83,11 +83,17 @@ export function createProducts(ctx: Ctx) {
     const start = dayStart(date)
     const isToday = date === today()
     const end = isToday ? ctx.now() : start + 86_400_000
-    const interval = (end - start) / (kinds.length + 0.5)
+    // 끝난 제품은 지금보다 한 사이클(출고까지 62분) 앞까지 고르게, 재공은 그 뒤 지금까지 고르게 투입
+    const finishedEnd = isToday ? Math.max(start + 60_000, end - (STEP_END_MIN.F + 1) * 60_000) : end
+    const nFinished = finished.length
+    const nWip = kinds.length - nFinished
+    const inputOf = (i: number) => (i < nFinished
+      ? start + ((i + 0.5) / Math.max(1, nFinished)) * (finishedEnd - start)
+      : finishedEnd + ((i - nFinished + 0.5) / Math.max(1, nWip)) * (end - finishedEnd))
     const stamp = date.replaceAll('-', '')
 
     return kinds.map((kind, i): ProductDetail => {
-      const inputMs = start + (i + 0.5) * interval
+      const inputMs = inputOf(i)
       const at = (p: ProcessId, edge: 'start' | 'end') => {
         const ms = inputMs + (edge === 'start' ? STEP_START_MIN[p] : STEP_END_MIN[p]) * 60_000
         return new Date(Math.min(ms, end - 1000)).toISOString()
