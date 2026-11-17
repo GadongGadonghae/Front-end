@@ -46,7 +46,7 @@ cp .env.example .env.local     # .env.local 은 커밋하지 않음
 
 `npm run dev`는 `/api`와 `/ws` 요청을 `BACKEND_URL`(Spring Boot)로 넘깁니다 (`vite.config.ts`). 브라우저는 프론트와 같은 주소로 요청하므로 **개발 중에는 백엔드 CORS 설정이 필요 없습니다.** 배포 때는 같은 도메인 아래 리버스 프록시(nginx 등)로 같은 구조를 두거나, 백엔드에서 프론트 주소를 CORS 허용해야 합니다.
 
-## 3. 백엔드 연결하기 (`src/data/api/` 만들기)
+## 3. 백엔드 연결 (`src/data/api/`)
 
 ### 3.1 구조
 
@@ -55,12 +55,18 @@ src/data/
   contracts.ts      ← 화면이 아는 유일한 인터페이스 (Queries · Commands · LiveChannel)
   index.ts          ← VITE_DATA_SOURCE 로 mock / api 를 고름
   mock/             ← 데모 공급기 (지금 쓰는 것)
-  api/              ← 여기를 만든다: 같은 계약을 백엔드 REST·WebSocket으로 채움
+  api/              ← 같은 계약을 백엔드 API로 채움
+    endpoints.ts    ← 백엔드 엔드포인트 1:1 (함수 이름 = 명세 ID: api.M01 … api.C05, 주소·쿼리 이름 그대로)
+    dto.ts          ← 백엔드 응답·요청 모양 (필드 이름 그대로)
+    http.ts         ← 기본 주소·JWT 헤더·오류 변환
+    source.ts       ← 엔드포인트 응답을 계약 타입(src/types)으로 바꿈
 ```
+
+백엔드 명세가 바뀌면 `endpoints.ts`·`dto.ts`를 먼저 고치고, 타입 오류가 나는 `source.ts` 자리를 따라 고칩니다.
 
 - 화면·composable 코드는 바꾸지 않습니다. 어댑터가 백엔드 응답을 계약의 타입(`src/types/`)으로 바꿔 돌려주면 됩니다.
 - `data/`는 Vue를 모르는 순수 TypeScript입니다 (ESLint가 막음). 어댑터도 `fetch`와 WebSocket만 씁니다.
-- 어댑터를 만들면 `src/data/index.ts`의 `pick()`에서 `api`일 때 `createApiSource()`를 돌려주도록 한 줄을 바꿉니다.
+- `src/data/index.ts`의 `pick()`이 `VITE_DATA_SOURCE=api`일 때 `createApiSource()`를 돌려줍니다.
 
 ### 3.2 공통으로 맞출 것
 
@@ -74,6 +80,8 @@ src/data/
 | 관리값 항목 | `pressureLeft` 등 camelCase | 그대로 씀. 화면 이름은 `src/lib/metrics.ts` |
 
 ### 3.3 실시간 (WebSocket STOMP)
+
+> **지금은 REST 주기 조회로 대신합니다.** STOMP 라이브러리 추가를 정하기 전까지 `source.ts`가 상태 M-01(+M-07·M-13) 1초, 요약 10초, 알림 5초(U-08 진행 중 건 비교), 관리값 M-03 2초로 부릅니다. 아래 표는 STOMP로 바꿀 때의 모양입니다.
 
 | 백엔드 채널 | 계약 | 어댑터가 할 일 |
 |---|---|---|
@@ -99,14 +107,20 @@ src/data/
 | 설정 | G-02·G-03(P2), M-10·M-11 | |
 | 예지보전·리포트 | (없음) | 차순위. 중간발표 뒤 |
 
-### 3.5 연결 순서 (권장)
+### 3.5 실서버 확인 순서
 
-1. `api/http.ts`: 기본 주소·토큰 헤더·오류 변환 (`fetch` 감싸기)
-2. 로그인 `login`·`logout` → 로그인 화면에서 확인
-3. `getMaster` (C-04 라인, C-05 설비, M-10 기준치) → 모든 화면의 기준
-4. 대시보드: `live.onSnapshot`(M-01 + W-01), `getTodayStateEvents`(U-08)
-5. 공정 상세 → 가동률 → 알람 이력 → 생산 조회 → 설정 순
-6. 백엔드에 없는 함수는 어댑터에서 빈 값(`[]`, `null`)을 돌려주고 화면은 "데이터 없음"으로 둠
+어댑터는 타입 검사만 통과했고 실제 서버에서는 아직 확인하지 않았습니다. 이 순서로 확인합니다.
+
+1. 로그인 `login`·`logout` (C-01) → 토큰이 저장되고 다음 요청 헤더에 붙는지
+2. `getMaster` (C-04 라인, C-05 설비, M-10 기준치) → 모든 화면의 기준
+3. 대시보드: `live.onSnapshot`(M-01·M-07·M-13), `getTodayStateEvents`(U-08)
+4. 공정 상세 → 가동률 → 알람 이력 → 생산 조회 → 설정 순
+
+백엔드에 없는 함수는 어댑터가 빈 값(`[]`, `null`)을 돌려주고 화면은 "데이터 없음"으로 둡니다 (시간대별 생산 누적, 설비별 사이클·평균 CT, 공정 불량 제품 목록, 짧은 멈춤, 오늘 코일 입고 수, 제품 내역, 예지보전·리포트).
+
+**알려진 빈 곳**
+- 조치 메모(U-09)의 `actionUserId`: 로그인 응답(C-01)에 사용자 번호가 없어 보내지 않음 → 백엔드에 요청
+- 공장 일 목표 저장: 공장 목표 API가 없어 6라인에 나눠 G-03을 6번 부름 (D-87)
 
 ### 3.6 확인
 

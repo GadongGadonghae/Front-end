@@ -36,69 +36,69 @@ export interface LiveChannel {
 
 /** 조회 (REST) */
 export interface Queries {
-  /** API-010 기준정보 */
+  /** C-04·C-05·M-10 기준정보 */
   getMaster(): Promise<MasterData>
-  /** API-020 오늘 시간대별 생산. lineId 없으면 공장 */
+  /** 백엔드 없음 (요청 중): 오늘 시간대별 생산. lineId 없으면 공장 */
   getTodayHourly(lineId?: LineId): Promise<HourlyOutput>
-  /** API-022 오늘 상태 이력. area가 있으면 그 라인만 */
+  /** U-08 오늘 상태 이력. area가 있으면 그 라인만 */
   getTodayStateEvents(filter?: { area?: string }): Promise<StateEvent[]>
-  /** API-023 오늘 예지보전 위험 이력 */
+  /** 백엔드 없음 [차순위] 오늘 예지보전 위험 이력 */
   getTodayRiskEvents(filter?: { area?: string }): Promise<RiskEvent[]>
-  /** API-060 예지보전 위험도 처음 목록 */
+  /** 백엔드 없음 [차순위] 예지보전 위험도 처음 목록 */
   getRisks(): Promise<EquipmentRisk[]>
-  /** API-061 상한 도달 예상 [차순위] */
+  /** 백엔드 없음 상한 도달 예상 [차순위] */
   getPdmEta(equipmentId: string): Promise<PdmEta | null>
-  /** API-030 공정 오늘 요약 */
+  /** M-12·M-07·M-13·U-03 공정 오늘 요약 */
   getProcessToday(lineId: LineId, process: ProcessId): Promise<ProcessToday>
-  /** API-040 관리값 추이 */
+  /** M-03 관리값 추이 */
   getTelemetry(equipmentId: string, range: TelemetryRange): Promise<TelemetrySeries>
-  /** API-041·070 상태 이력 (지금은 설비 하나의 오늘 이력) */
+  /** U-08 상태 이력 (지금은 설비 하나의 오늘 이력) */
   getStateEvents(filter: { equipmentId: string }): Promise<StateEvent[]>
-  /** API-043 오늘 공정 검사. 출고는 process F, lineId 없음 */
+  /** M-07·M-08 오늘 공정 검사. 출고는 process INSPECTION, lineId 없음 */
   getInspectionsToday(process: ProcessId, lineId?: LineId): Promise<InspectionToday>
-  /** API-044 오늘 미세정지 [차순위] */
+  /** 백엔드 없음 오늘 미세정지 [차순위] */
   getMicrostopsToday(equipmentId: string): Promise<MicrostopToday>
-  /** API-045 코일입고 */
+  /** M-13 (오늘 입고 수는 백엔드 없음) 코일입고 */
   getInboundToday(): Promise<InboundToday>
-  /** API-050 가동률 */
+  /** U-01~05·U-07·U-02 가동률 */
   getOee(query: OeeQuery): Promise<OeeReport>
-  /** API-051 상태 타임라인 (일) */
+  /** U-12 상태 타임라인 (일) */
   getStateTimeline(query: OeeQuery): Promise<StateTimeline>
-  /** API-070 알람·비가동 이력 (50건씩, 발생 최근순) */
+  /** U-08 알람·비가동 이력 (50건씩, 발생 최근순) */
   getHistory(query: HistoryQuery): Promise<Paged<HistoryEvent>>
-  /** API-071 예지보전 위험 이력 (50건씩, 발생 최근순) */
+  /** 백엔드 없음 [차순위] 예지보전 위험 이력 (50건씩, 발생 최근순) */
   getRiskHistory(query: RiskQuery): Promise<Paged<RiskEvent>>
-  /** API-080 일일 생산 리포트 */
+  /** 백엔드 없음 [차순위] 일일 생산 리포트 */
   getDailyReport(date: string): Promise<DailyReport>
-  /** API-082 계획수정 보고서 목록 (날짜 범위, 만든 시각 최근순) */
+  /** R-01 (백엔드 자동 생성) [차순위] 계획수정 보고서 목록 (날짜 범위, 만든 시각 최근순) */
   getReplanReports(from: string, to: string): Promise<ReplanSummary[]>
-  /** API-083 계획수정 보고서 내용 */
+  /** R-02 [차순위] 계획수정 보고서 내용 */
   getReplanReport(id: string): Promise<ReplanReport | null>
-  /** API-084 PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
+  /** 백엔드 없음 [차순위] PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
   getReplanPdf(id: string): Promise<Blob | null>
-  /** API-090 날짜별 목표·실적 */
+  /** G-02 (라인별 계획 합) 날짜별 목표·실적 */
   getTargets(from: string, to: string): Promise<TargetRow[]>
   /** 백엔드 M-10 설비별 관리값 기준치 */
   getControlLimits(equipmentId: string): Promise<ControlLimit[]>
-  /** API-100 생산 요약 */
+  /** G-01·M-07·U-11 생산 요약 */
   getProductionSummary(query: ProductionQuery): Promise<ProductionSummary>
-  /** API-101 제품 내역 (50건씩) */
+  /** 백엔드 없음 (요청 중) 제품 내역 (50건씩) */
   getProducts(query: ProductionQuery): Promise<Paged<Product>>
-  /** API-102 제품 공정별 기록 */
+  /** 백엔드 없음 (요청 중) 제품 공정별 기록 */
   getProduct(productId: string): Promise<ProductDetail | null>
 }
 
 /** 저장 (REST) */
 export interface Commands {
-  /** API-001 로그인. 실패하면 ok=false */
+  /** C-01 로그인. 실패하면 ok=false */
   login(userId: string, password: string): Promise<{ ok: true; name: string } | { ok: false }>
-  /** API-002 로그아웃 */
+  /** 토큰 삭제 (백엔드 호출 없음) 로그아웃 */
   logout(): Promise<void>
-  /** API-042 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
+  /** U-09 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
   saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
-  /** API-081 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
+  /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
   createReplanReport(stateEventId: string): Promise<ReplanReport>
-  /** API-091 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
+  /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */
   setPaintRoute(lineId: string, paintId: string, reason: string): Promise<SaveResult<{ lineId: string; currentPaintId: string; changedAt: string }>>

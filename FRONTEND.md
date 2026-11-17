@@ -65,7 +65,7 @@ src/
 │   ├─ contracts.ts          인터페이스: LiveChannel, 조회·저장 함수 시그니처
 │   ├─ index.ts              지금 쓸 구현을 고름 (mock / api)
 │   ├─ mock/                 데모 공급기: 기준정보, 시나리오, 1초 틱
-│   └─ api/                  (나중에) 실제 API 구현. contracts 그대로
+│   └─ api/                  실제 백엔드 구현. endpoints(명세 1:1)·dto·http·source(계약으로 변환)
 ├─ lib/                   ④ 순수 함수: 숫자·시간 포맷, OEE 계산, 대표 상태(D>I>S>R)
 ├─ composables/           ⑤ 화면 로직: 구독·조회·가공 (use* 이름)
 ├─ components/
