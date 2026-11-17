@@ -105,6 +105,8 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   flex-direction: column;
   min-height: 0;
   padding: var(--sp-3) var(--sp-4);
+  border: var(--line-w) solid var(--c-line);
+  border-radius: var(--r-2);
   background-color: var(--c-surface);
   background-image:
     linear-gradient(var(--c-line) var(--line-w), transparent var(--line-w)),
@@ -146,7 +148,6 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   position: relative;
   flex: 1;
   min-height: 0;
-  container: map / size;
 }
 
 .lines {
@@ -302,32 +303,5 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   color: var(--c-ink);
   font-size: var(--fs-heading);
   line-height: 1;
-}
-
-/* 배치도가 낮을 때(줄 높이 약 40px 미만): 라인 이름·실적, 입고 칸을 한 줄로 */
-@container map (max-height: 240px) {
-  .lid {
-    flex-direction: row;
-    align-items: baseline;
-    gap: var(--sp-2);
-  }
-
-  .lid b {
-    font-size: var(--fs-body);
-  }
-
-  .inb {
-    flex-direction: row;
-    align-items: center;
-    padding: 0 var(--sp-2);
-  }
-
-  .inb-name {
-    display: none;
-  }
-
-  .inb-row b {
-    font-size: var(--fs-body);
-  }
 }
 </style>

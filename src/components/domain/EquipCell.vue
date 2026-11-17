@@ -84,7 +84,7 @@ defineProps<{ cell: EquipCellView }>()
 }
 
 /* 낮은 칸: 이름과 상태를 한 줄로 */
-@container (max-height: 36px) {
+@container (max-height: 40px) {
   .in { flex-direction: row; align-items: center; gap: var(--sp-1); }
   .row { margin-left: auto; flex: none; }
   .word { display: none; }

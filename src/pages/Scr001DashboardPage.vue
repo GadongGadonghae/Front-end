@@ -90,24 +90,27 @@ function openReport(r: AlertRowView) {
             <span class="meta">실적 = 출고 양품</span>
           </template>
           <template #tools><ChartLegend :items="[{ label: '실적', kind: 'main' }, { label: '목표', kind: 'ref' }]" /></template>
-          <div class="figs">
-            <BaseFigure label="실적" :value="plant?.done" size="lg" />
-            <template v-if="plant && plant.target != null">
-              <BaseFigure label="목표" :value="plant.target" size="sm" />
-              <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
-            </template>
-            <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
+          <!-- 숫자는 왼쪽 세로 열, 그래프는 오른쪽: 그래프가 칸 높이를 거의 다 쓴다 (숫자 아래 쌓으면 낮은 창에서 납작해짐) -->
+          <div class="prod">
+            <div class="figs">
+              <BaseFigure label="실적" :value="plant?.done" size="lg" />
+              <div v-if="plant && plant.target != null" class="figs-sub">
+                <BaseFigure label="목표" :value="plant.target" size="sm" />
+                <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
+              </div>
+              <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
+            </div>
+            <ChartLine
+              label="오늘 시간대별 누적 실적과 목표선"
+              :x="[0, 24]"
+              :y="[0, yMax]"
+              :x-ticks="xTicks"
+              :y-ticks="yTicks"
+              :series="[{ key: 'actual', points: production.actual.value }, { key: 'plan', kind: 'ref', points: production.plan.value }]"
+              :now="production.nowHour.value"
+              end-dot
+            />
           </div>
-          <ChartLine
-            label="오늘 시간대별 누적 실적과 목표선"
-            :x="[0, 24]"
-            :y="[0, yMax]"
-            :x-ticks="xTicks"
-            :y-ticks="yTicks"
-            :series="[{ key: 'actual', points: production.actual.value }, { key: 'plan', kind: 'ref', points: production.plan.value }]"
-            :now="production.nowHour.value"
-            end-dot
-          />
         </BasePanel>
 
         <BasePanel title="종합 가동률" meta="오늘 · OEE">
@@ -116,9 +119,11 @@ function openReport(r: AlertRowView) {
         </BasePanel>
 
         <BasePanel title="품질" meta="오늘 · 출고 불량률">
-          <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg">
-            <template v-if="plant" #sub>양품 {{ formatNumber(plant.quality.outbound.ok) }} · 불량 {{ formatNumber(plant.quality.outbound.ng) }}</template>
-          </BaseFigure>
+          <!-- 양품·불량은 큰 숫자 옆에 붙여 한 줄을 아낀다 -->
+          <div class="lead">
+            <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
+            <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
+          </div>
           <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
         </BasePanel>
       </div>
@@ -139,10 +144,10 @@ function openReport(r: AlertRowView) {
   min-height: 0;
 }
 
-/* 아래 3칸은 최소 높이를 지키고, 창이 낮아지면 배치도가 줄어든다 (배치도 칸은 낮으면 한 줄 모드) */
+/* 배치도 : 아래 3칸 = 1.75 : 1. 아래 칸은 낮아져도 들어가도록 칸 안 배치를 옆으로 놓는다 */
 .main {
   display: grid;
-  grid-template-rows: minmax(0, 1.75fr) minmax(var(--dash-lower-min), 1fr);
+  grid-template-rows: minmax(0, 1.75fr) minmax(0, 1fr);
   gap: var(--sp-4);
   min-width: 0;
   min-height: 0;
@@ -183,12 +188,44 @@ function openReport(r: AlertRowView) {
   text-decoration: underline;
 }
 
+/* 오늘 생산: 왼쪽 숫자 열 | 오른쪽 그래프 */
+.prod {
+  display: grid;
+  flex: 1;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--sp-6);
+  min-height: 0;
+}
+
 .figs {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.figs-sub {
+  display: flex;
+  gap: var(--sp-5);
+}
+
+.prod :deep(.chart) {
+  min-height: 0;
+}
+
+/* 품질: 큰 숫자 + 옆에 양품·불량 */
+.lead {
   display: flex;
   flex: none;
   align-items: flex-end;
-  gap: var(--sp-6);
-  margin-bottom: var(--sp-3);
+  gap: var(--sp-4);
+}
+
+.lead-sub {
+  padding-bottom: var(--sp-1);
+  color: var(--c-ink-3);
+  font-size: var(--fs-label);
+  line-height: var(--lh-body);
 }
 
 .unset {
@@ -210,10 +247,6 @@ function openReport(r: AlertRowView) {
 @media (height <= 860px) {
   .lower :deep(.fig.lg .value) {
     font-size: var(--fs-figure);
-  }
-
-  .figs {
-    margin-bottom: var(--sp-2);
   }
 
   .parts {
