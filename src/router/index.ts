@@ -29,7 +29,7 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'production', component: () => import('@/pages/Scr011ProductionPage.vue'), meta: { screen: 'SCR-011', title: '생산 조회', menu: '생산' } },
   { path: 'utilization', component: () => import('@/pages/Scr003UtilizationPage.vue'), meta: { screen: 'SCR-003', title: '가동률', menu: '가동률' } },
   { path: 'pdm', component: Placeholder, meta: { screen: 'SCR-004', title: '예지보전', menu: '예지보전' } },
-  { path: 'alarms', component: Placeholder, meta: { screen: 'SCR-006', title: '알람·비가동 이력', menu: '알람이력' } },
+  { path: 'alarms', component: () => import('@/pages/Scr006AlarmsPage.vue'), meta: { screen: 'SCR-006', title: '알람·비가동 이력', menu: '알람이력' } },
   { path: 'reports/daily', component: Placeholder, meta: { screen: 'SCR-007', title: '일일 생산 리포트', menu: '리포트' } },
   { path: 'reports/replan/:id?', component: Placeholder, meta: { screen: 'SCR-007', title: '계획수정 보고서', menu: '리포트' } },
   { path: 'settings/target', component: Placeholder, meta: { screen: 'SCR-008', title: '생산 목표 설정', menu: '설정' } },

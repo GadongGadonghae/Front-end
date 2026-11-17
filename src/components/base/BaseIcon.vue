@@ -1,6 +1,6 @@
 <!-- 인라인 SVG 아이콘. 한 가지 선 굵기, 글자색을 따른다 (FRONTEND.md 1장). 경로 데이터는 Lucide(ISC 라이선스)에서 가져옴 -->
 <script setup lang="ts">
-export type IconName = 'factory' | 'bell' | 'user' | 'log-out' | 'chevron-right' | 'chevron-down' | 'x'
+export type IconName = 'factory' | 'bell' | 'user' | 'log-out' | 'chevron-right' | 'chevron-down' | 'x' | 'check'
 
 const props = withDefaults(defineProps<{ name: IconName; size?: number }>(), { size: 18 })
 
@@ -12,6 +12,7 @@ const PATHS: Record<IconName, string[]> = {
   'chevron-right': ['m9 18 6-6-6-6'],
   'chevron-down': ['m6 9 6 6 6-6'],
   x: ['M18 6 6 18', 'm6 6 12 12'],
+  check: ['M20 6 9 17l-5-5'],
 }
 </script>
 

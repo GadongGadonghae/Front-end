@@ -148,5 +148,5 @@ export function createAnalysis(ctx: Ctx) {
     return { date, until, rows }
   }
 
-  return { oee, timeline, oeeOf }
+  return { oee, timeline, oeeOf, stopsOf }
 }

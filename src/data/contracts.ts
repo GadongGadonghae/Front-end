@@ -3,7 +3,7 @@
 // 조회·저장 함수는 화면을 만들 때 그 화면에 필요한 것만 추가한다.
 import type { LineId, MasterData } from '@/types/plant'
 import type { PlantSnapshot, PlantSummary, ProductMove } from '@/types/live'
-import type { AlarmEvent, RiskEvent, StateEvent } from '@/types/events'
+import type { AlarmEvent, HistoryEvent, HistoryQuery, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
 import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
@@ -53,6 +53,10 @@ export interface Queries {
   getOee(query: OeeQuery): Promise<OeeReport>
   /** API-051 상태 타임라인 (일) */
   getStateTimeline(query: OeeQuery): Promise<StateTimeline>
+  /** API-070 알람·비가동 이력 (50건씩, 발생 최근순) */
+  getHistory(query: HistoryQuery): Promise<Paged<HistoryEvent>>
+  /** API-071 예지보전 위험 이력 (50건씩, 발생 최근순) */
+  getRiskHistory(query: RiskQuery): Promise<Paged<RiskEvent>>
   /** API-100 생산 요약 */
   getProductionSummary(query: ProductionQuery): Promise<ProductionSummary>
   /** API-101 제품 내역 (50건씩) */

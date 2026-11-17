@@ -7,7 +7,7 @@ const model = defineModel<boolean>({ default: false })
 <template>
   <label class="check" :class="{ on: model }">
     <input v-model="model" type="checkbox" />
-    <span class="box" aria-hidden="true"></span>{{ label }}
+    <span class="box" aria-hidden="true"></span><slot>{{ label }}</slot>
   </label>
 </template>
 

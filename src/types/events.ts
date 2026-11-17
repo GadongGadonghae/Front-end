@@ -34,3 +34,34 @@ export interface AlarmEvent {
   kind: 'raised' | 'cleared'
   event: StateEvent
 }
+
+/** DT-014 알림 발송 결과. 메일·슬랙은 고장(D)만 보낸다 (FN-005, D-63) */
+export interface NotifyResult {
+  email: boolean
+  slack: boolean
+}
+
+/** API-070 이력 표 한 건: 상태 이력 + 발송 결과 (D가 아니면 null) */
+export interface HistoryEvent extends StateEvent {
+  notify: NotifyResult | null
+}
+
+/** API-070 조회 조건. 기간은 날짜(YYYY-MM-DD) 두 개, 최대 31일 (D-66) */
+export interface HistoryQuery {
+  from: string
+  to: string
+  lineId?: string
+  process?: string
+  states: Exclude<StateCode, 'R'>[]
+  code?: DowntimeCode
+  ongoing?: boolean
+  page: number
+}
+
+/** API-071 예지보전 위험 탭 조회 조건 */
+export interface RiskQuery {
+  from: string
+  to: string
+  lineId?: string
+  page: number
+}

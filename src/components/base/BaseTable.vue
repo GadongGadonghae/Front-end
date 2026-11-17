@@ -1,5 +1,6 @@
 <!-- 표 (DESIGN.md Components "표"): 머리줄은 흐린 작은 글자이고 스크롤해도 위에 붙는다. 행 사이는 가는 선, 숫자 열은 오른쪽 정렬
-     누를 수 있는 행은 hover에 가라앉은 표면. 칸 모양은 #cell-열키 slot, 펼침 행은 #expand slot (expandedKey와 같은 행 아래) -->
+     누를 수 있는 행은 hover에 가라앉은 표면. 칸 모양은 #cell-열키 slot, 펼침 행은 #expand slot (expandedKey와 같은 행 아래)
+     rowTone: 진행 중 고장·대기 행 바탕 (DESIGN.md "이상 행 바탕"). 쓰면 글자가 색 면 가장자리에 붙지 않게 양끝 칸에도 안쪽 여백 -->
 <script setup lang="ts" generic="T extends object">
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 
@@ -19,8 +20,9 @@ const props = withDefaults(defineProps<{
   /** 행을 누를 수 있는지 (행 전체가 버튼처럼 Enter·Space로도 동작) */
   clickable?: boolean
   expandedKey?: string | null
+  rowTone?: (row: T) => 'down' | 'idle' | null
   empty?: string
-}>(), { clickable: false, expandedKey: null, empty: '데이터 없음' })
+}>(), { clickable: false, expandedKey: null, rowTone: undefined, empty: '데이터 없음' })
 const emit = defineEmits<{ rowClick: [row: T] }>()
 
 defineSlots<Record<string, (props: { row: T }) => unknown>>()
@@ -34,7 +36,7 @@ function onKey(e: KeyboardEvent, row: T) {
 
 <template>
   <div class="wrap">
-    <table v-if="rows.length" :aria-label="label">
+    <table v-if="rows.length" :aria-label="label" :class="{ inset: rowTone }">
       <colgroup><col v-for="c in columns" :key="c.key" :style="{ width: c.width }" /></colgroup>
       <thead>
         <tr><th v-for="c in columns" :key="c.key" :class="c.align" scope="col">{{ c.label }}</th></tr>
@@ -42,7 +44,7 @@ function onKey(e: KeyboardEvent, row: T) {
       <tbody>
         <template v-for="row in rows" :key="rowKey(row)">
           <tr
-            :class="{ click: clickable, open: expandedKey === rowKey(row) }"
+            :class="[{ click: clickable, open: expandedKey === rowKey(row) }, rowTone?.(row) ? `t-${rowTone(row)}` : '']"
             :tabindex="clickable ? 0 : undefined"
             :aria-expanded="clickable && $slots.expand ? expandedKey === rowKey(row) : undefined"
             @click="clickable && emit('rowClick', row)"
@@ -121,6 +123,19 @@ td:last-child {
 
 tr.open td {
   background: var(--c-surface-sunk);
+}
+
+tr.t-down td { background: var(--c-down-tint); }
+tr.t-idle td { background: var(--c-idle-tint); }
+
+.inset th:first-child,
+.inset td:first-child {
+  padding-left: var(--sp-3);
+}
+
+.inset th:last-child,
+.inset td:last-child {
+  padding-right: var(--sp-3);
 }
 
 tr.click {

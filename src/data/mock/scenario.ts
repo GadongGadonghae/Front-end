@@ -105,3 +105,27 @@ export const PAINT_NG_BY_LINE: Record<string, number> = { L1: 1, L3: 1, L5: 1 }
 
 /** 실설비 슬리터(L1) 최근 트립 (데모): 지금보다 며칠 전 */
 export const INVERTER_LAST_TRIP = { name: 'OCT 과전류', agoSec: 2 * 86400 + 22 * 3600 + 31 * 60, recoveredAfterSec: 180 }
+
+/** 오늘 고장 건 중 슬랙 발송이 실패한 설비 (데모, D-63 "실패 표시"를 보이려고) */
+export const SLACK_FAIL_TODAY = ['L6-WLD']
+
+/** 지난 날 이력의 상세 문구 (데모). 장비고장(알람)은 그 설비 관리값 항목으로 "○○ 상한 초과"를 만든다 */
+export const PAST_DETAIL: Record<DowntimeCode, string[]> = {
+  planned: ['금형 교체', '정기 점검', '점심 정지'],
+  setup: ['코일 교체', '규격 변경'],
+  starved: ['앞 공정 정지', '코일 공급 지연'],
+  blocked: ['뒤 공정 정지', '적재 대차 부족'],
+  fault: ['모터 과부하', '센서 이상'],
+  'fault-alarm': ['인버터 트립'],
+  safety: ['비상정지 (BX)', '안전 펜스 열림'],
+}
+
+/** 지난 날 조치 메모와 담당자 (데모). 이력의 절반쯤에 붙인다 */
+export const PAST_MEMOS: Partial<Record<DowntimeCode, [string, string][]>> = {
+  starved: [['입고 대차 지연', '이민재'], ['앞 공정 복구 후 재개', '박서연']],
+  blocked: [['대차 추가 투입', '박서연']],
+  fault: [['모터 교체', '김현수'], ['센서 청소 후 복귀', '이민재']],
+  'fault-alarm': [['기준값 재확인 후 재가동', '김현수'], ['설비 점검 후 복귀', '박서연']],
+  safety: [['안전 펜스 센서 점검 후 복귀', '이민재']],
+  planned: [['정기 점검 완료', '박서연']],
+}

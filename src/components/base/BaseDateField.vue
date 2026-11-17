@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { useId } from 'vue'
 
-defineProps<{ label: string; max?: string; min?: string }>()
+defineProps<{ label: string; max?: string; min?: string; hideLabel?: boolean }>()
 const model = defineModel<string>({ required: true })
 const id = useId()
 
@@ -15,7 +15,7 @@ function onInput(e: Event) {
 
 <template>
   <span class="field">
-    <label class="lab" :for="id">{{ label }}</label>
+    <label class="lab" :class="{ 'sr-only': hideLabel }" :for="id">{{ label }}</label>
     <input :id="id" type="date" :value="model" :max="max" :min="min" @change="onInput" />
   </span>
 </template>

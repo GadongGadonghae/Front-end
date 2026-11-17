@@ -13,6 +13,7 @@ import {
 import { createTelemetry } from '@/data/mock/telemetry'
 import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
 import { createAnalysis } from '@/data/mock/analysis'
+import { createHistory } from '@/data/mock/history'
 import { dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
 const SNAPSHOT_MS = 1000 // snapshot 1초
@@ -126,6 +127,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const telemetry = createTelemetry({ now, live, events: () => events })
   const products = createProducts({ now, lineDone, live })
   const analysis = createAnalysis({ now, events: () => events })
+  const history = createHistory({ now, events: () => events, risks: () => risks, stopsOf: analysis.stopsOf, pageSize: PAGE_SIZE })
   const today = () => localDate(now())
   const linePlan = TARGET / PRODUCTION_LINES.length
   const resultAt = (x: ProductDetail, p: ProcessId): StepResult => x.steps.find((s) => s.process === p)?.result ?? 'no'
@@ -337,6 +339,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getInboundToday: async () => inboundToday(),
       getOee: async (q) => analysis.oee(q),
       getStateTimeline: async (q) => analysis.timeline(q),
+      getHistory: async (q) => history.list(q),
+      getRiskHistory: async (q) => history.risks(q),
       getProductionSummary: async (q) => productionSummary(q),
       getProducts: async (q) => productList(q),
       getProduct: async (id) => products.find(id),
@@ -346,11 +350,13 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       login: async (userId, password) => (userId && password ? { ok: true, name: DEMO_USER } : { ok: false }),
       logout: async () => {},
       async saveActionMemo(eventId, memo) {
-        const ev = events.find((e) => e.id === eventId)
-        if (!ev) throw new Error(`상태 이력 없음: ${eventId}`)
         const text = memo.trim()
-        Object.assign(ev, text ? { memo: text, memoBy: DEMO_USER, memoAt: iso(now()) } : { memo: null, memoBy: null, memoAt: null })
-        return { ...ev }
+        const patch = text ? { memo: text, memoBy: DEMO_USER, memoAt: iso(now()) } : { memo: null, memoBy: null, memoAt: null }
+        const ev = events.find((e) => e.id === eventId)
+        if (ev) return { ...Object.assign(ev, patch) }
+        const past = history.saveMemo(eventId, patch)
+        if (!past) throw new Error(`상태 이력 없음: ${eventId}`)
+        return past
       },
     },
   }
