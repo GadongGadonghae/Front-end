@@ -23,7 +23,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: var(--sp-5);
+  padding: var(--panel-pad);
   border: var(--line-w) solid var(--c-line);
   border-radius: var(--r-3);
   background: var(--c-surface);
@@ -35,7 +35,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
   align-items: center;
   gap: var(--sp-3);
   min-height: var(--control-h-sm);
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-3);
 }
 
 h2 {
@@ -72,6 +72,6 @@ h2 {
 
 .flush .ph {
   margin-bottom: 0;
-  padding: var(--sp-5) var(--sp-5) var(--sp-3);
+  padding: var(--panel-pad) var(--panel-pad) var(--sp-3);
 }
 </style>
