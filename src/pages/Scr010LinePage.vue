@@ -65,12 +65,14 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
     </template>
 
     <div class="layout">
-      <SummaryColumn class="sum" :title="`${name} 지금`" :meta="`설비 ${now.equipmentCount}대 · 오늘 누적`">
-        <SummaryBlock label="라인 대표 상태">
-          <StatusKey :state="now.state" size="lg" label />
-        </SummaryBlock>
-        <SummaryBlock label="상태별 대수">
-          <StatusCounts :counts="now.counts" />
+      <SummaryColumn class="sum" :title="`${name} 지금`" :meta="`설비 ${now.equipmentCount}대 · 오늘 누적`" spread>
+        <!-- 대표 상태 + 상태별 대수 (시안 B-line): 큰 열쇠 칸과 명칭, 오른쪽에 흐린 이름표. 아래 2×2 대수 -->
+        <SummaryBlock class="now">
+          <div class="rep">
+            <StatusKey :state="now.state" size="xl" label />
+            <span class="cap">라인 대표 상태</span>
+          </div>
+          <StatusCounts :counts="now.counts" big />
         </SummaryBlock>
         <SummaryBlock>
           <BaseFigure label="오늘 라인 실적 / 라인 계획" :value="now.done" :suffix="now.plan != null ? `/ ${formatNumber(now.plan)}` : undefined" size="lg" />
@@ -151,6 +153,22 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 .alerts {
   grid-row: 2;
   grid-column: 3;
+}
+
+.now {
+  gap: var(--sp-5);
+}
+
+.rep {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.cap {
+  margin-left: auto;
+  color: var(--c-ink-3);
+  font-size: var(--fs-label);
 }
 
 .sub {

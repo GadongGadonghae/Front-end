@@ -207,8 +207,8 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  gap: var(--sp-2);
-  height: calc(100% - var(--sp-2));
+  gap: var(--map-cell-gap);
+  height: calc(100% - var(--map-cell-inset));
 }
 
 /* 6갈래로 나뉘고 모이는 세로선: 첫 줄 가운데(1/12)부터 끝 줄 가운데(11/12)까지 */
@@ -240,7 +240,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 .end > .hit {
   position: relative;
   flex: none;
-  height: calc(100% / 6 - var(--sp-2));
+  height: calc(100% / 6 - var(--map-cell-inset));
 }
 
 .paint {

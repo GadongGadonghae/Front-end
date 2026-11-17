@@ -7,8 +7,8 @@ import { STATE_NAME } from '@/lib/status'
 
 const props = withDefaults(defineProps<{
   state: StateCode
-  /** sm: 표 안 · md: 목록·범례 · lg: 대표 상태 */
-  size?: 'sm' | 'md' | 'lg'
+  /** sm: 표 안 · md: 목록·범례 · lg: 대표 상태 · xl: 라인 상세 대표 상태 */
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   /** true면 상태 명칭(가동·정지…), 문자열이면 그 글, 없으면 칸만 */
   label?: boolean | string
   /** 해제된 항목: 흐리게 */
@@ -61,6 +61,23 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
 .lg .text {
   font-size: var(--fs-figure-sm);
   font-weight: var(--fw-strong);
+}
+
+.xl {
+  gap: var(--sp-3);
+}
+
+.xl .key {
+  width: var(--key-xl);
+  height: var(--key-xl);
+  border-radius: var(--r-2);
+  font-size: var(--fs-figure-sm);
+}
+
+.xl .text {
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-strong);
+  line-height: 1;
 }
 
 /* 해제됨: 색을 빼고 상태 색 테두리 + 흐린 먹 글자. 글자 대비 4.5:1 이상 유지 (WCAG 1.4.3, 불투명도로 흐리게 하지 않음) */

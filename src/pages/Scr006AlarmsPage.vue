@@ -260,10 +260,17 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
   white-space: nowrap;
 }
 
+/* 칸 폭이 좁아 입력과 버튼이 한 줄에 들어가지 않는다 → 입력 한 줄, 버튼은 그 아래 오른쪽 */
 .memo-edit {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: var(--sp-1);
+}
+
+.memo-edit > .field {
+  flex: 1 0 100%;
+  min-width: 0;
 }
 
 .link {

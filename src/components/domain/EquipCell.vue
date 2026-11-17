@@ -49,8 +49,8 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   container-type: size;
   min-width: 0;
   height: 100%;
-  padding: var(--sp-2);
-  border-radius: var(--r-2);
+  padding: var(--map-cell-pad);
+  border-radius: var(--r-1);
 }
 
 .in {
@@ -99,8 +99,10 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   font-weight: var(--fw-strong);
 }
 
-/* ── 큰 칸 (라인 흐름) ── */
+/* ── 큰 칸 (라인 흐름) ──
+   폭만 재는 컨테이너 (높이는 라인 흐름 줄이 정한다) */
 .cell.large {
+  container-type: inline-size;
   padding: var(--sp-3) var(--sp-4);
 }
 
@@ -179,21 +181,36 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   .pdm { display: none; }
 }
 
-/* 좁은 큰 칸 (1280~1440 창의 프레스 단): 숫자 이름표를 위, 값을 아래로 쌓고 명칭을 숨긴다 */
-@container (max-width: 136px) {
-  .info { grid-template-columns: 1fr; gap: 0; }
-  .info dd { margin-bottom: var(--sp-1); text-align: left; }
+/* 좁은 큰 칸 (1280~1440 창의 프레스 단): 명칭을 숨기고, 숫자는 이름표·값을 한 줄 작은 글자로,
+   사유 상세는 두 줄까지 (전체는 공정 상세·알림에 있다). 칸 좌우 여백을 --sp-2만큼 돌려받아 글자 폭을 넓힌다
+   (칸 자신은 컨테이너라 질의로 여백을 못 바꾼다) */
+@container (max-width: 150px) {
+  .lg { margin: 0 calc(var(--sp-2) * -1); }
   .lg .word { display: none; }
+  .info { gap: 0 var(--sp-1); font-size: var(--fs-caption); }
+
+  .lg .why span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }
 
-/* 낮은 큰 칸: 사유 상세·메모·두 번째 숫자(평균 CT)를 숨기고 간격을 줄인다. 숨긴 값은 공정 상세에 있다 */
-@container (max-height: 176px) {
-  .why span,
-  .note,
-  .info dt:nth-of-type(n + 2),
-  .info dd:nth-of-type(n + 2) { display: none; }
+/* 아주 좁은 큰 칸 (1280 창): 이름표 위, 값 아래로 쌓는다 */
+@container (max-width: 100px) {
+  .info { grid-template-columns: 1fr; }
+  .info dd { margin-bottom: 2px; text-align: left; }
+}
+
+/* 낮은 창: 사유 상세·메모·두 번째 숫자(평균 CT)를 숨기고 간격을 줄인다. 숨긴 값은 공정 상세에 있다 */
+@media (height <= 760px) {
+  .lg .why span,
+  .lg .note,
+  .lg .info dt:nth-of-type(n + 2),
+  .lg .info dd:nth-of-type(n + 2) { display: none; }
   .lg { gap: var(--sp-1); }
-  .info { gap: 0 var(--sp-3); }
+  .lg .info { gap: 0 var(--sp-3); }
   .lg .code { font-size: var(--fs-heading); }
 }
 </style>

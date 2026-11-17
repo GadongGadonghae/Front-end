@@ -2,12 +2,13 @@
 <script setup lang="ts">
 import BasePanel from '@/components/base/BasePanel.vue'
 
-defineProps<{ title: string; meta?: string }>()
+/** spread: 덩어리 사이를 고르게 벌려 열 높이를 다 쓴다 (라인 상세) */
+withDefaults(defineProps<{ title: string; meta?: string; spread?: boolean }>(), { spread: false })
 </script>
 
 <template>
   <BasePanel class="sumcol" :title="title" :meta="meta">
-    <div class="blocks"><slot /></div>
+    <div class="blocks" :class="{ spread }"><slot /></div>
   </BasePanel>
 </template>
 
@@ -20,5 +21,9 @@ defineProps<{ title: string; meta?: string }>()
 
   /* 낮은 창에서는 덩어리가 아래로 넘치지 않게 열 안에서 스크롤 */
   overflow-y: auto;
+}
+
+.spread {
+  justify-content: space-between;
 }
 </style>

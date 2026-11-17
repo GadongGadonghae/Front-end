@@ -71,7 +71,7 @@
 
   /* ── 크기·배치 ── */
   --nav-h: 52px;
-  --head-h: 64px;
+  --head-h: 44px;
   --page-gutter: var(--sp-6);
   --col-summary: clamp(280px, 17vw, 320px);
   --col-side: clamp(340px, 22vw, 440px);
@@ -85,6 +85,7 @@
   --key-sm: 22px;
   --key-md: 26px;
   --key-lg: 40px;
+  --key-xl: 48px;   /* 라인 대표 상태 (라인 상세 요약 열) */
   --line-w: 1px;
   --line-w-strong: 1.5px;
   --indicator-w: 2px;     /* 선택된 메뉴 밑줄, 포커스 테두리 */
@@ -98,6 +99,9 @@
   --map-conn: var(--sp-6);     /* 구역 사이 연결선 칸 */
   --map-lid: 88px;             /* 라인 이름·실적 칸 */
   --map-end-min: 96px;         /* 입고·도장·비전 칸 최소 폭 */
+  --map-cell-gap: 6px;         /* 배치도 설비 칸 사이 (시안 B) */
+  --map-cell-inset: 10px;      /* 배치도 칸 높이 = 줄 높이 − 이 값 (위아래 숨 쉴 틈, 시안 B) */
+  --map-cell-pad: 6px var(--sp-2);  /* 배치도 설비 칸 안쪽 여백 (시안 B) */
 
   /* ── 라인 흐름 (SCR-010) ── */
   --flow-end-w: 72px;          /* 입고에서·도장으로 끝 칸 */
