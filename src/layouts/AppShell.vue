@@ -45,8 +45,8 @@ function viewFault() {
 </script>
 
 <template>
-  <div class="shell">
-    <header class="top">
+  <div class="shell print-flow">
+    <header class="top no-print">
       <RouterLink class="brand" to="/"><BaseIcon name="factory" :size="20" />라인가동현황</RouterLink>
       <nav aria-label="메뉴">
         <RouterLink
@@ -67,7 +67,7 @@ function viewFault() {
     </header>
 
     <!-- 주소(경로)가 바뀌면 화면을 새로 만든다: 라인·공정 탭 전환. ?eq= 같은 쿼리만 바뀌면 그대로 -->
-    <main class="main"><RouterView :key="route.path" /></main>
+    <main class="main print-flow"><RouterView :key="route.path" /></main>
 
     <FaultToast
       v-if="toast.current.value"

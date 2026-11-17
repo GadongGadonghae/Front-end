@@ -129,3 +129,13 @@ export const PAST_MEMOS: Partial<Record<DowntimeCode, [string, string][]>> = {
   safety: [['안전 펜스 센서 점검 후 복귀', '이민재']],
   planned: [['정기 점검 완료', '박서연']],
 }
+
+/** 생산 목표를 넣어 둔 지난 날 수 (데모). 그보다 오래된 날은 TARGET으로 본다 */
+export const TARGET_SEED_DAYS = 40
+
+/** 지난 날 목표 (데모): 대부분 1,200, 가끔 1,100, 6일 전은 미설정(D-72 "목표 미설정"을 보이려고) */
+export function PAST_TARGET(date: string, agoDays: number): number | null {
+  const day = Number(date.slice(8))
+  if (agoDays === 6) return null
+  return day % 5 === 0 ? 1100 : TARGET
+}

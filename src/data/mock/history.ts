@@ -15,6 +15,8 @@ interface Ctx {
   events: () => StateEvent[]
   risks: () => RiskEvent[]
   stopsOf: (e: Equipment, date: string) => Stop[]
+  /** 지난 날 건의 계획수정 보고서 ID (reports가 정한다) */
+  reportOf: (eventId: string, state: StateCode) => string | null
   pageSize: number
 }
 
@@ -63,7 +65,7 @@ export function createHistory(ctx: Ctx) {
         id, equipmentId: e.id, state: s.state, code: s.code, detail,
         start: iso(start + s.from * 1000), end: iso(end),
         memo: memo?.[0] ?? null, memoBy: memo?.[1] ?? null, memoAt: memo ? iso(end + between(r, 3, 20) * 60_000) : null,
-        reportId: null,
+        reportId: ctx.reportOf(id, s.state),
         notify: notifyOf(id, s.state, r() < 0.08),
       }
       return { ...base, ...memoEdits.get(id) }
@@ -75,8 +77,8 @@ export function createHistory(ctx: Ctx) {
 
   const eqOf = (id: string) => MASTER.equipment.find((e) => e.id === id)
 
-  function list(q: HistoryQuery): Paged<HistoryEvent> {
-    const rows = days(q.from, q.to)
+  function all(q: Omit<HistoryQuery, 'page'>): HistoryEvent[] {
+    return days(q.from, q.to)
       .flatMap((d) => (d === today() ? todayEvents() : pastDay(d)))
       .filter((ev) => {
         const e = eqOf(ev.equipmentId)
@@ -88,7 +90,14 @@ export function createHistory(ctx: Ctx) {
           && (!q.ongoing || ev.end == null)
       })
       .sort((a, b) => b.start.localeCompare(a.start))
-    return page(rows, q.page)
+  }
+  const list = (q: HistoryQuery): Paged<HistoryEvent> => page(all(q), q.page)
+
+  /** 이력 한 건 (오늘 건 EV-n, 지난 날 건 EV-YYYYMMDD-설비-n) */
+  function find(id: string): HistoryEvent | null {
+    const m = /^EV-(\d{4})(\d{2})(\d{2})-/.exec(id)
+    if (!m) return todayEvents().find((ev) => ev.id === id) ?? null
+    return pastDay(`${m[1]}-${m[2]}-${m[3]}`).find((ev) => ev.id === id) ?? null
   }
 
   /** 지난 하루의 예지보전 위험 (90% 진입~해제). 공장 전체에서 하루 0~2건 */
@@ -116,13 +125,12 @@ export function createHistory(ctx: Ctx) {
 
   /** 지난 날 이력의 메모 저장. 찾으면 저장한 건을 돌려준다 */
   function saveMemo(id: string, memo: Pick<StateEvent, 'memo' | 'memoBy' | 'memoAt'>): StateEvent | null {
-    const m = /^EV-(\d{4})(\d{2})(\d{2})-/.exec(id)
-    if (!m) return null
-    const found = pastDay(`${m[1]}-${m[2]}-${m[3]}`).find((ev) => ev.id === id)
+    if (!/^EV-\d{8}-/.test(id)) return null
+    const found = find(id)
     if (!found) return null
     memoEdits.set(id, memo)
     return { ...found, ...memo }
   }
 
-  return { list, risks, saveMemo }
+  return { list, all, find, risks, saveMemo }
 }

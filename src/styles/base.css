@@ -72,3 +72,24 @@ a {
   white-space: nowrap;
   border: 0;
 }
+
+/* 인쇄 (계획수정 보고서 PDF 저장): 메뉴·목록 같은 화면 틀은 빼고 문서만, 높이 제한을 풀어 여러 쪽으로 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  html,
+  body,
+  #app,
+  .print-flow {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: var(--c-surface) !important;
+  }
+
+  .print-flow {
+    display: block !important;
+  }
+}

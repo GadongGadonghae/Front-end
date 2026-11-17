@@ -11,6 +11,7 @@ withDefaults(defineProps<{
   hideLabel?: boolean
   placeholder?: string
   size?: 'md' | 'lg'
+  inputmode?: 'text' | 'numeric' | 'decimal'
 }>(), { type: 'text', invalid: false, hideLabel: false, size: 'lg' })
 const model = defineModel<string>({ default: '' })
 const id = useId()
@@ -25,6 +26,7 @@ const id = useId()
       :type="type"
       :autocomplete="autocomplete"
       :placeholder="placeholder"
+      :inputmode="inputmode"
       :aria-invalid="invalid || undefined"
       :class="[size, { invalid }]"
     />

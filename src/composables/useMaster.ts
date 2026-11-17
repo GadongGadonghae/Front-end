@@ -14,5 +14,8 @@ export function useMaster() {
   /** 설비 이름 (예: L2 프레스 3단). 모르면 ID 그대로 */
   const equipmentName = (id: string) => equipmentById.value.get(id)?.name ?? id
 
-  return { master, equipmentById, equipmentName, ready: loading }
+  /** 기준정보 다시 부르기 (관리값 기준을 저장한 뒤) */
+  const reload = () => { loading = source.q.getMaster().then((m) => (master.value = m)); return loading }
+
+  return { master, equipmentById, equipmentName, ready: loading, reload }
 }

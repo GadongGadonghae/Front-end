@@ -5,16 +5,18 @@ import type { EquipmentLive, LineSummary, PlantSnapshot, PlantSummary, ProductMo
 import type { AlarmEvent, RiskEvent, StateEvent } from '@/types/events'
 import type { HourlyOutput, ProductDetail, ProductionQuery, ProductionSummary, StepResult } from '@/types/production'
 import type { InboundToday, InspectionToday, ProcessToday, TelemetryTick } from '@/types/process'
+import type { TargetRow } from '@/types/report'
 import type { LineId, ProcessId } from '@/types/plant'
 import { MASTER } from '@/data/mock/master'
 import {
-  CURRENT_STATES, HOURLY_WEIGHT, INBOUND, LINE_DETAIL, LINE_DONE, OUTBOUND_NG, PAST_STATES, PDM, PLANT_OEE, RISK_EVENTS, RUN_AGO_SEC, TARGET,
+  CURRENT_STATES, HOURLY_WEIGHT, INBOUND, LINE_DETAIL, LINE_DONE, OUTBOUND_NG, PAST_STATES, PAST_TARGET, PDM, PLANT_OEE, RISK_EVENTS, RUN_AGO_SEC, TARGET, TARGET_SEED_DAYS,
 } from '@/data/mock/scenario'
 import { createTelemetry } from '@/data/mock/telemetry'
 import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
 import { createAnalysis } from '@/data/mock/analysis'
 import { createHistory } from '@/data/mock/history'
-import { dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
+import { createReports } from '@/data/mock/reports'
+import { addDays, dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
 const SNAPSHOT_MS = 1000 // snapshot 1초
 const SUMMARY_MS = 10_000 // summary 10초 [제안]
@@ -46,6 +48,19 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const lineDone: Record<string, number> = { ...LINE_DONE }
   const inbound = { ...INBOUND }
   const plantDone = () => sum(PRODUCTION_LINES.map((l) => lineDone[l]))
+
+  // ── 생산 목표 (DT-016): 날짜별 하루 목표. 오늘은 TARGET, 지난 날은 데모 값, 내일까지 미리 넣어 둔다 ──
+  const targets = new Map<string, { quantity: number; by: string }>()
+  for (let i = -TARGET_SEED_DAYS; i <= 1; i++) {
+    const d = addDays(localDate(startedAt), i)
+    const q = i >= -2 ? TARGET : PAST_TARGET(d, -i)
+    if (q != null) targets.set(d, { quantity: q, by: DEMO_USER })
+  }
+  /** 그날 목표. 없으면 null (D-72). 오래된 날은 TARGET으로 본다 */
+  const targetOf = (date: string) => (date < addDays(localDate(startedAt), -TARGET_SEED_DAYS) ? TARGET : targets.get(date)?.quantity ?? null)
+  /** 라인 계획 = 목표 ÷ 가동 라인 수 (D-87) */
+  const linePlanOf = (date: string) => { const t = targetOf(date); return t == null ? null : Math.round(t / PRODUCTION_LINES.length) }
+  const pct = (a: number, b: number | null) => (b ? round1((a / b) * 100) : null)
 
   // ── 오늘 상태 이력 ──
   let seq = 0
@@ -81,13 +96,14 @@ export function createMockSource(now: () => number = Date.now): DataSource {
 
   const summary = (): PlantSummary => {
     const done = plantDone()
-    const plan = TARGET / PRODUCTION_LINES.length
+    const target = targetOf(localDate(now()))
+    const plan = linePlanOf(localDate(now()))
     const lines: LineSummary[] = (Object.keys(LINE_DETAIL) as LineId[]).map((lineId) => {
       const d = LINE_DETAIL[lineId]
-      const linePlan = lineId === 'PT' ? TARGET : plan
+      const linePlan = lineId === 'PT' ? target : plan
       const isPaint = lineId === 'PT'
       return {
-        lineId, plan: linePlan, done: lineDone[lineId], rate: round1((lineDone[lineId] / linePlan) * 100), oee: d.oee, ngByProcess: { ...d.ng },
+        lineId, plan: linePlan, done: lineDone[lineId], rate: pct(lineDone[lineId], linePlan), oee: d.oee, ngByProcess: { ...d.ng },
         wip: isPaint ? [{ from: 'E', to: 'F', qty: d.wip[0] }] : [{ from: 'B', to: 'C', qty: d.wip[0] }, { from: 'C', to: 'D', qty: d.wip[1] }],
       }
     })
@@ -97,7 +113,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     return {
       at: iso(now()),
       plant: {
-        target: TARGET, done, rate: round1((done / TARGET) * 100), oee: { ...PLANT_OEE },
+        target, done, rate: pct(done, target), oee: { ...PLANT_OEE },
         quality: { ngByProcess, outbound: { inspected, ok: done, ng: OUTBOUND_NG, rate: round1((OUTBOUND_NG / inspected) * 100) } },
       },
       lines,
@@ -110,7 +126,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     const hourNow = t.getHours()
     const fracNow = (t.getMinutes() * 60 + t.getSeconds()) / 3600
     const total = lineId ? lineDone[lineId] : plantDone()
-    const target = lineId ? (lineId === 'PT' ? TARGET : TARGET / PRODUCTION_LINES.length) : TARGET
+    const day = localDate(now())
+    const target = lineId && lineId !== 'PT' ? linePlanOf(day) : targetOf(day)
     const weights = HOURLY_WEIGHT.slice(0, hourNow + 1).map((w, h) => (h === hourNow ? w * fracNow : w))
     const wsum = sum(weights) || 1
     let cum = 0
@@ -118,7 +135,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       const done = hour === hourNow ? total - cum : Math.round((w / wsum) * total)
       cum += done
       const elapsed = hour === hourNow ? hour + fracNow : hour + 1
-      return { hour, done, cumulative: cum, planCumulative: Math.round((target * elapsed) / 24) }
+      return { hour, done, cumulative: cum, planCumulative: target == null ? null : Math.round((target * elapsed) / 24) }
     })
     return { date: localDate(now()), lineId: lineId ?? null, target, hours }
   }
@@ -127,9 +144,30 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const telemetry = createTelemetry({ now, live, events: () => events })
   const products = createProducts({ now, lineDone, live })
   const analysis = createAnalysis({ now, events: () => events })
-  const history = createHistory({ now, events: () => events, risks: () => risks, stopsOf: analysis.stopsOf, pageSize: PAGE_SIZE })
+  // history와 reports는 서로를 부른다 (이력의 보고서 ID ↔ 보고서의 원인 이력). 부르는 때는 둘 다 만든 뒤
+  const history = createHistory({
+    now, events: () => events, risks: () => risks, stopsOf: analysis.stopsOf, pageSize: PAGE_SIZE,
+    reportOf: (id, state) => reports.reportOf(id, state),
+  })
+  const reports = createReports({
+    now, lineDone, live, inboundStock: () => inbound.stock,
+    counts: products.counts, oee: analysis.oee, oeeOf: analysis.oeeOf, targetOf, linePlanOf,
+    findEvent: history.find,
+    pastDEvents: (from, to) => history.all({ from, to, states: ['D'] }),
+    setTodayReport: (eventId, reportId) => { const ev = events.find((e) => e.id === eventId); if (ev) ev.reportId = reportId },
+    user: DEMO_USER,
+  })
+  for (const ev of events) if (ev.reportId) reports.seedToday(ev.id, ev.reportId, Date.parse(ev.start) + 4 * 60_000)
+
+  /** 날짜별 목표·실적 (API-090) */
+  const targetRows = (from: string, to: string): TargetRow[] => {
+    const [a, b] = from <= to ? [from, to] : [to, from]
+    return daysOf(a, b).reverse().map((d) => ({
+      date: d, quantity: targetOf(d), done: d <= today() ? tally(PRODUCTION_LINES, [d]).done : null,
+      updatedBy: targets.get(d)?.by ?? null,
+    }))
+  }
   const today = () => localDate(now())
-  const linePlan = TARGET / PRODUCTION_LINES.length
   const resultAt = (x: ProductDetail, p: ProcessId): StepResult => x.steps.find((s) => s.process === p)?.result ?? 'no'
   const countAt = (list: ProductDetail[], p: ProcessId, ...rs: StepResult[]) => list.filter((x) => rs.includes(resultAt(x, p))).length
   const todayProducts = (lines: LineId[]) => lines.flatMap((l) => products.day(today(), l))
@@ -226,8 +264,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     const upto = daysOf(first, last).filter((d) => d <= today())
     const lines = linesOf(q.lineId)
     const all = tally(lines, upto)
-    const plan = upto.length ? linePlan * lines.length * upto.length : null
-    const dayPlan = linePlan * lines.length
+    // 기간 계획 = 날마다 라인 계획 × 라인 수의 합. 목표 없는 날이 섞이면 계획을 낼 수 없다
+    const dayPlanOf = (d: string) => { const lp = linePlanOf(d); return lp == null ? null : lp * lines.length }
+    const plans = upto.map(dayPlanOf)
+    const plan = upto.length && plans.every((x) => x != null) ? sum(plans as number[]) : null
+    const dayPlan = dayPlanOf(q.date)
 
     let trend: ProductionSummary['trend'] = []
     if (q.period === 'day' && q.date <= today()) {
@@ -238,9 +279,9 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       const hours = [...Array(Math.floor(endH) + 1).keys(), ...(isToday ? [endH] : [])]
       // 90일 넘은 날은 제품이 없으므로 하루 실적을 고르게 나눈다
       const at = (h: number) => (doneH.length || !all.done ? doneH.filter((x) => x <= h).length : Math.round((all.done * h) / 24))
-      trend = hours.map((h) => ({ x: h, label: `${String(Math.floor(h)).padStart(2, '0')}시`, done: at(h), plan: Math.round((dayPlan * h) / 24) }))
+      trend = hours.map((h) => ({ x: h, label: `${String(Math.floor(h)).padStart(2, '0')}시`, done: at(h), plan: dayPlan == null ? null : Math.round((dayPlan * h) / 24) }))
     } else if (q.period !== 'day') {
-      trend = upto.map((d, i) => ({ x: i, label: `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`, done: tally(lines, [d]).done, plan: dayPlan }))
+      trend = upto.map((d, i) => ({ x: i, label: `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`, done: tally(lines, [d]).done, plan: dayPlanOf(d) }))
     }
 
     return {
@@ -248,7 +289,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       to: iso(upto.at(-1) === today() ? now() : dayStart(last) + 86_400_000),
       plan, done: all.done, rate: plan ? round1((all.done / plan) * 100) : null,
       input: all.done + sum(Object.values(all.ng)) + all.wip, wip: all.wip, ngByProcess: all.ng,
-      byLine: PRODUCTION_LINES.map((l) => ({ lineId: l, plan: upto.length ? linePlan * upto.length : null, done: tally([l], upto).done })),
+      byLine: PRODUCTION_LINES.map((l) => ({ lineId: l, plan: plan == null ? null : plan / lines.length, done: tally([l], upto).done })),
       trend, trendKind: q.period === 'day' ? 'hourly' : 'daily',
     }
   }
@@ -327,7 +368,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       },
     },
     q: {
-      getMaster: async () => MASTER,
+      // 관리값 기준이 저장되면 바뀌므로 새 객체로 준다 (화면이 다시 그리게)
+      getMaster: async () => ({ ...MASTER, controlLimits: MASTER.controlLimits.map((l) => ({ ...l })) }),
       getTodayHourly: async (lineId) => hourly(lineId),
       getTodayStateEvents: async (filter) => events.filter((e) => inArea(filter?.area)(e.equipmentId)).map((e) => ({ ...e })),
       getTodayRiskEvents: async (filter) => risks.filter((r) => inArea(filter?.area)(r.equipmentId)).map((r) => ({ ...r })),
@@ -341,6 +383,13 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getStateTimeline: async (q) => analysis.timeline(q),
       getHistory: async (q) => history.list(q),
       getRiskHistory: async (q) => history.risks(q),
+      getDailyReport: async (date) => reports.daily(date),
+      getReplanReports: async (from, to) => reports.list(from, to),
+      getReplanReport: async (id) => reports.get(id),
+      // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
+      getReplanPdf: async () => null,
+      getTargets: async (from, to) => targetRows(from, to),
+      getControlLimits: async (type) => MASTER.controlLimits.filter((l) => l.type === type).map((l) => ({ ...l })),
       getProductionSummary: async (q) => productionSummary(q),
       getProducts: async (q) => productList(q),
       getProduct: async (id) => products.find(id),
@@ -357,6 +406,25 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         const past = history.saveMemo(eventId, patch)
         if (!past) throw new Error(`상태 이력 없음: ${eventId}`)
         return past
+      },
+      createReplanReport: async (eventId) => reports.create(eventId),
+      async saveTarget(date, quantity) {
+        if (date < today()) return { ok: false, error: '지난 날짜의 목표는 바꿀 수 없습니다' }
+        if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, error: '목표 수량은 1 이상의 정수로 입력하세요' }
+        targets.set(date, { quantity, by: DEMO_USER })
+        tickSummary()
+        return { ok: true, value: targetRows(date, date)[0] }
+      },
+      async saveControlLimits(type, rows) {
+        const bad = rows.find((x) => x.lower != null && x.upper != null && x.lower > x.upper)
+        if (bad) return { ok: false, error: `${bad.item}: 하한이 상한보다 큽니다` }
+        const at = iso(now())
+        for (const x of rows) {
+          const l = MASTER.controlLimits.find((c) => c.type === type && c.item === x.item)
+          if (!l || (l.lower === x.lower && l.upper === x.upper)) continue
+          Object.assign(l, { lower: x.lower, upper: x.upper, updatedAt: at, updatedBy: DEMO_USER })
+        }
+        return { ok: true, value: MASTER.controlLimits.filter((l) => l.type === type).map((l) => ({ ...l })) }
       },
     },
   }

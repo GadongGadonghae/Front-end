@@ -7,9 +7,13 @@ import type { AlarmEvent, HistoryEvent, HistoryQuery, RiskEvent, RiskQuery, Stat
 import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
-import type { ProcessId } from '@/types/plant'
+import type { ControlLimit, EquipmentTypeCode, ProcessId } from '@/types/plant'
+import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
 
 export type Unsubscribe = () => void
+
+/** 저장 결과. 실패하면 사람이 읽을 이유 (API 409·422) */
+export type SaveResult<T> = { ok: true; value: T } | { ok: false; error: string }
 
 /** 실시간 웹소켓 채널, 주제 plant (API 명세 3장) */
 export interface LiveChannel {
@@ -57,6 +61,18 @@ export interface Queries {
   getHistory(query: HistoryQuery): Promise<Paged<HistoryEvent>>
   /** API-071 예지보전 위험 이력 (50건씩, 발생 최근순) */
   getRiskHistory(query: RiskQuery): Promise<Paged<RiskEvent>>
+  /** API-080 일일 생산 리포트 */
+  getDailyReport(date: string): Promise<DailyReport>
+  /** API-082 계획수정 보고서 목록 (날짜 범위, 만든 시각 최근순) */
+  getReplanReports(from: string, to: string): Promise<ReplanSummary[]>
+  /** API-083 계획수정 보고서 내용 */
+  getReplanReport(id: string): Promise<ReplanReport | null>
+  /** API-084 PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
+  getReplanPdf(id: string): Promise<Blob | null>
+  /** API-090 날짜별 목표·실적 */
+  getTargets(from: string, to: string): Promise<TargetRow[]>
+  /** API-092 설비 종류별 관리값 기준 */
+  getControlLimits(type: EquipmentTypeCode): Promise<ControlLimit[]>
   /** API-100 생산 요약 */
   getProductionSummary(query: ProductionQuery): Promise<ProductionSummary>
   /** API-101 제품 내역 (50건씩) */
@@ -73,6 +89,12 @@ export interface Commands {
   logout(): Promise<void>
   /** API-042 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
   saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
+  /** API-081 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
+  createReplanReport(stateEventId: string): Promise<ReplanReport>
+  /** API-091 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
+  saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
+  /** API-093 관리값 기준 저장. 하한 > 상한이면 실패 (422) */
+  saveControlLimits(type: EquipmentTypeCode, rows: { item: string; lower: number | null; upper: number | null }[]): Promise<SaveResult<ControlLimit[]>>
 }
 
 export interface DataSource {
