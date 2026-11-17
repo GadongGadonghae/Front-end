@@ -15,7 +15,7 @@ import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import ChartLine from '@/components/charts/ChartLine.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
-import ChartBarList, { type BarRow } from '@/components/charts/ChartBarList.vue'
+import type { BarRow } from '@/components/charts/ChartBarList.vue'
 import StatusCounts from '@/components/domain/StatusCounts.vue'
 import EquipCard from '@/components/domain/EquipCard.vue'
 import DowntimeHistory from '@/components/domain/DowntimeHistory.vue'
@@ -32,6 +32,7 @@ import { formatDuration, formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
 import { metricLabel } from '@/lib/metrics'
+import { usePaintRoute } from '@/composables/usePaintRoute'
 
 const route = useRoute()
 const router = useRouter()
@@ -89,6 +90,9 @@ const latest = computed(() => (series.value?.items ?? []).filter((i) => !SPEED_I
 // 도장: 라인별 입고 (SCR-002-5 3번)
 const received = computed<BarRow[]>(() => (today.value?.receivedByLine ?? []).map((r) => ({ key: r.lineId, label: r.lineId, value: r.qty })))
 const receivedTotal = computed(() => received.value.reduce((a, r) => a + (r.value ?? 0), 0))
+const receivedOf = (lineId: string) => received.value.find((r) => r.key === lineId)?.value ?? 0
+const receivedMax = computed(() => Math.max(0, ...received.value.map((r) => r.value ?? 0)))
+const paintRoute = usePaintRoute()
 
 const tabs = paint ? [] : (['slit', 'press', 'weld'] as const).map((seg) => ({ key: seg, label: PROCESS_NAME[SEGMENT_PROCESS[seg]], to: `/lines/${lineId}/${seg}` }))
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
@@ -160,8 +164,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
             :y-digits="chart.yDigits"
             :series="[{ key: 'v', points: chart.points }]"
             :ref-lines="chart.refLines"
-            :over="chart.over"
-            :under="chart.under"
+            :marks="chart.ngPoints"
             :now="now"
           />
           <BaseEmpty v-else :text="series ? '데이터 없음 (설비가 멈춘 동안은 값이 없습니다)' : '불러오는 중'" />
@@ -185,8 +188,25 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <BaseEmpty v-else />
         </BasePanel>
 
-        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고" :meta="`오늘 · 합계 ${formatNumber(receivedTotal)}`">
-          <ChartBarList label="라인별 도장 입고 수" :rows="received" />
+        <!-- 라인별 입고 + 도장 경로 (백엔드 C-04·M-09, P1): 라인마다 보낼 도장 설비를 바로 바꾼다 -->
+        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고 · 도장 경로" :meta="`오늘 입고 합계 ${formatNumber(receivedTotal)} · 경로를 바꾸면 그 라인 제품이 고른 도장 설비로 감`">
+          <ul class="route">
+            <li v-for="r in paintRoute.rows.value" :key="r.lineId">
+              <span class="rname">{{ r.name }}</span>
+              <span class="rbar"><i :style="{ width: `${receivedMax ? ((receivedOf(r.lineId) / receivedMax) * 100) : 0}%` }"></i></span>
+              <b class="rval">{{ formatNumber(receivedOf(r.lineId)) }}</b>
+              <BaseSegmented
+                :model-value="r.current"
+                :label="`${r.name} 도장 경로`"
+                size="sm"
+                :options="paintRoute.painters.value"
+                @update:model-value="(v) => paintRoute.change(r.lineId, v)"
+              />
+              <span class="rnote">{{ r.changed ? `기본 ${r.defaultName}에서 바꿈` : '기본 경로' }}</span>
+            </li>
+          </ul>
+          <p v-if="paintRoute.error.value" class="rmsg err" role="alert">{{ paintRoute.error.value }}</p>
+          <p v-else-if="paintRoute.message.value" class="rmsg" role="status">{{ paintRoute.message.value }}</p>
         </BasePanel>
       </div>
 
@@ -375,5 +395,58 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
   display: block;
   color: var(--c-ink-3);
   font-size: var(--fs-label);
+}
+
+.route {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content max-content max-content;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.route li {
+  display: contents;
+}
+
+.rname {
+  color: var(--c-ink-2);
+  font-size: var(--fs-body);
+}
+
+.rbar {
+  height: var(--sp-2);
+  border-radius: 2px;
+  background: var(--c-track);
+}
+
+.rbar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--c-ink-3);
+}
+
+.rval {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.rnote {
+  color: var(--c-ink-3);
+  font-size: var(--fs-caption);
+}
+
+.rmsg {
+  margin: var(--sp-3) 0 0;
+  color: var(--c-ink-2);
+  font-size: var(--fs-label);
+}
+
+.rmsg.err {
+  color: var(--c-down);
+  font-weight: var(--fw-strong);
 }
 </style>

@@ -1,7 +1,7 @@
 <!-- SCR-011 생산 조회 (화면정의서 SCR-011, DESIGN.md Layout "분석 화면": 제품 내역 표가 가운데 가장 큰 칸, 라인별·시간대별은 오른쪽 열)
      제목 줄: 조회 조건. 왼쪽 열: 생산 요약. 가운데: 제품 내역(행을 누르면 공정별 기록). 오른쪽: 라인별 계획 대비 → 기간 추이 -->
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -71,6 +71,20 @@ const trend = computed(() => {
   const y = niceTicks(0, Math.max(s.value?.plan ?? 0, ...actual.map((a) => a[1]), 10), 4)
   return { kind: 'hourly' as const, actual, planPts, y }
 })
+// 추이 패널: 실적(계획 대비) / 양품률 (백엔드 U-11)
+const VIEWS = [{ value: 'done' as const, label: '실적' }, { value: 'yield' as const, label: '양품률' }]
+const view = ref<'done' | 'yield'>('done')
+const yieldChart = computed(() => {
+  const t = (s.value?.yieldTrend ?? []).filter((x) => x.rate != null)
+  const points = t.map((x, i): [number, number] => [i, x.rate!])
+  const every = t.length > 10 ? 5 : 1
+  return {
+    points,
+    x: [0, Math.max(1, t.length - 1)] as [number, number],
+    xTicks: t.map((x, i) => ({ value: i, label: x.label })).filter((_, i) => i % every === 0),
+    y: niceTicks(Math.min(90, ...points.map((p) => p[1])), 100, 4),
+  }
+})
 const xHours = [0, 6, 12, 18, 24].map((h) => ({ value: h, label: `${String(h).padStart(2, '0')}시` }))
 const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.x : undefined))
 </script>
@@ -101,6 +115,9 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
         </SummaryBlock>
         <SummaryBlock>
           <BaseFigure label="투입" :value="s?.input" :sub="s ? `진행 중 ${formatNumber(s.wip)}` : undefined" />
+        </SummaryBlock>
+        <SummaryBlock>
+          <BaseFigure label="양품률" :value="s?.yieldRate" :digits="1" unit="%" sub="출고 양품 ÷ 생산 (생산 = 양품 + 불량)" />
         </SummaryBlock>
         <SummaryBlock>
           <BaseFigure label="불량 제외" :value="p.ngTotal.value" />
@@ -150,11 +167,26 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
           <BaseEmpty v-else />
         </BasePanel>
 
-        <BasePanel :title="trend.kind === 'daily' ? '일별 실적' : '시간대별 누적 실적'" :meta="trend.kind === 'daily' ? (period === 'week' ? '이번 주' : '이번 달') : '00시~24시'">
+        <BasePanel :title="view === 'yield' ? '일별 양품률' : trend.kind === 'daily' ? '일별 실적' : '시간대별 누적 실적'" :meta="view === 'yield' ? (period === 'day' ? '그날까지 7일' : period === 'week' ? '이번 주' : '이번 달') : trend.kind === 'daily' ? (period === 'week' ? '이번 주' : '이번 달') : '00시~24시'">
           <template #tools>
-            <ChartLegend :items="[{ label: '실적', kind: 'main' }, { label: '계획', kind: 'ref' }]" />
+            <BaseSegmented v-model="view" label="추이 종류" size="sm" :options="VIEWS" />
           </template>
-          <template v-if="trend.kind === 'daily'">
+          <ChartLegend v-if="view === 'done'" class="legend" :items="[{ label: '실적', kind: 'main' }, { label: '계획', kind: 'ref' }]" />
+          <template v-if="view === 'yield'">
+            <ChartLine
+              v-if="yieldChart.points.length"
+              label="일별 양품률"
+              :x="yieldChart.x"
+              :y="yieldChart.y.domain"
+              :x-ticks="yieldChart.xTicks"
+              :y-ticks="yieldChart.y.ticks"
+              :y-digits="1"
+              :series="[{ key: 'yield', points: yieldChart.points }]"
+              end-dot
+            />
+            <BaseEmpty v-else />
+          </template>
+          <template v-else-if="trend.kind === 'daily'">
             <ChartColumns
               v-if="trend.values.length"
               label="일별 실적과 하루 계획"
@@ -295,5 +327,10 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
 .bad {
   color: var(--c-down);
   font-weight: var(--fw-strong);
+}
+
+.legend {
+  flex: none;
+  margin-bottom: var(--sp-2);
 }
 </style>

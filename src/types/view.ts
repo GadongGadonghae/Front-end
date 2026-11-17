@@ -18,7 +18,8 @@ export interface EquipCellView {
 /** 공장 배치도 (SCR-001, D-81) */
 export interface FactoryMapView {
   inbound: { today: number; stock: number }
-  lines: { id: LineId; done: number | null; plan: number | null; cells: EquipCellView[] }[]
+  /** reroute: 도장 경로를 기본에서 바꿨으면 지금 가는 도장 설비 이름 (배치도 연결선은 기본 경로) */
+  lines: { id: LineId; done: number | null; plan: number | null; cells: EquipCellView[]; reroute: string | null }[]
   paint: EquipCellView[]
   vision: EquipCellView | null
 }

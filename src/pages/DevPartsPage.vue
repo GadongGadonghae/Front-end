@@ -110,7 +110,6 @@ const pressure: [number, number][] = Array.from({ length: 60 }, (_, i) => [i, 29
           :series="[{ key: 'p1', points: pressure }]"
           :ref-lines="[{ value: 350, kind: 'limit', label: '상한 350' }, { value: 335, kind: 'danger', label: '90%' }, { value: 320, kind: 'warn', label: '80%' }, { value: 200, kind: 'limit', label: '하한 200' }]"
           :bands="[{ from: 20, to: 24 }]"
-          :over="350"
           end-dot
         />
       </BasePanel>

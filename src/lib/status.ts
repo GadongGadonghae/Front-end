@@ -37,6 +37,9 @@ export function countByState(states: Iterable<StateCode>): Record<StateCode, num
 /** 공정 이름 (D-02). 검사(INSPECTION)는 화면에서 "출고" */
 export const PROCESS_NAME: Record<ProcessId, string> = { COIL: '코일입고', SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '출고' }
 
+/** 알람 등급 이름 (백엔드 WARNING·CRITICAL). 등급 기준은 백엔드 미정 */
+export const ALARM_LEVEL_NAME = { WARNING: '경고', CRITICAL: '심각' } as const
+
 /** 공정 흐름 순서 (정렬용) */
 export const PROCESS_ORDER: Record<ProcessId, number> = { COIL: 1, SLITTING: 2, PRESS: 3, WELDING: 4, PAINTING: 5, INSPECTION: 6 }
 export const byProcess = (a: ProcessId, b: ProcessId) => PROCESS_ORDER[a] - PROCESS_ORDER[b]

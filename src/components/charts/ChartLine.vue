@@ -19,12 +19,10 @@ const props = withDefaults(defineProps<{
   bands?: { from: number; to: number }[]
   now?: number
   endDot?: boolean
-  /** 주 계열에서 이 값보다 큰 점을 빨강 점으로 */
-  over?: number
-  /** 주 계열에서 이 값보다 작은 점을 빨강 점으로 */
-  under?: number
+  /** 빨강 점으로 찍을 점 (백엔드 판정 NG 등) */
+  marks?: [number, number][]
   yDigits?: number
-}>(), { refLines: () => [], bands: () => [], endDot: false, yDigits: 0 })
+}>(), { refLines: () => [], bands: () => [], marks: () => [], endDot: false, yDigits: 0 })
 
 const box = ref<HTMLElement | null>(null)
 const w = ref(0)
@@ -54,7 +52,7 @@ const yTicksShown = computed(() => {
 const path = (pts: [number, number][]) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${X(a).toFixed(1)},${Y(b).toFixed(1)}`).join('')
 const main = computed(() => props.series.find((s) => (s.kind ?? 'main') === 'main'))
 const last = computed(() => main.value?.points.at(-1) ?? null)
-const overPts = computed(() => (!main.value ? [] : main.value.points.filter(([, v]) => (props.over != null && v > props.over) || (props.under != null && v < props.under))))
+const overPts = computed(() => props.marks)
 const ready = computed(() => w.value > 0 && h.value > 0)
 </script>
 

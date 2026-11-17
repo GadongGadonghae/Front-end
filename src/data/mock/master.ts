@@ -6,8 +6,9 @@ const LINE_IDS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 const PRESS_STAGES = ['1단', '2단', '3단', '4단'] as const
 
 const lines: Line[] = [
-  ...LINE_IDS.map((id, i): Line => ({ id, name: `${id}라인`, kind: 'production', order: i + 1 })),
-  { id: 'PT', name: '도장', kind: 'paint', order: 7 },
+  // 도장 경로 기본: A~C → 도장 #1, D~F → 도장 #2 (배치도 연결선과 같음, 데모)
+  ...LINE_IDS.map((id, i): Line => ({ id, name: `${id}라인`, kind: 'production', order: i + 1, defaultPaintId: i < 3 ? 'PT1' : 'PT2', currentPaintId: i < 3 ? 'PT1' : 'PT2' })),
+  { id: 'PT', name: '도장', kind: 'paint', order: 7, defaultPaintId: null, currentPaintId: null },
 ]
 
 const processes: Process[] = [

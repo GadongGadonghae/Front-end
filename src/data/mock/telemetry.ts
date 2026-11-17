@@ -102,16 +102,23 @@ export function createTelemetry(ctx: Ctx) {
     if (last != null && last >= start && !ts.includes(last)) ts.push(last)
     return {
       equipmentId, range,
-      items: itemsOf(e).map((def) => ({ ...def, points: ts.map((t) => ({ t: iso(t), value: valueAt(e, def, t) })) })),
+      items: itemsOf(e).map((def) => ({
+        ...def,
+        // 판정은 백엔드가 한다. 데모는 기준 밖이면 NG
+        points: ts.map((t) => { const value = valueAt(e, def, t); return { t: iso(t), value, result: judge(def, value) } }),
+      })),
     }
   }
+
+  const judge = (def: ItemDef, v: number): 'OK' | 'NG' | undefined =>
+    def.lower == null && def.upper == null ? undefined : (def.lower != null && v < def.lower) || (def.upper != null && v > def.upper) ? 'NG' : 'OK'
 
   /** 실시간 새 값 1개. 멈춰 있으면 null */
   function tick(equipmentId: string): TelemetryTick | null {
     const e = eqOf(equipmentId)
     const t = Math.floor(ctx.now() / 1000)
     if (!e || !CADENCE_SEC[e.type] || stopped(e, t)) return null
-    return { equipmentId, values: itemsOf(e).map((def) => ({ t: iso(t), item: def.item, value: valueAt(e, def, t) })) }
+    return { equipmentId, values: itemsOf(e).map((def) => { const value = valueAt(e, def, t); return { t: iso(t), item: def.item, value, result: judge(def, value) } }) }
   }
 
   /** 미세정지 [차순위]: 슬리팅은 출력 저하 구간, 나머지는 데모 횟수 */

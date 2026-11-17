@@ -17,7 +17,12 @@ export interface StateEvent {
   memoAt: string | null
   /** 계획수정 보고서 (D 건만). 없으면 null */
   reportId: string | null
+  /** 관리값 이탈 알람(UP_ALARM)의 등급 (백엔드 alarm.level). 그 밖의 건은 null */
+  alarmLevel?: AlarmLevel | null
 }
+
+/** 알람 등급 (백엔드 M-04·W-02). 등급 기준은 백엔드 미정 */
+export type AlarmLevel = 'WARNING' | 'CRITICAL'
 
 /** DT-020 예지보전 위험 이력 (위험 90% 진입 ~ 해제) */
 export interface RiskEvent {
@@ -55,6 +60,8 @@ export interface HistoryQuery {
   states: StopState[]
   code?: DowntimeCode
   ongoing?: boolean
+  /** 이 길이(분) 이상만 (백엔드 minMinutes, 기본 1) */
+  minMinutes?: number
   page: number
 }
 

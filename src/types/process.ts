@@ -36,7 +36,8 @@ export interface TelemetryItem {
   /** 미정이면 null → 기준선 없이 "기준 미정" */
   lower: number | null
   upper: number | null
-  points: { t: string; value: number }[]
+  /** result: 백엔드 판정 OK/NG (M-03). NG 점은 그래프에 빨강 점 */
+  points: { t: string; value: number; result?: 'OK' | 'NG' }[]
 }
 
 export interface TelemetrySeries {
@@ -50,7 +51,7 @@ export type TelemetryRange = '1h' | '8h' | 'today'
 /** 웹소켓 telemetry: 선택 설비의 새 값 */
 export interface TelemetryTick {
   equipmentId: string
-  values: { t: string; item: string; value: number }[]
+  values: { t: string; item: string; value: number; result?: 'OK' | 'NG' }[]
 }
 
 /** API-043 공정 검사 */

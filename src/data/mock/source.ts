@@ -263,6 +263,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     }
     return t
   }
+  /** 양품률 = 출고 양품 ÷ 생산 (생산 = 출고 양품 + 공정·비전 불량) */
+  const yieldOf = (t: ReturnType<typeof tally>) => {
+    const total = t.done + sum(Object.values(t.ng))
+    return { total, good: t.done, rate: total ? round1((t.done / total) * 100) : null }
+  }
   const linesOf = (lineId?: LineId) => (lineId && lineId !== 'PT' ? [lineId] : PRODUCTION_LINES)
 
   /** 생산 요약 (API-100). 기간 계획 = 라인 계획 × 라인 수 × 오늘까지 일수 [가정] */
@@ -298,6 +303,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       input: all.done + sum(Object.values(all.ng)) + all.wip, wip: all.wip, ngByProcess: all.ng,
       byLine: PRODUCTION_LINES.map((l) => ({ lineId: l, plan: plan == null ? null : plan / lines.length, done: tally([l], upto).done })),
       trend, trendKind: q.period === 'day' ? 'hourly' : 'daily',
+      yieldRate: yieldOf(all).rate,
+      yieldTrend: (q.period === 'day' ? daysOf(addDays(q.date, -6), q.date).filter((d) => d <= today()) : upto).map((d) => {
+        const y = yieldOf(tally(lines, [d]))
+        return { date: d, label: `${Number(d.slice(5, 7))}/${Number(d.slice(8))}`, ...y }
+      }),
     }
   }
 
@@ -382,7 +392,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     },
     q: {
       // 관리값 기준이 저장되면 바뀌므로 새 객체로 준다 (화면이 다시 그리게)
-      getMaster: async () => ({ ...MASTER, controlLimits: MASTER.controlLimits.map((l) => ({ ...l })) }),
+      getMaster: async () => ({ ...MASTER, lines: MASTER.lines.map((l) => ({ ...l })), controlLimits: MASTER.controlLimits.map((l) => ({ ...l })) }),
       getTodayHourly: async (lineId) => hourly(lineId),
       getTodayStateEvents: async (filter) => events.filter((e) => inArea(filter?.area)(e.equipmentId)).map((e) => ({ ...e })),
       getTodayRiskEvents: async (filter) => risks.filter((r) => inArea(filter?.area)(r.equipmentId)).map((r) => ({ ...r })),
@@ -429,6 +439,14 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         targets.set(date, { quantity, by: DEMO_USER })
         tickSummary()
         return { ok: true, value: targetRows(date, date)[0] }
+      },
+      async setPaintRoute(lineId, paintId, reason) {
+        const line = MASTER.lines.find((l) => l.id === lineId && l.kind === 'production')
+        if (!line) return { ok: false, error: `생산 라인이 아닙니다: ${lineId}` }
+        if (!MASTER.equipment.some((e) => e.id === paintId && e.type === 'painter')) return { ok: false, error: `도장 설비가 아닙니다: ${paintId}` }
+        void reason
+        line.currentPaintId = paintId
+        return { ok: true, value: { lineId, currentPaintId: paintId, changedAt: iso(now()) } }
       },
       async saveControlLimits(equipmentId, rows) {
         const bad = rows.find((x) => x.lower != null && x.upper != null && x.lower > x.upper)

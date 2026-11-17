@@ -68,6 +68,7 @@ export function createHistory(ctx: Ctx) {
         start: iso(start + s.from * 1000), end: iso(end),
         memo: memo?.[0] ?? null, memoBy: memo?.[1] ?? null, memoAt: memo ? iso(end + between(r, 3, 20) * 60_000) : null,
         reportId: ctx.reportOf(id, s.state),
+        alarmLevel: s.code === 'UP_ALARM' ? (r() < 0.6 ? 'CRITICAL' : 'WARNING') : null,
         notify: notifyOf(id, s.state, r() < 0.08),
       }
       return { ...base, ...memoEdits.get(id) }
@@ -75,7 +76,7 @@ export function createHistory(ctx: Ctx) {
   }
 
   const todayEvents = (): HistoryEvent[] =>
-    ctx.events().map((ev) => ({ ...ev, notify: notifyOf(ev.id, ev.state, SLACK_FAIL_TODAY.includes(ev.equipmentId)) }))
+    ctx.events().map((ev) => ({ ...ev, alarmLevel: ev.code === 'UP_ALARM' ? 'CRITICAL' as const : null, notify: notifyOf(ev.id, ev.state, SLACK_FAIL_TODAY.includes(ev.equipmentId)) }))
 
   const eqOf = (id: string) => MASTER.equipment.find((e) => e.id === id)
 
@@ -90,6 +91,8 @@ export function createHistory(ctx: Ctx) {
           && q.states.includes(ev.state)
           && (!q.code || ev.code === q.code)
           && (!q.ongoing || ev.end == null)
+          // 1분 미만은 비가동 1건으로 세지 않는다 (백엔드 minMinutes=1). 진행 중이면 지금까지 길이로
+          && ((ev.end ? Date.parse(ev.end) : ctx.now()) - Date.parse(ev.start)) >= (q.minMinutes ?? 1) * 60_000
       })
       .sort((a, b) => b.start.localeCompare(a.start))
   }

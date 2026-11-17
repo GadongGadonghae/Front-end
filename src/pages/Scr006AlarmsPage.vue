@@ -119,6 +119,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
         </template>
         <template #cell-code="{ row }">
           <StatusKey :state="row.state" size="sm" :label="row.code" />
+          <span v-if="row.level" :class="['level', { critical: row.critical }]">{{ row.level }}</span>
         </template>
         <template #cell-detail="{ row }"><span class="wrap-text">{{ row.detail }}</span></template>
         <template #cell-duration="{ row }"><b class="num">{{ row.duration }}</b></template>
@@ -212,6 +213,23 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 }
 
 .live {
+  font-weight: var(--fw-strong);
+}
+
+/* 알람 등급: 글자 칸 (심각은 고장 빨강 글자). 색만으로 말하지 않게 글자를 쓴다 */
+.level {
+  display: inline-block;
+  margin: 2px 0 0 calc(var(--key-sm) + var(--sp-2));
+  padding: 0 var(--sp-1);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  color: var(--c-ink-2);
+  font-size: var(--fs-caption);
+}
+
+.level.critical {
+  border-color: var(--c-down);
+  color: var(--c-down);
   font-weight: var(--fw-strong);
 }
 

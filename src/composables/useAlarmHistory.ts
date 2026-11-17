@@ -8,7 +8,7 @@ import type { DowntimeCode, StopState } from '@/types/state'
 import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
-import { DOWNTIME_NAME, PROCESS_NAME, byProcess, lineName } from '@/lib/status'
+import { DOWNTIME_NAME, PROCESS_NAME, byProcess, lineName, ALARM_LEVEL_NAME } from '@/lib/status'
 import { formatDuration, formatTime, toDateStr } from '@/lib/format'
 import { metricLabel } from '@/lib/metrics'
 
@@ -33,6 +33,9 @@ export interface AlarmRow {
   line: string
   equipment: string
   code: string
+  /** 관리값 이탈 알람 등급 (경고·심각) */
+  level: string | null
+  critical: boolean
   detail: string
   duration: string
   notify: HistoryEvent['notify']
@@ -144,6 +147,8 @@ export function useAlarmHistory() {
     line: areaLabel(e.equipmentId),
     equipment: eqLabel(e.equipmentId),
     code: DOWNTIME_NAME[e.code],
+    level: e.alarmLevel ? ALARM_LEVEL_NAME[e.alarmLevel] : null,
+    critical: e.alarmLevel === 'CRITICAL',
     detail: e.detail ?? '-',
     duration: formatDuration(((e.end ? Date.parse(e.end) : now.value) - Date.parse(e.start)) / 1000),
     notify: e.notify,

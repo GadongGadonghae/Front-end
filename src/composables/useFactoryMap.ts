@@ -46,6 +46,10 @@ export function useFactoryMap() {
         done: s.lines.find((x) => x.lineId === id)?.done ?? null,
         plan: planOf(id),
         cells: byArea(id).sort(order).map(cell),
+        reroute: (() => {
+          const l = m.lines.find((x) => x.id === id)
+          return l && l.currentPaintId !== l.defaultPaintId ? (m.equipment.find((e) => e.id === l.currentPaintId)?.shortName ?? null) : null
+        })(),
       })),
       paint: byArea('PT').sort(order).map(cell),
       vision: byArea('VI').map(cell)[0] ?? null,

@@ -34,6 +34,10 @@ export interface ProductionSummary {
   /** 일: 시간대 누적, 주·월: 일별 */
   trend: { x: number; label: string; done: number; plan: number | null }[]
   trendKind: 'hourly' | 'daily'
+  /** 기간 양품률 = 출고 양품 ÷ 생산 (생산 = 검사 + 공정 불량, 백엔드 M-07·U-11) */
+  yieldRate: number | null
+  /** 일별 양품률 (백엔드 U-11 unit=day). 일 조회면 그날까지 7일, 주·월이면 그 기간 */
+  yieldTrend: { date: string; label: string; total: number; good: number; rate: number | null }[]
 }
 
 /** 제품이 공정을 지난 결과 */

@@ -134,8 +134,7 @@ const topGroups = computed(() => [
             :y-digits="p.chart.value.yDigits"
             :series="[{ key: 'v', points: p.chart.value.points }]"
             :ref-lines="p.chart.value.refLines"
-            :over="p.chart.value.over"
-            :under="p.chart.value.under"
+            :marks="p.chart.value.ngPoints"
             :now="p.now.value"
             end-dot
           />

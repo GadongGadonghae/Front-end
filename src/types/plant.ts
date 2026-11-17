@@ -20,6 +20,9 @@ export interface Line {
   name: string
   kind: 'production' | 'paint'
   order: number
+  /** 생산 라인의 도장 경로 (백엔드 C-04): 기본·현재 도장 설비. 도장 구역은 null */
+  defaultPaintId: string | null
+  currentPaintId: string | null
 }
 
 /** DT-002 공정 */

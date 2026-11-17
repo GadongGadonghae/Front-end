@@ -20,7 +20,7 @@ export function useTelemetry(equipmentId: Ref<string | null>, range: Ref<Telemet
     series.value = {
       ...s,
       items: s.items.map((it) => {
-        const add = tick.values.filter((v) => v.item === it.item).map((v) => ({ t: v.t, value: v.value }))
+        const add = tick.values.filter((v) => v.item === it.item).map((v) => ({ t: v.t, value: v.value, result: v.result }))
         return add.length ? { ...it, points: [...it.points.filter((p) => Date.parse(p.t) >= cutoff), ...add] } : it
       }),
     }
@@ -64,7 +64,7 @@ export function telemetryChart(series: TelemetrySeries | null, item: string, ran
     yDigits: y.digits,
     points,
     refLines,
-    over: it?.upper ?? undefined,
-    under: it?.lower ?? undefined,
+    /** 백엔드가 NG로 판정한 점 (빨강 점) */
+    ngPoints: (it?.points ?? []).filter((p) => p.result === 'NG').map((p): [number, number] => [Date.parse(p.t), p.value]),
   }
 }

@@ -4,6 +4,7 @@ import type { LineId, ProcessId } from '@/types/plant'
 import type { Product, ProductDetail, StepResult } from '@/types/production'
 import type { EquipmentLive } from '@/types/live'
 import { LINE_DETAIL, NG_OVERRIDES, OUTBOUND_NG_BY_LINE, PAINT_NG_BY_LINE, PAST_LINE_DONE } from '@/data/mock/scenario'
+import { MASTER } from '@/data/mock/master'
 import { between, dayStart, hash, localDate, rng } from '@/data/mock/rand'
 
 export const PRODUCTION_LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -36,6 +37,11 @@ interface Ctx {
 }
 
 export function createProducts(ctx: Ctx) {
+  /** 그 라인 제품이 가는 도장 설비 (백엔드 C-04 경로). 오늘은 현재 경로, 지난 날은 기본 경로 */
+  const paintOf = (lineId: LineId, isToday: boolean) => {
+    const l = MASTER.lines.find((x) => x.id === lineId)
+    return (isToday ? l?.currentPaintId : l?.defaultPaintId) ?? 'PT1'
+  }
   const past = new Map<string, ProductDetail[]>()
   const today = () => localDate(ctx.now())
 
@@ -116,7 +122,7 @@ export function createProducts(ctx: Ctx) {
         return { SLITTING: '슬리팅 끝 검사 불량', PAINTING: '도장 끝 검사 불량', INSPECTION: '비전 검사 불량' }[p]
       }
       const equipmentOf = (p: ProcessId) => ({
-        COIL: null, SLITTING: `${lineId}-SL`, PRESS: `${lineId}-PR${p === ngAt ? stage : 4}`, WELDING: `${lineId}-WD`, PAINTING: `PT${(i % 2) + 1}`, INSPECTION: 'VI',
+        COIL: null, SLITTING: `${lineId}-SL`, PRESS: `${lineId}-PR${p === ngAt ? stage : 4}`, WELDING: `${lineId}-WD`, PAINTING: paintOf(lineId, isToday), INSPECTION: 'VI',
       })[p]
 
       const isOverride = override && i === finished.length - 1 && ngAt === override.process

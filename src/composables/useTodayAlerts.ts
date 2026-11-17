@@ -8,7 +8,7 @@ import type { RiskEvent, StateEvent } from '@/types/events'
 import type { AlertRowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
-import { DOWNTIME_NAME } from '@/lib/status'
+import { DOWNTIME_NAME, ALARM_LEVEL_NAME } from '@/lib/status'
 import { formatDuration, formatTime } from '@/lib/format'
 import { metricLabel } from '@/lib/metrics'
 
@@ -59,7 +59,7 @@ function create(area: string | undefined): Shared {
         id: e.id,
         kind: e.state,
         title: equipmentName(e.equipmentId),
-        message: [DOWNTIME_NAME[e.code], e.detail].filter(Boolean).join(' · '),
+        message: [e.alarmLevel ? `${DOWNTIME_NAME[e.code]} ${ALARM_LEVEL_NAME[e.alarmLevel]}` : DOWNTIME_NAME[e.code], e.detail].filter(Boolean).join(' · '),
         start: e.start,
         time: formatTime(e.start),
         duration: duration(e.start, e.end),

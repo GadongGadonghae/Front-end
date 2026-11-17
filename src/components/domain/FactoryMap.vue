@@ -61,7 +61,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           @click="emit('openLine', l.id)"
           @keydown="onKey($event, () => emit('openLine', l.id))"
         >
-          <span class="lid"><b>{{ l.id }}</b><span>{{ formatNumber(l.done) }} / {{ formatNumber(l.plan) }}</span></span>
+          <span class="lid"><b>{{ l.id }}</b><span>{{ formatNumber(l.done) }} / {{ formatNumber(l.plan) }}</span><span v-if="l.reroute" class="reroute">→ {{ l.reroute }}</span></span>
           <span class="grp"><EquipCell :cell="l.cells[0]" /></span>
           <span class="grp press"><EquipCell v-for="c in l.cells.slice(1, 5)" :key="c.id" :cell="c" /></span>
           <span class="grp"><EquipCell :cell="l.cells[5]" /></span>
@@ -200,6 +200,12 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 .lid span {
   color: var(--c-ink-3);
   font-size: var(--fs-caption);
+}
+
+/* 도장 경로를 기본에서 바꾼 라인: 지금 가는 도장 설비 (연결선은 기본 경로라 글자로 알린다) */
+.lid .reroute {
+  color: var(--c-accent);
+  font-weight: var(--fw-strong);
 }
 
 .grp {
