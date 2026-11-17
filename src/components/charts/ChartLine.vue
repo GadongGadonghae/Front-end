@@ -21,6 +21,8 @@ const props = withDefaults(defineProps<{
   endDot?: boolean
   /** 주 계열에서 이 값보다 큰 점을 빨강 점으로 */
   over?: number
+  /** 주 계열에서 이 값보다 작은 점을 빨강 점으로 */
+  under?: number
   yDigits?: number
 }>(), { refLines: () => [], bands: () => [], endDot: false, yDigits: 0 })
 
@@ -52,7 +54,7 @@ const yTicksShown = computed(() => {
 const path = (pts: [number, number][]) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${X(a).toFixed(1)},${Y(b).toFixed(1)}`).join('')
 const main = computed(() => props.series.find((s) => (s.kind ?? 'main') === 'main'))
 const last = computed(() => main.value?.points.at(-1) ?? null)
-const overPts = computed(() => (props.over == null || !main.value ? [] : main.value.points.filter(([, v]) => v > props.over!)))
+const overPts = computed(() => (!main.value ? [] : main.value.points.filter(([, v]) => (props.over != null && v > props.over) || (props.under != null && v < props.under))))
 const ready = computed(() => w.value > 0 && h.value > 0)
 </script>
 

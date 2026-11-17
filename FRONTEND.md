@@ -165,10 +165,12 @@ DESIGN.md를 같이 고친다.
 | 부품 | 하는 일 |
 |---|---|
 | `BasePanel` | 패널 껍데기. 제목·메타·오른쪽 도구 자리(slot) |
+| `BaseBreadcrumb` | 이동 경로 (대시보드 > L3 > 프레스). 마지막 항목이 화면 제목 h1 |
+| `BaseFigureRow` | 제목 줄 오른쪽 요약 숫자 묶음, 항목 사이 세로 가는 선 |
 | `BaseTabs` | 링크 탭 (라인 L1~L6, 공정, 리포트 종류) |
 | `BaseSegmented` | 구간 버튼 (일/주/월, 1시간/8시간/오늘, 관리값 항목) |
 | `BaseTable` | 표: 머리줄, 숫자 열 정렬, 누를 수 있는 행, 펼침 행 slot |
-| `BaseField`, `BaseSelect`, `BaseDateField`, `BaseSearch`, `BaseCheck` | 입력 |
+| `BaseInput`, `BaseSelect`, `BaseDateField`, `BaseCheck` | 입력 (`BaseInput` type=search로 검색) |
 | `BaseButton` | 기본·주요·작은 버튼 |
 | `BasePager` | 50건 페이지 |
 | `BaseEmpty` | "데이터 없음" (D-78) |
@@ -221,8 +223,8 @@ DESIGN.md를 같이 고친다.
 | SCR-001 | 대시보드 (3D 전환 SCR-005 포함) | `/` | `pages/Scr001DashboardPage.vue` |
 | SCR-010 | 라인 상세 | `/lines/:lineId` (L1~L6, PT=도장) | `pages/Scr010LinePage.vue` |
 | SCR-002-1 | 코일입고 상세 | `/inbound` | `pages/Scr0021InboundPage.vue` |
-| SCR-002-2~4 | 슬리팅·프레스·용접 상세 | `/lines/:lineId/:process` (slit·press·weld) | `pages/Scr002{2,3,4}*Page.vue` |
-| SCR-002-5 | 도장 상세 | `/lines/PT/paint` | `pages/Scr0025PaintPage.vue` |
+| SCR-002-2~4 | 슬리팅·프레스·용접 상세 | `/lines/:lineId/:process` (slit·press·weld), `?eq=` 처음 고를 설비 | `pages/Scr002ProcessPage.vue` (공통 틀 하나, 공정별로 다른 칸만 바꿈) |
+| SCR-002-5 | 도장 상세 | `/lines/PT/paint` | `pages/Scr002ProcessPage.vue` |
 | SCR-002-6 | 출고 상세 | `/outbound` | `pages/Scr0026OutboundPage.vue` |
 | SCR-003 | 가동률 | `/utilization` | `pages/Scr003UtilizationPage.vue` |
 | SCR-004 | 예지보전 | `/pdm` | `pages/Scr004PdmPage.vue` |

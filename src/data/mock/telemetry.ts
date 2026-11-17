@@ -62,7 +62,7 @@ export function createTelemetry(ctx: Ctx) {
     if (def.item === '지령 주파수') return base.center
     const k = hash(e.id, def.item)
     const slow = Math.sin((t / 1800) * Math.PI * 2 + (k % 628) / 100) * 0.5 + Math.sin(t / 420 + (k % 97)) * 0.25
-    let v = base.center + base.amp * (slow + (noise(k, Math.floor(t)) - 0.5) * 1.2)
+    let v = base.center + base.amp * (slow + (noise(k, Math.floor(t)) - 0.5) * 0.6)
 
     if (def.item === '출력 주파수' && bandsBetween(e, t, t + 1).length) v = 60 - 4 - noise('dip', k, Math.floor(t)) * 4
 
@@ -92,6 +92,10 @@ export function createTelemetry(ctx: Ctx) {
     const step = Math.max(cad, Math.ceil((end - start) / MAX_POINTS / cad) * cad)
     const ts: number[] = []
     for (let t = Math.ceil(start / step) * step; t <= end; t += step) if (!stopped(e, t)) ts.push(t)
+    // 고장으로 멈춘 설비: 멈추기 직전 마지막 사이클 값(이탈 값)을 넣는다
+    const l = ctx.live.get(e.id)
+    const last = l && l.state !== 'R' ? Math.floor(Date.parse(l.since) / 1000) - 1 : null
+    if (last != null && last >= start && !ts.includes(last)) ts.push(last)
     return {
       equipmentId, range,
       items: itemsOf(e).map((def) => ({ ...def, points: ts.map((t) => ({ t: iso(t), value: valueAt(e, def, t) })) })),

@@ -11,13 +11,15 @@ withDefaults(defineProps<{
   suffix?: string
   sub?: string
   size?: 'sm' | 'md' | 'lg'
+  /** 숫자 대신 보일 글 (예: 지속시간 2:48). 있으면 value 대신 쓴다 */
+  text?: string
 }>(), { digits: 0, size: 'md' })
 </script>
 
 <template>
   <div class="fig" :class="size">
     <div class="label">{{ label }}</div>
-    <div class="value"><BaseNumber :value="value" :digits="digits" :unit="unit" :suffix="suffix" /></div>
+    <div class="value"><template v-if="text != null">{{ text }}</template><BaseNumber v-else :value="value" :digits="digits" :unit="unit" :suffix="suffix" /></div>
     <div v-if="sub || $slots.sub" class="sub"><slot name="sub">{{ sub }}</slot></div>
   </div>
 </template>

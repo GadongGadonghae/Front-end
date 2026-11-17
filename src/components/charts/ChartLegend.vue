@@ -1,6 +1,6 @@
-<!-- 선 그래프 범례: 실선(주 계열, 강조 파랑) · 점선(목표·계획·기준) -->
+<!-- 선 그래프 범례: 실선(주 계열, 강조 파랑) · 점선(목표·계획·기준) · 가는 선(보조 계열) · 띠(미세정지 후보 등 구간) -->
 <script setup lang="ts">
-defineProps<{ items: { label: string; kind: 'main' | 'ref' }[] }>()
+defineProps<{ items: { label: string; kind: 'main' | 'ref' | 'thin' | 'band' }[] }>()
 </script>
 
 <template>
@@ -34,5 +34,16 @@ i {
 
 i.ref {
   border-top: var(--line-w-strong) dashed var(--c-ink-3);
+}
+
+i.thin {
+  border-top: var(--chart-stroke-thin) solid var(--c-ink-2);
+}
+
+i.band {
+  height: var(--sp-3);
+  border-top: 0;
+  background: var(--c-idle-tint);
+  box-shadow: inset 0 0 0 var(--line-w) var(--c-idle-edge);
 }
 </style>

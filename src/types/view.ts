@@ -87,3 +87,50 @@ export interface LineNowView {
   ngTotal: number | null
   ngRows: { process: ProcessId; label: string; value: number }[]
 }
+
+/** 공정 상세 설비 카드 (SCR-002 2번) */
+export interface EquipCardView {
+  id: string
+  name: string
+  state: StateCode
+  duration: string
+  pdm: { level: PdmLevel; text: string } | null
+  /** 예: 실설비 · LS iG5A / 시뮬레이터 (D-43) */
+  tag: string | null
+  info: { label: string; value: string; mark?: string }[]
+}
+
+/** 비가동 이력 한 줄 + 조치 메모 (SCR-002 5·6번) */
+export interface HistoryRowView {
+  id: string
+  state: Exclude<StateCode, 'R'>
+  code: string
+  detail: string | null
+  /** 14:20:12 ~ 진행 중 */
+  range: string
+  duration: string
+  ongoing: boolean
+  memo: { text: string; by: string | null; at: string } | null
+}
+
+/** 공정 검사 불량 한 줄 (SCR-002 7번) */
+export interface DefectRowView {
+  key: string
+  time: string
+  productId: string
+  /** 설비 이름이나 라인 */
+  where: string
+  reason: string
+}
+
+/** 가로 막대 목록 한 줄 (ChartBarList BarRow와 같은 모양). composable이 만들 때 쓴다 */
+export interface BarRowView {
+  key: string
+  label: string
+  value: number | null
+  display?: string
+  sub?: string
+  strong?: boolean
+  muted?: boolean
+  tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down'
+}
