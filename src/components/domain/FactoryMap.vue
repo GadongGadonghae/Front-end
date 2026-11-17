@@ -248,6 +248,12 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 }
 
 /* 입고 칸 → 갈래선 */
+
+/* 코일입고는 이름·수량·재고를 다 보이도록 설비 칸보다 크게 (창이 낮아도 두 줄이 들어가게) */
+.inbound > .hit {
+  height: max(calc(100% / 6 - var(--map-cell-inset)), var(--map-inb-h));
+}
+
 .inbound::after {
   content: '';
   position: absolute;
@@ -276,7 +282,6 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 }
 
 .inb {
-  container-type: size;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -304,12 +309,5 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   color: var(--c-ink);
   font-size: var(--fs-heading);
   line-height: 1;
-}
-
-/* 낮은 칸 (1440×810 이하): 이름은 위 구역 이름 줄("입고")에 있으니 숨기고 수량·재고만 한 줄로 */
-@container (max-height: 40px) {
-  .inb-name { display: none; }
-  .inb-row { margin: auto 0; }
-  .inb-row b { font-size: var(--fs-title); }
 }
 </style>
