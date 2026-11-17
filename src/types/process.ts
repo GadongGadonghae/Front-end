@@ -12,7 +12,7 @@ export interface ProcessToday {
   /** 앞·뒤 재공 */
   wip: { before: number | null; after: number | null }
   /** 설비별 오늘 사이클·평균 CT. 가장 느린 단 표시 */
-  equipment: { id: string; cycles: number; avgCtMs: number | null; slowest?: boolean }[]
+  equipment: { id: string; cycles: number; avgCtMs: number | null; slowest?: boolean; wip?: { before: number | null; after: number | null } }[]
   /** 도장: 라인별로 받은 수 */
   receivedByLine?: { lineId: LineId; qty: number }[]
   /** 슬리팅 실설비: 인버터 상태 (D-43) */

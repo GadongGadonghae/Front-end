@@ -126,6 +126,23 @@ export interface ThresholdUpdatedDto {
   updatedAt: string
 }
 
+/** G-01 unit=hour: 시간 구간 × 라인. good = 비전 OK, cumulativeGood = from부터 라인별 누적 */
+export interface HourlySummaryDto {
+  period: string
+  lineId: string
+  inspected: number
+  good: number
+  processNg: number
+  cumulativeGood: number
+}
+
+/** M-15 설비별 사이클 수·평균 CT. 프레스 CT는 라인 제품 간격(네 단이 같음) */
+export interface CycleDto {
+  equipmentId: string
+  cycles: number
+  avgCtMs: number | null
+}
+
 /** M-13 */
 export interface WipDto {
   process: ProcessCode
