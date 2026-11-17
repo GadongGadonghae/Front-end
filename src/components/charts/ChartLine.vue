@@ -81,7 +81,7 @@ const ready = computed(() => w.value > 0 && h.value > 0)
 .chart {
   flex: 1;
   min-width: 0;
-  min-height: 0;
+  min-height: var(--chart-min-h);
 }
 
 svg {

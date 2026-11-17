@@ -4,11 +4,22 @@
 <script setup lang="ts">
 import EquipCell from '@/components/domain/EquipCell.vue'
 import { formatNumber } from '@/lib/format'
+import { countByState, STATE_NAME } from '@/lib/status'
 import type { LineId } from '@/types/plant'
-import type { FactoryMapView } from '@/types/view'
+import type { StateCode } from '@/types/state'
+import type { EquipCellView, FactoryMapView } from '@/types/view'
 
 defineProps<{ view: FactoryMapView }>()
 const emit = defineEmits<{ openLine: [id: LineId]; openInbound: []; openOutbound: [] }>()
+
+/** 화면 낭독기용 이름: 줄 안 설비 상태를 요약 (예: L2 라인 상세, 고장 1, 대기 2, 위험 1) */
+function lineLabel(id: string, cells: EquipCellView[]) {
+  const c = countByState(cells.map((x) => x.state))
+  const parts = (['D', 'I', 'S'] as StateCode[]).filter((s) => c[s] > 0).map((s) => `${STATE_NAME[s]} ${c[s]}`)
+  const pdm = cells.filter((x) => x.pdm).map((x) => `${x.name} ${x.pdm!.text}`)
+  return [`${id} 라인 상세`, ...(parts.length ? parts : ['모두 가동']), ...pdm].join(', ')
+}
+const cellLabel = (prefix: string, c: EquipCellView) => `${prefix}, ${c.name} ${STATE_NAME[c.state]}${c.duration ? ` ${c.duration}` : ''}`
 
 const onKey = (e: KeyboardEvent, go: () => void) => {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() }
@@ -46,7 +57,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           class="hit line"
           role="button"
           tabindex="0"
-          :aria-label="`${l.id} 라인 상세`"
+          :aria-label="lineLabel(l.id, l.cells)"
           @click="emit('openLine', l.id)"
           @keydown="onKey($event, () => emit('openLine', l.id))"
         >
@@ -65,7 +76,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           class="hit stub both"
           role="button"
           tabindex="0"
-          aria-label="도장 라인 상세"
+          :aria-label="cellLabel('도장 라인 상세', c)"
           @click="emit('openLine', 'PT')"
           @keydown="onKey($event, () => emit('openLine', 'PT'))"
         ><EquipCell :cell="c" /></div>
@@ -78,7 +89,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           class="hit stub left"
           role="button"
           tabindex="0"
-          aria-label="출고 상세"
+          :aria-label="cellLabel('출고 상세', view.vision)"
           @click="emit('openOutbound')"
           @keydown="onKey($event, () => emit('openOutbound'))"
         ><EquipCell :cell="view.vision" /></div>
@@ -94,8 +105,6 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   flex-direction: column;
   min-height: 0;
   padding: var(--sp-3) var(--sp-4);
-  border: var(--line-w) solid var(--c-line);
-  border-radius: var(--r-2);
   background-color: var(--c-surface);
   background-image:
     linear-gradient(var(--c-line) var(--line-w), transparent var(--line-w)),
@@ -137,6 +146,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   position: relative;
   flex: 1;
   min-height: 0;
+  container: map / size;
 }
 
 .lines {
@@ -292,5 +302,32 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   color: var(--c-ink);
   font-size: var(--fs-heading);
   line-height: 1;
+}
+
+/* 배치도가 낮을 때(줄 높이 약 40px 미만): 라인 이름·실적, 입고 칸을 한 줄로 */
+@container map (max-height: 240px) {
+  .lid {
+    flex-direction: row;
+    align-items: baseline;
+    gap: var(--sp-2);
+  }
+
+  .lid b {
+    font-size: var(--fs-body);
+  }
+
+  .inb {
+    flex-direction: row;
+    align-items: center;
+    padding: 0 var(--sp-2);
+  }
+
+  .inb-name {
+    display: none;
+  }
+
+  .inb-row b {
+    font-size: var(--fs-body);
+  }
 }
 </style>

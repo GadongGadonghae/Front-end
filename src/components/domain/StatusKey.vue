@@ -63,10 +63,16 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
   font-weight: var(--fw-strong);
 }
 
-
+/* 해제됨: 색을 빼고 상태 색 테두리 + 흐린 먹 글자. 글자 대비 4.5:1 이상 유지 (WCAG 1.4.3, 불투명도로 흐리게 하지 않음) */
 .muted .key {
-  opacity: 0.45;
+  background: transparent;
+  color: var(--c-ink-3);
+  box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-line-ink);
 }
+
+.muted .key.st-R { box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-run); }
+.muted .key.st-I { box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-idle-edge); }
+.muted .key.st-D { box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-down); }
 
 .muted .text {
   color: var(--c-ink-3);

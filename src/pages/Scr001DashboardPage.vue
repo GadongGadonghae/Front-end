@@ -64,6 +64,7 @@ function openReport(r: AlertRowView) {
 
 <template>
   <div class="dash">
+    <h1 class="sr-only">대시보드</h1>
     <div class="main">
       <BasePanel title="공장 배치도" meta="설비 39대">
         <template #tools>
@@ -82,7 +83,12 @@ function openReport(r: AlertRowView) {
       </BasePanel>
 
       <div class="lower">
-        <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
+        <BasePanel class="go" @click="router.push('/production')">
+          <!-- 패널 전체는 마우스로, 제목 링크는 키보드로 생산 조회에 간다 -->
+          <template #head>
+            <h2><RouterLink class="title-link" to="/production" @click.stop>오늘 생산</RouterLink></h2>
+            <span class="meta">실적 = 출고 양품</span>
+          </template>
           <template #tools><ChartLegend :items="[{ label: '실적', kind: 'main' }, { label: '목표', kind: 'ref' }]" /></template>
           <div class="figs">
             <BaseFigure label="실적" :value="plant?.done" size="lg" />
@@ -133,9 +139,10 @@ function openReport(r: AlertRowView) {
   min-height: 0;
 }
 
+/* 아래 3칸은 최소 높이를 지키고, 창이 낮아지면 배치도가 줄어든다 (배치도 칸은 낮으면 한 줄 모드) */
 .main {
   display: grid;
-  grid-template-rows: minmax(0, 1.75fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1.75fr) minmax(var(--dash-lower-min), 1fr);
   gap: var(--sp-4);
   min-width: 0;
   min-height: 0;
@@ -150,6 +157,30 @@ function openReport(r: AlertRowView) {
 
 .go {
   cursor: pointer;
+}
+
+.go h2 {
+  font-size: var(--fs-title);
+  font-weight: var(--fw-strong);
+  white-space: nowrap;
+}
+
+.go .meta {
+  color: var(--c-ink-3);
+  font-size: var(--fs-body);
+  white-space: nowrap;
+}
+
+/* 누르는 높이 24px 이상 (WCAG 2.5.8) */
+.title-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--sp-6);
+  text-decoration: none;
+}
+
+.title-link:hover {
+  text-decoration: underline;
 }
 
 .figs {

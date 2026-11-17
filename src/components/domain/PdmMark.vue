@@ -33,8 +33,9 @@ withDefaults(defineProps<{ level: PdmLevel; variant?: 'tile' | 'swatch'; muted?:
   color: var(--c-caution-ink);
 }
 
+/* 해제됨: 테두리는 남기고 글자만 흐린 먹 (불투명도로 흐리게 하지 않음, 대비 4.5:1 이상) */
 .tile.muted {
-  opacity: 0.45;
+  color: var(--c-ink-3);
 }
 
 .swatch {

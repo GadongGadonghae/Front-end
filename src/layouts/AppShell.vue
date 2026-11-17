@@ -84,6 +84,7 @@ function viewFault() {
 .shell {
   display: grid;
   grid-template-rows: var(--nav-h) minmax(0, 1fr);
+  min-width: var(--app-min-w);
   height: 100%;
 }
 
