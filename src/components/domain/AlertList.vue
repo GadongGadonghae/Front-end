@@ -48,7 +48,7 @@ li {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: var(--sp-3);
-  padding: var(--sp-4) var(--panel-pad);
+  padding: var(--sp-4) var(--sp-5);
   border-top: var(--line-w) solid var(--c-line);
 }
 

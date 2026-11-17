@@ -23,7 +23,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  padding: var(--panel-pad);
+  padding: var(--sp-5);
   border: var(--line-w) solid var(--c-line);
   border-radius: var(--r-3);
   background: var(--c-surface);
@@ -72,6 +72,6 @@ h2 {
 
 .flush .ph {
   margin-bottom: 0;
-  padding: var(--panel-pad) var(--panel-pad) var(--sp-3);
+  padding: var(--sp-5) var(--sp-5) var(--sp-3);
 }
 </style>
