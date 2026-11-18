@@ -102,7 +102,7 @@ li {
   grid-template-columns: subgrid;
   align-items: center;
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .name {
@@ -152,7 +152,7 @@ li {
 
 .sub {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-align: right;
 }
 

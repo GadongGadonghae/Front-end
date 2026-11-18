@@ -174,7 +174,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -199,12 +199,12 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 .lab,
 .tilde {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .hint {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .num {
@@ -224,7 +224,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
   border: var(--line-w) solid var(--c-line-strong);
   border-radius: var(--r-1);
   color: var(--c-ink-2);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .level.critical {
@@ -299,7 +299,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
   background: none;
   color: var(--c-accent);
   font: inherit;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -313,6 +313,6 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 .who small {
   color: var(--c-ink-3);
   white-space: nowrap;
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 </style>

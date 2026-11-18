@@ -16,7 +16,7 @@ defineProps<{ items: { label: string; kind: 'main' | 'ref' | 'thin' | 'band' | '
   margin: 0;
   padding: 0;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   list-style: none;
 }
 

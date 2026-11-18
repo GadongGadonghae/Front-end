@@ -82,6 +82,6 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 .note {
   margin-top: var(--sp-3);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 </style>

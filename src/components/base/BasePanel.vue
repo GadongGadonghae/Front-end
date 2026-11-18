@@ -39,7 +39,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
 }
 
 h2 {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -47,7 +47,7 @@ h2 {
 .meta {
   overflow: hidden;
   color: var(--c-ink-3);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

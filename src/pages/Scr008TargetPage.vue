@@ -89,7 +89,7 @@ const COLS: TableColumn[] = [
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -122,7 +122,7 @@ const COLS: TableColumn[] = [
 .unit,
 .lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .unit {
@@ -139,7 +139,7 @@ const COLS: TableColumn[] = [
 }
 
 .plan b {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
@@ -152,7 +152,7 @@ const COLS: TableColumn[] = [
 
 .msg {
   margin: 0;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .msg.err {
@@ -169,7 +169,7 @@ const COLS: TableColumn[] = [
   padding: var(--sp-3) 0 0 var(--sp-4);
   border-top: var(--line-w) solid var(--c-line);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   line-height: 1.7;
 }
 
@@ -189,6 +189,6 @@ b.n,
 .live,
 .locked {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 </style>

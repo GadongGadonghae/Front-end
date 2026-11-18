@@ -32,7 +32,7 @@ button {
   border-left: var(--line-w) solid var(--c-line);
   background: var(--c-surface);
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   white-space: nowrap;
   cursor: pointer;
 }
@@ -52,6 +52,6 @@ button.on {
 
 .sm button {
   height: var(--control-h-sm);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 </style>

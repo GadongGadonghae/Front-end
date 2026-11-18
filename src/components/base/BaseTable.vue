@@ -77,7 +77,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 th {
@@ -88,7 +88,7 @@ th {
   border-bottom: var(--line-w) solid var(--c-line-strong);
   background: var(--c-surface);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   text-align: left;
   white-space: nowrap;

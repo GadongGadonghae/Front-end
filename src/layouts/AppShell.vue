@@ -102,7 +102,7 @@ function viewFault() {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
   text-decoration: none;
 }
@@ -146,7 +146,7 @@ nav a.on {
   border: var(--line-w) solid var(--c-line-strong);
   border-radius: var(--r-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .clock b {

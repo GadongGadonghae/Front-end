@@ -244,7 +244,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 .hfig .hl {
   margin-bottom: var(--sp-1);
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 /* 본문: 왼쪽(카드·그래프) | 오른쪽 열(이력·검사·미세정지) */
@@ -342,13 +342,13 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 .now-tbl {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .now-tbl th {
   padding: 0 0 var(--sp-2);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   text-align: left;
 }
@@ -387,14 +387,14 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 }
 
 .micro h2 {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
 .micro .meta {
   display: block;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .route {
@@ -413,7 +413,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
 .rname {
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .rbar {
@@ -436,13 +436,13 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
 .rnote {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .rmsg {
   margin: var(--sp-3) 0 0;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .rmsg.err {

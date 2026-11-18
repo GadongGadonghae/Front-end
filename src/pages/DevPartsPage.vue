@@ -122,7 +122,7 @@ const pressure: [number, number][] = Array.from({ length: 60 }, (_, i) => [i, 29
 
 <style scoped>
 h1 {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 

@@ -25,7 +25,7 @@ const WORD: Record<StepResult, string> = { ok: '통과', ng: '불량', now: '진
 
 .st {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .st b {

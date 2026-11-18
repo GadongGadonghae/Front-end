@@ -26,7 +26,7 @@ const current = computed(() => props.items.at(-1)?.label ?? '')
   align-items: center;
   gap: var(--sp-2);
   color: var(--c-ink-3);
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   white-space: nowrap;
 }
 
@@ -45,7 +45,7 @@ a:hover {
 
 h1 {
   color: var(--c-ink);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 </style>

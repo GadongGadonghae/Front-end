@@ -56,15 +56,13 @@
 
   /* ── 글자 ── */
   --font: pretendard, "Malgun Gothic", system-ui, sans-serif;
-  --fs-caption: 12px;
-  --fs-label: 13px;
-  --fs-body: 14px;
-  --fs-body-lg: 15px;
-  --fs-title: 16px;
-  --fs-heading: 20px;
-  --fs-figure-sm: 24px;
-  --fs-figure: 32px;
-  --fs-figure-lg: 44px;
+
+  /* 글자 크기 5단계: 보조 · 본문 · 제목·보조 숫자 · 요약 숫자 · 핵심 숫자 */
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 20px;
+  --fs-xl: 32px;
+  --fs-2xl: 44px;
   --fw-regular: 400;
   --fw-strong: 600;
   --fw-code: 700;  /* 상태 코드 글자(R/S/I/D)만 */

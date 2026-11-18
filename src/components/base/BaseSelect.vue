@@ -24,7 +24,7 @@ const model = defineModel<T>({ required: true })
 
 .lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -56,7 +56,7 @@ select {
   background: var(--c-surface);
   color: var(--c-ink);
   font: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   appearance: none;
   cursor: pointer;
 }

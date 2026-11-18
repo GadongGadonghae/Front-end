@@ -60,7 +60,7 @@ const wide = (s: TimelineSegment) => (s.to - s.from) / props.span > 0.025
 
 .name {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -79,7 +79,7 @@ const wide = (s: TimelineSegment) => (s.to - s.from) / props.span > 0.025
   display: grid;
   place-items: center;
   overflow: hidden;
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-style: normal;
   font-weight: var(--fw-code);
 }
@@ -106,7 +106,7 @@ const wide = (s: TimelineSegment) => (s.to - s.from) / props.span > 0.025
   position: absolute;
   top: 0;
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   white-space: nowrap;
   transform: translateX(-50%);

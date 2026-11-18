@@ -40,7 +40,7 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
   width: var(--key-md);
   height: var(--key-md);
   border-radius: var(--r-1);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   font-weight: var(--fw-code);
   line-height: 1;
 }
@@ -48,18 +48,18 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
 .sm .key {
   width: var(--key-sm);
   height: var(--key-sm);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .lg .key {
   width: var(--key-lg);
   height: var(--key-lg);
   border-radius: var(--r-2);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
 }
 
 .lg .text {
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 
@@ -71,11 +71,11 @@ const text = computed(() => (props.label === true ? STATE_NAME[props.state] : pr
   width: var(--key-xl);
   height: var(--key-xl);
   border-radius: var(--r-2);
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
 }
 
 .xl .text {
-  font-size: var(--fs-figure);
+  font-size: var(--fs-xl);
   font-weight: var(--fw-strong);
   line-height: 1;
 }

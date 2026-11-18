@@ -36,13 +36,13 @@ const run = computed(() => (props.status.running ? (props.status.direction === '
   grid-template-columns: auto auto minmax(0, 1fr);
   align-content: start;
   gap: var(--sp-3) var(--sp-8);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 dt {
   margin-bottom: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 dd {
@@ -53,7 +53,7 @@ dd {
 .sub {
   display: block;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
 }
 </style>

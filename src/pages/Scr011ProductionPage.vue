@@ -221,7 +221,7 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -241,7 +241,7 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
 
 .lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 /* 검색: 이름표를 왼쪽에 (다른 필터와 같은 모양) */
@@ -277,7 +277,7 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
 
 .sub {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .ng {
@@ -287,7 +287,7 @@ const nowHour = computed(() => (date.value === p.today ? s.value?.trend.at(-1)?.
   padding: 0;
   list-style: none;
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .ng li {

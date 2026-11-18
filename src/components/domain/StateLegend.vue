@@ -32,7 +32,7 @@ const ORDER: StateCode[] = ['R', 'S', 'I', 'D', 'DC']
   margin: 0;
   padding: 0;
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   list-style: none;
 }
 

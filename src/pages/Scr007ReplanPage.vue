@@ -174,7 +174,7 @@ async function downloadPdf() {
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -197,7 +197,7 @@ async function downloadPdf() {
 .day {
   padding: var(--sp-3) 0 var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .day:first-child {
@@ -231,14 +231,14 @@ async function downloadPdf() {
 
 .item time {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .item span {
   grid-column: 1 / -1;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .doc {
@@ -259,14 +259,14 @@ async function downloadPdf() {
 }
 
 .doc-head h2 {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 
 .doc-head p {
   margin: var(--sp-1) 0 0;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 section {
@@ -278,7 +278,7 @@ section {
 }
 
 h3 {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
@@ -296,7 +296,7 @@ section .text {
 
 .facts dt {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .facts dd {
@@ -353,7 +353,7 @@ b.n {
   padding: 2px var(--sp-2);
   border: var(--line-w) solid;
   border-radius: var(--r-1);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -371,6 +371,6 @@ b.n {
 .demo {
   margin: var(--sp-4) 0 0;
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 </style>

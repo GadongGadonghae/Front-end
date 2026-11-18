@@ -49,7 +49,7 @@ const to = computed(() => Math.min(props.total, page.value * props.size))
 .info {
   margin-right: auto;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 button {
@@ -61,7 +61,7 @@ button {
   background: var(--c-surface);
   color: var(--c-ink-2);
   font: inherit;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 

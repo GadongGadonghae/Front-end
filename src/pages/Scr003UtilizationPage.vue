@@ -116,7 +116,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -136,7 +136,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
 
 .lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .layout {
@@ -166,7 +166,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
   margin-top: auto;
   padding-top: var(--sp-4);
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .future-key {
@@ -174,7 +174,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
   align-items: center;
   gap: var(--sp-2);
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 /* 낮은 창: 막대 8줄·타임라인 8줄이 칸에 들어가도록 줄 간격과 띠 두께를 줄인다 */
@@ -192,7 +192,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
   }
 
   .main :deep(.bars li) {
-    font-size: var(--fs-label);
+    font-size: var(--fs-sm);
   }
 
   .main :deep(.tl) {

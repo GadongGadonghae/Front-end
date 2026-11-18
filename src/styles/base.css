@@ -15,7 +15,7 @@ body {
   background: var(--c-canvas);
   color: var(--c-ink);
   font-family: var(--font);
-  font-size: var(--fs-body-lg);
+  font-size: var(--fs-md);
   line-height: var(--lh-body);
   font-variant-numeric: tabular-nums;  /* 1초 갱신에도 자릿수가 흔들리지 않게 (DESIGN.md) */
   -webkit-font-smoothing: antialiased;

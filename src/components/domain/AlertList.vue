@@ -94,7 +94,7 @@ li {
   max-width: 100%;
   overflow: hidden;
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -108,7 +108,7 @@ li {
   display: grid;
   justify-items: end;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .meta b {
@@ -122,7 +122,7 @@ li {
 
 li:not(.off) .meta b {
   color: var(--c-ink);
-  font-size: var(--fs-body-lg);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 

@@ -70,7 +70,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 
 .name {
   overflow: hidden;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -78,24 +78,24 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 
 .pdm {
   margin-left: auto;
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
 
 .code {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-code);
   line-height: 1;
 }
 
 .word {
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .dur {
   margin-left: auto;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
 }
 
@@ -112,22 +112,22 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 }
 
 .lg .name {
-  font-size: var(--fs-body-lg);
+  font-size: var(--fs-md);
 }
 
 .why {
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   line-height: var(--lh-body);
 }
 
 .why b {
   display: block;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
 .note {
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .info {
@@ -135,7 +135,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   grid-template-columns: auto 1fr;
   align-content: start;
   gap: var(--sp-1) var(--sp-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -154,15 +154,15 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 }
 
 .lg .code {
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
 }
 
 .lg .word {
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .lg .dur {
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 /* 좁은 칸: 명칭 숨김 */
@@ -175,7 +175,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   .in { flex-direction: row; align-items: center; gap: var(--sp-1); }
   .row { margin-left: auto; flex: none; }
   .word { display: none; }
-  .code { font-size: var(--fs-body); }
+  .code { font-size: var(--fs-md); }
 
   /* 비율 글자는 숨기고 바깥 테두리로만 예지보전을 알린다 (비율은 알림 열·예지보전 화면) */
   .pdm { display: none; }
@@ -187,7 +187,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
 @container (max-width: 150px) {
   .lg { margin: 0 calc(var(--sp-2) * -1); }
   .lg .word { display: none; }
-  .info { gap: 0 var(--sp-1); font-size: var(--fs-caption); }
+  .info { gap: 0 var(--sp-1); font-size: var(--fs-sm); }
 
   .lg .why span {
     display: -webkit-box;
@@ -214,6 +214,6 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   .lg .info dd:nth-of-type(n + 2) { display: none; }
   .lg { gap: var(--sp-1); }
   .lg .info { gap: 0 var(--sp-3); }
-  .lg .code { font-size: var(--fs-heading); }
+  .lg .code { font-size: var(--fs-lg); }
 }
 </style>

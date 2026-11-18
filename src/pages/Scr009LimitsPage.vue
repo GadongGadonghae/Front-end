@@ -104,7 +104,7 @@ const TABS = [
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -126,7 +126,7 @@ const TABS = [
 
 .note {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .form {
@@ -138,7 +138,7 @@ table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .c-unit { width: 6em; }
@@ -149,7 +149,7 @@ th {
   padding: var(--sp-2) var(--sp-3);
   border-bottom: var(--line-w) solid var(--c-line-strong);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   text-align: left;
 }
@@ -172,7 +172,7 @@ td:first-child {
 .changed {
   margin-left: var(--sp-2);
   color: var(--c-accent);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
 }
 
@@ -208,7 +208,7 @@ tr.bad td {
 tr.err-row td {
   padding-top: 0;
   color: var(--c-down);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
 }
 
@@ -216,12 +216,12 @@ tr.err-row td {
   display: flex;
   flex-direction: column;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .mod small {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .foot {
@@ -234,7 +234,7 @@ tr.err-row td {
 .msg {
   margin: 0 auto 0 0;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .msg.warn {

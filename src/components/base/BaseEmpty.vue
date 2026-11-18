@@ -14,6 +14,6 @@ withDefaults(defineProps<{ text?: string }>(), { text: '데이터 없음' })
   place-items: center;
   min-height: var(--control-h-lg);
   color: var(--c-ink-3);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 </style>

@@ -33,7 +33,7 @@ a {
   padding: 0 var(--sp-4);
   border-left: var(--line-w) solid var(--c-line);
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   text-decoration: none;
   white-space: nowrap;
 }

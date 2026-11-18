@@ -69,7 +69,7 @@ const columns: TableColumn[] = props.detail === 'reason'
   margin-top: var(--sp-1);
   overflow: hidden;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

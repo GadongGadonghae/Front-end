@@ -107,7 +107,7 @@ function onKey(e: KeyboardEvent, go: () => void) {
   background: var(--c-surface);
   color: var(--c-ink);
   font: inherit;
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
   cursor: pointer;
 }
@@ -150,7 +150,7 @@ function onKey(e: KeyboardEvent, go: () => void) {
 .foot {
   grid-row: 3;
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .foot b {
@@ -160,7 +160,7 @@ function onKey(e: KeyboardEvent, go: () => void) {
 
 .note {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 /* 공정 사이·양 끝: 가운데 물류 선 + 글자 */
@@ -201,14 +201,14 @@ function onKey(e: KeyboardEvent, go: () => void) {
   border-radius: var(--r-1);
   background: var(--c-surface);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-align: center;
 }
 
 .link b {
   display: block;
   color: var(--c-ink);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }

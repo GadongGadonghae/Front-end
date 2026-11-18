@@ -30,7 +30,7 @@ defineProps<{ label?: string }>()
 
 .label {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 @media (height <= 860px) {

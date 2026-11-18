@@ -75,7 +75,7 @@ onBeforeUnmount(() => {
   border-radius: calc(var(--badge-h) / 2);
   background: var(--c-down);
   color: var(--c-down-ink);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
   line-height: var(--badge-h);
   text-align: center;
@@ -105,7 +105,7 @@ li {
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-4);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .what {
@@ -129,7 +129,7 @@ li.off .what b {
 
 .when {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .empty {
@@ -142,7 +142,7 @@ li.off .what b {
   display: block;
   padding: var(--sp-3) var(--sp-4);
   border-top: var(--line-w) solid var(--c-line);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   text-align: center;
   text-decoration: none;
 }

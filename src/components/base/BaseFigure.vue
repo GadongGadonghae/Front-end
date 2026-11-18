@@ -27,26 +27,26 @@ withDefaults(defineProps<{
 <style scoped>
 .label {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .value {
-  font-size: var(--fs-figure);
+  font-size: var(--fs-xl);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }
 
 .sm .value {
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
 }
 
 .lg .value {
-  font-size: var(--fs-figure-lg);
+  font-size: var(--fs-2xl);
 }
 
 .sub {
   margin-top: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 </style>

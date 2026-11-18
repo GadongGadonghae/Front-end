@@ -44,7 +44,7 @@ b {
 
 p {
   color: var(--c-inverse-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .view {

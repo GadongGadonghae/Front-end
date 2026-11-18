@@ -44,19 +44,19 @@ li {
 
 .name {
   color: var(--c-ink-2);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 b {
   margin-left: auto;
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }
 
 .is-row b {
   margin-left: var(--sp-1);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
 }
 
 .big {
@@ -64,7 +64,7 @@ b {
 }
 
 .big b {
-  font-size: var(--fs-figure);
+  font-size: var(--fs-xl);
   line-height: 1;
 }
 

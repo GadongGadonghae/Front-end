@@ -23,7 +23,7 @@ const model = defineModel<boolean>({ default: false })
   border-radius: var(--r-2);
   background: var(--c-surface);
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   cursor: pointer;
 }
 

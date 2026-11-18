@@ -72,18 +72,18 @@ defineEmits<{ select: [id: string] }>()
 }
 
 .code {
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-code);
   line-height: var(--lh-tight);
 }
 
 .word {
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .dur {
   margin-left: auto;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
@@ -95,7 +95,7 @@ defineEmits<{ select: [id: string] }>()
 
 .name {
   margin-bottom: var(--sp-1);
-  font-size: var(--fs-body-lg);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
@@ -105,7 +105,7 @@ defineEmits<{ select: [id: string] }>()
   border-radius: var(--r-1);
   box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
   color: var(--c-ink-2);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   vertical-align: middle;
 }
@@ -114,7 +114,7 @@ defineEmits<{ select: [id: string] }>()
   display: flex;
   justify-content: space-between;
   gap: var(--sp-3);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .k {
@@ -128,14 +128,14 @@ defineEmits<{ select: [id: string] }>()
 .v small {
   margin-right: var(--sp-2);
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
 }
 
 .pdm {
   margin-top: var(--sp-1);
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 @media (height <= 860px) {

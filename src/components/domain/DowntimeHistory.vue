@@ -93,13 +93,13 @@ li.t-idle + li {
 }
 
 .what b {
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
 .detail {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .when {
@@ -107,13 +107,13 @@ li.t-idle + li {
   flex-direction: column;
   align-items: flex-end;
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
 .when b {
   color: var(--c-ink);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
@@ -139,14 +139,14 @@ li.t-idle + li {
 .note {
   flex: 1 0 100%;
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .memo-line {
   display: flex;
   align-items: baseline;
   gap: var(--sp-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .memo-text {

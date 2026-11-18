@@ -29,7 +29,7 @@ function onInput(e: Event) {
 
 .lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -41,6 +41,6 @@ input {
   background: var(--c-surface);
   color: var(--c-ink);
   font: inherit;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 </style>

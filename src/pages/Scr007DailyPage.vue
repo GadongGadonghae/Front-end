@@ -120,14 +120,14 @@ const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
 
 .note {
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -161,7 +161,7 @@ const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
 
 .sub {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .mini {
@@ -175,7 +175,7 @@ const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
   display: flex;
   justify-content: space-between;
   padding: var(--sp-1) 0;
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .mini span,
@@ -198,7 +198,7 @@ b.n {
 .unit {
   margin-left: 2px;
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .scroll {
@@ -209,7 +209,7 @@ b.n {
 .total {
   flex: none;
   padding: var(--sp-2) 0 0;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 </style>

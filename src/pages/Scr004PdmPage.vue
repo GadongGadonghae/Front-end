@@ -167,7 +167,7 @@ const topGroups = computed(() => [
 
 <style scoped>
 .title {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -175,7 +175,7 @@ const topGroups = computed(() => [
 .note {
   overflow: hidden;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -198,12 +198,12 @@ const topGroups = computed(() => [
 
 .counts dt {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .counts dd {
   margin: 0;
-  font-size: var(--fs-figure-sm);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
 }
@@ -221,7 +221,7 @@ const topGroups = computed(() => [
 .grp {
   padding: var(--sp-3) 0 var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .it {
@@ -260,14 +260,14 @@ const topGroups = computed(() => [
 }
 
 .pc {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-variant-numeric: tabular-nums;
 }
 
 .itm {
   grid-column: 1 / -1;
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .meter {
@@ -296,7 +296,7 @@ const topGroups = computed(() => [
   border: var(--line-w-strong) solid var(--c-line-strong);
   border-radius: var(--r-1);
   color: var(--c-ink-2);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-strong);
   line-height: 1.5;
 }
@@ -318,7 +318,7 @@ const topGroups = computed(() => [
   gap: var(--sp-1);
   padding: var(--sp-3) 0 var(--sp-2);
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   cursor: pointer;
   list-style: none;
 }
@@ -345,18 +345,18 @@ const topGroups = computed(() => [
 }
 
 .sel h2 {
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 
 .sel .tag {
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .since {
   margin-left: auto;
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -394,33 +394,33 @@ const topGroups = computed(() => [
 .eta .lab,
 .eta .sub {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .eta b {
   display: block;
   margin: var(--sp-1) 0;
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
 }
 
 .later {
   margin-left: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 .items {
   width: 100%;
   border-collapse: collapse;
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .items th {
   padding: var(--sp-1) var(--sp-3);
   border-bottom: var(--line-w) solid var(--c-line-strong);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-regular);
   text-align: left;
 }

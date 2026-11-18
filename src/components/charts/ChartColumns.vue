@@ -71,7 +71,7 @@ svg {
 }
 
 .grid { stroke: var(--c-line); }
-.tick { fill: var(--c-ink-3); font-size: var(--fs-caption); }
+.tick { fill: var(--c-ink-3); font-size: var(--fs-sm); }
 .col { fill: var(--c-ink-3); }
 .col.last { fill: var(--c-accent); }
 .ref { stroke: var(--c-ink-2); stroke-width: var(--line-w-strong); stroke-dasharray: 4 4; }

@@ -127,7 +127,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   flex: none;
   margin-bottom: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   text-align: center;
 }
 
@@ -192,14 +192,14 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 }
 
 .lid b {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-code);
   line-height: var(--lh-tight);
 }
 
 .lid span {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 
 /* 도장 경로를 기본에서 바꾼 라인: 지금 가는 도장 설비 (연결선은 기본 경로라 글자로 알린다) */
@@ -299,7 +299,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
 
 .inb-name {
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .inb-row {
@@ -308,12 +308,12 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
   justify-content: space-between;
   gap: var(--sp-2);
   color: var(--c-ink-2);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .inb-row b {
   color: var(--c-ink);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   line-height: 1;
 }
 </style>

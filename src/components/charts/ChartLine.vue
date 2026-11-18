@@ -90,8 +90,8 @@ svg {
 }
 
 .grid { stroke: var(--c-line); }
-.tick { fill: var(--c-ink-3); font-size: var(--fs-caption); }
-.ref-label { fill: var(--c-ink-2); font-size: var(--fs-caption); }
+.tick { fill: var(--c-ink-3); font-size: var(--fs-sm); }
+.ref-label { fill: var(--c-ink-2); font-size: var(--fs-sm); }
 .ref { fill: none; stroke-width: var(--line-w); }
 
 .ref.target,

@@ -65,7 +65,7 @@ h1 {
   align-items: center;
   gap: var(--sp-2);
   margin-bottom: var(--sp-2);
-  font-size: var(--fs-heading);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
 }
 
@@ -76,11 +76,11 @@ h1 {
 
 .error {
   color: var(--c-down);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 .note {
   color: var(--c-ink-3);
-  font-size: var(--fs-caption);
+  font-size: var(--fs-sm);
 }
 </style>

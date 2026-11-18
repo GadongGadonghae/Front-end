@@ -167,14 +167,14 @@ function openReport(r: AlertRowView) {
 }
 
 .go h2 {
-  font-size: var(--fs-title);
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
 
 .go .meta {
   color: var(--c-ink-3);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   white-space: nowrap;
 }
 
@@ -226,13 +226,13 @@ function openReport(r: AlertRowView) {
 .lead-sub {
   padding-bottom: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   line-height: var(--lh-body);
 }
 
 .unset {
   color: var(--c-caution-ink);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
 }
 
 /* 큰 숫자 아래 구분선 + 세 요소·공정별 막대를 남은 높이에 펼침 */
@@ -248,7 +248,7 @@ function openReport(r: AlertRowView) {
 /* 낮은 창(1440×810 등): 아래 3칸이 낮아지므로 큰 숫자와 간격을 한 단계 줄인다 */
 @media (height <= 860px) {
   .lower :deep(.fig.lg .value) {
-    font-size: var(--fs-figure);
+    font-size: var(--fs-xl);
   }
 
   .parts {

@@ -22,7 +22,7 @@ withDefaults(defineProps<{ variant?: 'default' | 'primary'; size?: 'md' | 'sm'; 
   border: var(--line-w) solid var(--c-line-strong);
   border-radius: var(--r-2);
   background: var(--c-surface);
-  font-size: var(--fs-body);
+  font-size: var(--fs-md);
   white-space: nowrap;
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease-out);
@@ -35,7 +35,7 @@ withDefaults(defineProps<{ variant?: 'default' | 'primary'; size?: 'md' | 'sm'; 
 .btn.sm {
   height: var(--control-h-sm);
   padding: 0 var(--sp-3);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
 }
 
 .btn.primary {

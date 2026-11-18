@@ -18,7 +18,7 @@ withDefaults(defineProps<{ level: PdmLevel; variant?: 'tile' | 'swatch'; muted?:
   height: var(--key-md);
   padding: 0 var(--sp-2);
   border-radius: var(--r-1);
-  font-size: var(--fs-label);
+  font-size: var(--fs-sm);
   font-weight: var(--fw-code);
   white-space: nowrap;
 }
