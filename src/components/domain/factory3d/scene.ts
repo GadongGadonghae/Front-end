@@ -21,7 +21,11 @@ export interface SceneHandlers {
   onPick(equipmentId: string): void
   /** 라인 이름표를 눌렀을 때 */
   onLine(lineId: ProductionLineId): void
+  /** 구역 이름을 눌렀을 때 (코일 적재장 · 도장 · 비전/출하) */
+  onZone(zone: ZoneId): void
 }
+
+export type ZoneId = 'inbound' | 'paint' | 'outbound'
 
 export interface SceneIssue { equipmentId: string; state: StateCode }
 
@@ -227,7 +231,15 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     t.el.addEventListener('click', () => on.onLine(L))
     return t
   })
-  for (const [n, x, y, z] of [['코일 적재장', -64, 7, -42], ['슬리팅', -41, 6, -37], ['프레스 ×4', -12, 11, -37], ['용접', 18, 8, -37], ['도장 1', 48, 9, -24], ['도장 2', 48, 9, 12], ['비전 검사', 74, 8, -6], ['출하', 86, 6, -16]] as const) tag(n, 'f3d-zone', [x, y, z])
+  // 구역 이름: 코일 적재장·도장·비전·출하는 눌러서 상세 화면으로 (2D 배치도와 같은 이동)
+  const ZONES: [string, number, number, number, ZoneId | null][] = [
+    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -41, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
+    ['도장 1', 48, 9, -24, 'paint'], ['도장 2', 48, 9, 12, 'paint'], ['비전 검사', 74, 8, -6, 'outbound'], ['출하', 86, 6, -16, 'outbound'],
+  ]
+  for (const [n, x, y, z, go] of ZONES) {
+    const t = tag(n, go ? 'f3d-zone f3d-go' : 'f3d-zone', [x, y, z])
+    if (go) t.el.addEventListener('click', () => on.onZone(go))
+  }
 
   // 재공 더미 (공정 사이만)
   const PILES = new Map<string, { x: number; z: number; lab: Tag; n: number }>()

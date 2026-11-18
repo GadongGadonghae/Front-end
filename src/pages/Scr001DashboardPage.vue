@@ -84,6 +84,7 @@ const ngRows = computed<BarRow[]>(() =>
         :now="f3d.now.value"
         @open-line="(id) => router.push(linePath(id))"
         @open-outbound="router.push('/outbound')"
+        @open-inbound="router.push('/inbound')"
         @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
       />
       <FactoryMap

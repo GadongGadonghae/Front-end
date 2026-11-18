@@ -22,6 +22,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'open-line': [id: LineId]
   'open-outbound': []
+  'open-inbound': []
   'open-action': [equipmentId: string]
 }>()
 
@@ -67,7 +68,11 @@ function selectLine(L: ProductionLineId | null) {
 }
 
 onMounted(() => {
-  const s = createFactoryScene(host.value!, colors(), { onPick: pick, onLine: (L) => selectLine(L) })
+  const s = createFactoryScene(host.value!, colors(), {
+    onPick: pick,
+    onLine: (L) => selectLine(L),
+    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : emit('open-outbound')),
+  })
   s.onModeChange((m) => { view.value = m })
   scene.value = s
   push()
@@ -172,6 +177,7 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
       <div class="rs">
         <span v-for="k in STATES" :key="k" :data-state="k" :class="{ zero: !card.cnt[k] }">{{ k }} {{ card.cnt[k] }}</span>
       </div>
+      <button type="button" class="go-line" @click="emit('open-line', card.L)">라인 상세 보기</button>
       <p class="mini">재공 (데모) · <template v-for="([n, q], i) in card.wip" :key="n">{{ i ? ' · ' : '' }}{{ n }} {{ formatNumber(q) }}</template></p>
     </aside>
   </div>
@@ -348,6 +354,18 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
 
 .rs span.zero { opacity: 0.35; }
 
+.go-line {
+  width: 100%;
+  margin-top: var(--sp-3);
+  padding: var(--sp-1) var(--sp-2);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background: var(--c-surface);
+  color: var(--c-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
 /* 장면 위 이름표 (scene.ts가 만든 DOM이라 :deep) */
 .stage :deep(.f3d-layer) {
   position: absolute;
@@ -365,6 +383,13 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
 }
 
 .stage :deep(.f3d-zone) { color: var(--c-ink-3); }
+
+.stage :deep(.f3d-go) {
+  color: var(--c-accent);
+  text-decoration: underline;
+  pointer-events: auto;
+  cursor: pointer;
+}
 
 .stage :deep(.f3d-line) {
   padding: 2px var(--sp-2);
