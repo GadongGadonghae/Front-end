@@ -48,7 +48,8 @@ function isoLocal(ms: number) {
 }
 const dateOf = (ms: number) => isoLocal(ms).slice(0, 10)
 const dayStartMs = (date: string) => new Date(`${date}T00:00:00`).getTime()
-const todayRange = () => ({ from: isoLocal(dayStartMs(dateOf(Date.now()))), to: isoLocal(Date.now()) })
+// 백엔드 기간 쿼리 from·to는 날짜(yyyy-MM-dd, to 포함)만 받는다. 시각을 붙이면 400
+const todayRange = () => ({ from: dateOf(Date.now()), to: dateOf(Date.now()) })
 function periodRange(period: 'day' | 'week' | 'month', date: string) {
   const d = new Date(`${date}T00:00:00`)
   if (period === 'day') return { first: date, last: date }
@@ -59,7 +60,7 @@ function periodRange(period: 'day' | 'week' | 'month', date: string) {
   }
   return { first: `${date.slice(0, 7)}-01`, last: dateOf(new Date(d.getFullYear(), d.getMonth() + 1, 0).getTime()) }
 }
-const rangeOf = (first: string, last: string) => ({ from: isoLocal(dayStartMs(first)), to: isoLocal(Math.min(Date.now(), dayStartMs(last) + 86_400_000)) })
+const rangeOf = (first: string, last: string) => ({ from: first, to: last })
 
 // ── 변환 ──
 function equipmentOf(e: { equipmentId: string; name: string; lineId: string | null; process: ProcessId }): Equipment {
@@ -79,6 +80,23 @@ const eventOf = (e: DowntimeEventDto): HistoryEvent => ({
   reportId: null, alarmLevel: null, notify: null,
 })
 const fail = (e: unknown) => ({ ok: false as const, error: e instanceof ApiError ? e.message : String(e) })
+
+/** 하루 시간대별 누적 양품 (G-01 unit=hour를 라인 합으로) + 계획선 (G-02 합을 24시간에 고르게) */
+async function hourlyOf(date: string, lineId?: string) {
+  const [rows, plans] = await Promise.all([api.G01H({ from: date, to: date, lineId }), api.G02({ from: date, to: date, lineId }).catch(() => [])])
+  const target = plans.length ? plans.reduce((a, p) => a + p.planQty, 0) : null
+  const byHour = new Map<number, { done: number; cumulative: number }>()
+  for (const r of rows) {
+    const hour = Number(r.period.slice(11, 13))
+    const v = byHour.get(hour) ?? { done: 0, cumulative: 0 }
+    v.done += r.good
+    v.cumulative += r.cumulativeGood
+    byHour.set(hour, v)
+  }
+  const hours = [...byHour].sort((a, b) => a[0] - b[0])
+    .map(([hour, v]) => ({ hour, ...v, planCumulative: target == null ? null : Math.round((target * (hour + 1)) / 24) }))
+  return { date, target, hours }
+}
 
 /** 주기 조회로 구독을 흉내 낸다. 처음 한 번 바로 부른다 */
 function poll(ms: number, run: () => Promise<void>): Unsubscribe {
@@ -147,7 +165,7 @@ export function createApiSource(): DataSource {
   }
 
   async function todayEvents(q: { equipmentId?: string; lineId?: string } = {}): Promise<StateEvent[]> {
-    const p = await api.U08({ ...todayRange(), ...q, minMinutes: 1, page: 1, size: 200 })
+    const p = await api.U08({ ...todayRange(), ...q, minMinutes: 1, page: 1, size: 100 }) // 백엔드 size 최대 100
     return p.items.map(eventOf)
   }
 
@@ -177,7 +195,7 @@ export function createApiSource(): DataSource {
         let since = Date.now()
         return poll(TELEMETRY_MS, async () => {
           const to = Date.now()
-          const m = await api.M03(equipmentId, { from: isoLocal(since), to: isoLocal(to) })
+          const m = await api.M03(equipmentId, { from: dateOf(since), to: dateOf(to) })
           since = to
           const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
           if (values.length) cb({ equipmentId, values })
@@ -186,26 +204,30 @@ export function createApiSource(): DataSource {
     },
     q: {
       getMaster: master,
-      // 시간대별 생산 누적: 백엔드 API 없음 (요청 중)
-      getTodayHourly: async (lineId) => ({ date: dateOf(Date.now()), lineId: lineId ?? null, target: null, hours: [] }),
+      getTodayHourly: async (lineId) => ({ ...(await hourlyOf(dateOf(Date.now()), lineId)), lineId: lineId ?? null }),
       getTodayStateEvents: async (filter) => todayEvents(filter?.area && filter.area !== 'PT' && filter.area !== 'VI' ? { lineId: filter.area } : {}),
       getTodayRiskEvents: async () => [],
       async getProcessToday(lineId, process) {
         const line = lineId === 'PT' ? undefined : lineId
-        const [eqs, counts, wip, byProcess] = await Promise.all([api.M12(process, { lineId: line }), api.M07({ lineId: line }), api.M13({ lineId: line }), api.U03({ ...todayRange(), lineId: line })])
+        const [eqs, counts, wip, byProcess, cycles] = await Promise.all([api.M12(process, { lineId: line }), api.M07({ lineId: line }), api.M13({ lineId: line }), api.U03({ ...todayRange(), lineId: line }), api.M15(process, { lineId: line }).catch(() => [])])
         const p = counts.byProcess?.find((x) => x.process === process)
+        // 도장: 설비(PT1·PT2)마다 앞(용접→도장)·뒤(도장→검사) 재공 (M-13 paintId)
+        const paintWip = process === 'PAINTING'
+          ? new Map(await Promise.all(eqs.map(async (e) => [e.equipmentId, await api.M13({ paintId: e.equipmentId }).catch(() => [])] as const)))
+          : null
         return {
           lineId, process, output: p?.produced ?? 0, good: (p?.produced ?? 0) - (p?.ng ?? 0),
           oee: byProcess.find((x) => x.process === process)?.oee ?? null,
           wip: { before: wip.find((w) => w.nextProcess === process)?.wipQty ?? null, after: wip.find((w) => w.process === process)?.wipQty ?? null },
-          // 설비별 사이클 수·평균 CT: API 없음 (요청 중)
-          equipment: eqs.map((e) => ({ id: e.equipmentId, cycles: 0, avgCtMs: null })),
+          // M-15. 그날 행이 없는 설비는 0
+          equipment: eqs.map((e) => { const c = cycles.find((x) => x.equipmentId === e.equipmentId); const w = paintWip?.get(e.equipmentId)
+            return { id: e.equipmentId, cycles: c?.cycles ?? 0, avgCtMs: c?.avgCtMs ?? null, wip: w && { before: w.find((x) => x.nextProcess === 'PAINTING')?.wipQty ?? null, after: w.find((x) => x.process === 'PAINTING')?.wipQty ?? null } } }),
         }
       },
       async getTelemetry(equipmentId, range) {
         const to = Date.now()
         const from = range === 'today' ? dayStartMs(dateOf(to)) : to - (range === '1h' ? 3_600_000 : 8 * 3_600_000)
-        const m = await api.M03(equipmentId, { from: isoLocal(from), to: isoLocal(to), interval: range === '1h' ? 'raw' : '5s' })
+        const m = await api.M03(equipmentId, { from: dateOf(from), to: dateOf(to), interval: range === '1h' ? 'raw' : '5s' })
         return {
           equipmentId, range,
           items: m.metrics.map((x) => ({ item: x.metric, unit: x.unit, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })),
@@ -267,7 +289,7 @@ export function createApiSource(): DataSource {
       },
       async getHistory(q) {
         const p = await api.U08({
-          from: isoLocal(dayStartMs(q.from)), to: isoLocal(Math.min(Date.now(), dayStartMs(q.to) + 86_400_000)),
+          from: q.from, to: q.to,
           lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.join(','), reasonCode: q.code, inProgress: q.ongoing,
           minMinutes: q.minMinutes ?? 1, page: q.page, size: 50,
         })
@@ -291,8 +313,9 @@ export function createApiSource(): DataSource {
       async getProductionSummary(q) {
         const { first, last } = periodRange(q.period, q.date)
         const r = rangeOf(first, last)
-        const [sum, counts, yieldTrend] = await Promise.all([
+        const [sum, counts, yieldTrend, hourly] = await Promise.all([
           api.G01({ ...r, unit: 'day', lineId: q.lineId }).catch(() => []), api.M07({ date: q.date, lineId: q.lineId, groupBy: 'line' }), api.U11({ ...r, unit: 'day' }).catch(() => []),
+          q.period === 'day' ? hourlyOf(q.date, q.lineId).catch(() => null) : Promise.resolve(null),
         ])
         const plan = sum.length ? sum.reduce((a, s) => a + s.planQty, 0) : null
         const done = sum.length ? sum.reduce((a, s) => a + s.actualQty, 0) : counts.ok
@@ -301,7 +324,8 @@ export function createApiSource(): DataSource {
           input: counts.total, wip: 0,
           ngByProcess: Object.fromEntries((counts.byProcess ?? []).map((p) => [p.process, p.ng])),
           byLine: LINES.map((l) => ({ lineId: l, plan: sum.filter((s) => s.lineId === l).reduce((a, s) => a + s.planQty, 0) || null, done: sum.filter((s) => s.lineId === l).reduce((a, s) => a + s.actualQty, 0) })),
-          trend: [], trendKind: q.period === 'day' ? 'hourly' : 'daily',
+          // 일: G-01 unit=hour 시간대별 누적 (x = 그 시간이 끝난 시각). 주·월 일별 추이는 아직 비움
+          trend: (hourly?.hours ?? []).map((h) => ({ x: h.hour + 1, label: `${pad(h.hour + 1)}시`, done: h.cumulative, plan: h.planCumulative })), trendKind: q.period === 'day' ? 'hourly' : 'daily',
           yieldRate: counts.yieldRate,
           yieldTrend: yieldTrend.map((y) => ({ date: y.period, label: `${Number(y.period.slice(5, 7))}/${Number(y.period.slice(8, 10))}`, total: y.total, good: y.good, rate: y.yieldRate })),
         }

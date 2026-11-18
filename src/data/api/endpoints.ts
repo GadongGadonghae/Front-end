@@ -2,7 +2,7 @@
 // 명세가 바뀌면 여기만 고친다. 화면 계약으로 바꾸는 일은 source.ts
 import { http } from '@/data/api/http'
 import type {
-  AlarmDto, DowntimeEventDto, DowntimeEventUpdatedDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
+  AlarmDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeEventUpdatedDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
   ProductionSummaryDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
@@ -38,7 +38,9 @@ export const api = {
   /** M-12 공정별 설비 목록·상태·원인 */
   M12: (process: ProcessCode, q: { lineId?: string } = {}) => http.get<EquipmentStatusDto[]>(`/monitoring/processes/${process}/equipments`, q),
   /** M-13 공정별 재공품 수량 */
-  M13: (q: { lineId?: string } = {}) => http.get<WipDto[]>('/production/wip', q),
+  M13: (q: { lineId?: string; paintId?: string } = {}) => http.get<WipDto[]>('/production/wip', q),
+  /** M-15 설비별 사이클 수·평균 CT (date 생략 시 오늘) */
+  M15: (process: ProcessCode, q: { lineId?: string; date?: string } = {}) => http.get<CycleDto[]>(`/monitoring/processes/${process}/cycles`, q),
 
   // ── 가동률 (U) ──
   /** U-01 가동률 요약 (목표/실적, OEE, lineYield) */
@@ -69,6 +71,8 @@ export const api = {
   /** G-01 생산량 조회 (P2) */
   G01: (q: Range & { unit: Unit; lineId?: string }) => http.get<ProductionSummaryDto[]>('/production/summary', { ...q }),
   /** G-02 일 생산 계획 조회 (P2) */
+  /** G-01 unit=hour 시간대별 생산 (빈 시간 0, 오늘은 지금 시간까지) */
+  G01H: (q: Range & { lineId?: string }) => http.get<HourlySummaryDto[]>('/production/summary', { ...q, unit: 'hour' }),
   G02: (q: Range & { lineId?: string }) => http.get<ProductionPlanDto[]>('/production/plans', { ...q }),
   /** G-03 일 생산 계획 설정 (P2) */
   G03: (date: string, body: { lineId: string; planQty: number }) => http.put<ProductionPlanDto>(`/production/plans/${date}`, body),
