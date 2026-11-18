@@ -3,6 +3,8 @@ import type { ApiErrorBody } from '@/data/api/dto'
 
 const BASE = import.meta.env.VITE_API_BASE ?? '/api'
 const TOKEN_KEY = 'sfaas.accessToken'
+/** composables/useAuth의 로그인 기록 키 (data/는 Vue를 몰라서 키 이름만 같이 쓴다) */
+const SESSION_KEY = 'sfaas.session'
 
 /** 백엔드 공통 오류 { status, code, message } */
 export class ApiError extends Error {
@@ -38,8 +40,13 @@ async function request<T>(method: string, path: string, opts: { query?: Query; b
   if (!res.ok) {
     let e: Partial<ApiErrorBody> = {}
     try { e = await res.json() } catch { /* 본문 없음 */ }
-    // 토큰이 만료되면 지운다 → 화면은 로그인 확인(FN-016)에서 로그인 화면으로
-    if (res.status === 401) token.set(null)
+    // 토큰이 없거나 만료되면 토큰과 로그인 기록(useAuth의 sfaas.session)을 같이 지우고 로그인 화면으로.
+    // 기록만 남으면 라우터가 로그인된 것으로 보고 로그인 화면을 안 띄운다. 로그인 실패(401)는 로그인 화면이 문구를 보여 준다
+    if (res.status === 401 && path !== '/auth/login') {
+      token.set(null)
+      try { localStorage.removeItem(SESSION_KEY) } catch { /* 저장소를 못 쓰면 무시 */ }
+      if (location.pathname !== '/login') location.assign(`/login?redirect=${encodeURIComponent(location.pathname)}`)
+    }
     throw new ApiError(res.status, e.code ?? `HTTP_${res.status}`, e.message ?? res.statusText)
   }
   if (res.status === 204) return undefined as T
