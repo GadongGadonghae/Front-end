@@ -41,11 +41,11 @@ const RESULTS: { value: ResultFilter; label: string }[] = [{ value: 'all', label
 
 const columns = computed<TableColumn[]>(() => [
   { key: 'id', label: '제품 ID', width: '11.5em' },
-  { key: 'lineId', label: '라인', width: '3.5em' },
-  { key: 'inputAt', label: '투입', width: p.multiDay.value ? '8.5em' : '6.5em' },
-  { key: 'doneAt', label: '완료', width: p.multiDay.value ? '8.5em' : '6.5em' },
+  { key: 'lineId', label: '라인', width: '3em' },
+  { key: 'inputAt', label: '투입', width: p.multiDay.value ? '7.5em' : '6em' },
+  { key: 'doneAt', label: '완료', width: p.multiDay.value ? '7.5em' : '6em' },
   { key: 'steps', label: '거친 공정' },
-  { key: 'result', label: '결과', width: '10em' },
+  { key: 'result', label: '결과', width: '7.5em' },
 ])
 const DETAIL_COLS: TableColumn[] = [
   { key: 'process', label: '공정', width: '5em' },

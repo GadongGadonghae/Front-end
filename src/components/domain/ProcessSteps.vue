@@ -17,13 +17,15 @@ const WORD: Record<StepResult, string> = { ok: '통과', ng: '불량', now: '진
 </template>
 
 <style scoped>
+/* 칸이 좁으면 공정 단위로 다음 줄로 (잘리지 않게) */
 .steps {
   display: inline-flex;
-  gap: var(--sp-2);
-  white-space: nowrap;
+  flex-wrap: wrap;
+  gap: 0 var(--sp-2);
 }
 
 .st {
+  white-space: nowrap;
   color: var(--c-ink-2);
   font-size: var(--fs-sm);
 }
