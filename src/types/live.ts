@@ -1,6 +1,6 @@
 // 실시간 채널로 오는 값 (데이터정의서 2장 ③ 현재 상태, 7장 실시간 push)
 import type { DowntimeCode, PdmLevel, StateCode } from '@/types/state'
-import type { LineId } from '@/types/plant'
+import type { LineId, ProductionLineId } from '@/types/plant'
 
 /** 설비 1대의 현재 상태 (③, 저장 안 함) */
 export interface EquipmentLive {
@@ -83,4 +83,24 @@ export interface ProductMove {
   to: string | null
   /** 공정 검사 불량이면 그 자리에서 제외 (D-88) */
   rejected: boolean
+}
+
+/** 제품 1개가 지금 있는 곳: 설비 안(처리 중) 또는 공정 사이 재공 더미 (3D 물류, SCR-005) */
+export type FlowLocation =
+  | { eq: string }
+  /** 재공 더미 키: `A:SL-PR` `A:PR-WD` `A:WD-PT` (라인) · `PT1:PT-VI` (도장 → 비전). 프레스 사이 재공은 세지 않는다 */
+  | { pile: string }
+
+export interface ProductPosition {
+  productId: string
+  lineId: ProductionLineId
+  location: FlowLocation
+}
+
+/** 공장 안 제품 위치 전체. 백엔드 없음 (제안: GET /production/flow/positions, product_flow 기준) */
+export interface FlowPositions {
+  at: string
+  products: ProductPosition[]
+  /** 슬리팅 앞 코일 재공 (제품 개수 기준, 코일 1롤 = 20개) */
+  coilWip: number
 }

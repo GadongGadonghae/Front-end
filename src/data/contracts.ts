@@ -2,7 +2,7 @@
 // 화면은 이 인터페이스만 안다. 지금 구현은 mock, 나중에 api가 같은 계약으로 들어온다.
 // 조회·저장 함수는 화면을 만들 때 그 화면에 필요한 것만 추가한다.
 import type { LineId, MasterData } from '@/types/plant'
-import type { PlantSnapshot, PlantSummary, ProductMove } from '@/types/live'
+import type { PlantSnapshot, PlantSummary, ProductMove, FlowPositions } from '@/types/live'
 import type { AlarmEvent, HistoryEvent, HistoryQuery, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
 import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
@@ -24,6 +24,8 @@ export interface LiveChannel {
   onSummary(cb: (summary: PlantSummary) => void): Unsubscribe
   /** product.move 이벤트 (물류 점, D-81) */
   onProductMove(cb: (move: ProductMove) => void): Unsubscribe
+  /** 백엔드 없음 (제안: GET /production/flow/positions): 공장 안 제품 위치, 1초. 구독하자마자 한 번 준다 (3D 물류) */
+  onFlowPositions(cb: (flow: FlowPositions) => void): Unsubscribe
   /** alarm.raised / alarm.cleared 이벤트 */
   onAlarm(cb: (alarm: AlarmEvent) => void): Unsubscribe
   /** risk.changed 이벤트: 예지보전 위험(90%) 진입·해제 */

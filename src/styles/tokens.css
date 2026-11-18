@@ -40,6 +40,20 @@
   --c-inverse-ink: #fff;
   --c-inverse-ink-2: #c3c8cf;
 
+  /* ── 3D 공장 모형 (SCR-005). 상태 색은 위 의미 색을 그대로 쓴다 ── */
+  --c-3d-bg: #e9edf1;         /* 장면 바탕 */
+  --c-3d-floor: #f4f6f8;      /* 바닥 */
+  --c-3d-grid: #dde3e9;       /* 바닥 격자 */
+  --c-3d-yard: #e6e0d6;       /* 코일 적재장 */
+  --c-3d-body: #f1f3f5;       /* 설비 몸체 (흰 계열) */
+  --c-3d-frame: #6b7a8c;      /* 프레스 받침·기둥 */
+  --c-3d-metal: #a3afbc;      /* 코일·금속 */
+  --c-3d-belt: #a9b3be;       /* 컨베이어 */
+  --c-3d-route: #2b6cb0;      /* 도장 경로 (기본) */
+  --c-3d-route-2: #2a9d8f;    /* 도장 경로 2 */
+  --c-3d-route-alt: #e8893d;  /* 기본과 다른 도장으로 전환된 경로 */
+  --c-3d-product: #22b8cf;    /* 제품 점 (상태 색과 겹치지 않는 청록) */
+
   /* ── 간격: 4px 기준 ── */
   --sp-1: 4px;
   --sp-2: 8px;

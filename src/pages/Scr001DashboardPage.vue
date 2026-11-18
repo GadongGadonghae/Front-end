@@ -2,7 +2,7 @@
      왼쪽: 공장 배치도(가장 큼) → 오늘 생산 · 종합 가동률 · 품질 3칸. 오른쪽 세로 열 전체: 알림 (D-46)
      설비 대수는 배치도 범례에 함께 적는다. 화면은 조립만 하고 값은 composable이 만든다 -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
@@ -15,6 +15,7 @@ import StateLegend from '@/components/domain/StateLegend.vue'
 import FactoryMap from '@/components/domain/FactoryMap.vue'
 import AlertList from '@/components/domain/AlertList.vue'
 import { useFactoryMap } from '@/composables/useFactoryMap'
+import { useFactory3d } from '@/composables/useFactory3d'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useTodayProduction } from '@/composables/useTodayProduction'
 import { useTodayAlerts } from '@/composables/useTodayAlerts'
@@ -29,6 +30,9 @@ const summary = useLiveSummary()
 const production = useTodayProduction()
 const { rows: alerts, ongoingCount } = useTodayAlerts()
 const { equipmentById } = useMaster()
+const f3d = useFactory3d()
+// 3D(three.js)는 무거워서 3D를 고를 때만 받는다
+const Factory3D = defineAsyncComponent(() => import('@/components/domain/Factory3D.vue'))
 
 const mode = ref<'2d' | '3d'>('2d')
 const plant = computed(() => summary.value?.plant ?? null)
@@ -80,7 +84,15 @@ function openReport(r: AlertRowView) {
           @open-inbound="router.push('/inbound')"
           @open-outbound="router.push('/outbound')"
         />
-        <BaseEmpty v-else-if="mode === '3d'" text="3D 공장은 나중에 설계합니다 (D-62)" />
+        <Factory3D
+          v-else-if="mode === '3d' && f3d.view.value"
+          v-bind="f3d.view.value"
+          :flow="f3d.flow.value"
+          :now="f3d.now.value"
+          @open-line="(id) => router.push(linePath(id))"
+          @open-outbound="router.push('/outbound')"
+          @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
+        />
         <BaseEmpty v-else />
       </BasePanel>
 

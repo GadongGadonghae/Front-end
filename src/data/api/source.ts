@@ -175,6 +175,8 @@ export function createApiSource(): DataSource {
       onSnapshot: (cb) => poll(SNAPSHOT_MS, async () => cb(await snapshot())),
       onSummary: (cb) => poll(SUMMARY_MS, async () => cb(await summary())),
       onProductMove: () => () => {},
+      // 백엔드 API 없음: 위치 API가 생기면 여기서 폴링한다
+      onFlowPositions: () => () => {},
       // 진행 중 고장·대기 목록을 비교해 생김·풀림을 만든다 (W-01·W-02로 바꿀 자리)
       onAlarm(cb) {
         let prev = new Map<string, StateEvent>()
