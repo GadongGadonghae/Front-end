@@ -85,6 +85,16 @@ export function useAlarmHistory() {
     else if (span() >= MAX_DAYS) from.value = toDateStr(Date.parse(to.value) - (MAX_DAYS - 1) * DAY)
   })
 
+  /** 대시보드 팝업 "조치 가기"(?eq=설비ID): 그 설비의 라인·공정, 진행 중 건으로 필터를 맞춘다 */
+  const focusEquipment = (id: string) => {
+    const e = equipmentById.value.get(id)
+    if (!e) return
+    tab.value = 'alarm'
+    lineId.value = e.area
+    process.value = e.process
+    ongoing.value = true
+  }
+
   // ── 고를 것 ──
   const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'COIL' && (!lineId.value || e.area === lineId.value)))
   const lineOptions = [{ value: '', label: '전체' }, ...AREAS]
@@ -181,7 +191,7 @@ export function useAlarmHistory() {
   }
 
   return {
-    tab, from, to, lineId, process, states, code, ongoing, page, today,
+    tab, from, to, lineId, process, states, code, ongoing, page, today, focusEquipment, equipmentById,
     lineOptions, processOptions, codeOptions,
     alarmRows, riskRows, total, size, loading, saveMemo,
   }

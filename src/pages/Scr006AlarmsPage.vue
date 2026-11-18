@@ -27,6 +27,8 @@ const { tab, from, to, lineId, process, states, code, ongoing, page } = h
 // 탭은 주소 쿼리 (?tab=risk). 같은 화면이라 필터는 그대로 둔다
 const tabOf = (v: unknown): HistoryTab => (v === 'risk' ? 'risk' : 'alarm')
 watch(() => route.query.tab, (v) => { tab.value = tabOf(v) }, { immediate: true })
+// 대시보드 팝업 "조치 가기" (?eq=설비ID): 기준정보가 오면 그 설비 건으로 필터를 맞춘다
+watch([() => route.query.eq, () => h.equipmentById.value.size], ([eq]) => { if (typeof eq === 'string') h.focusEquipment(eq) }, { immediate: true })
 const TABS = [
   { key: 'alarm', label: '알람·비가동', to: '/alarms' },
   { key: 'risk', label: '예지보전 위험', to: '/alarms?tab=risk' },
