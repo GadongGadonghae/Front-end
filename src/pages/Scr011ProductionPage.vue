@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
+import BaseToggle from '@/components/base/BaseToggle.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseDateField from '@/components/base/BaseDateField.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -19,7 +20,7 @@ import ProductJourney from '@/components/domain/ProductJourney.vue'
 import JourneyLegend from '@/components/domain/JourneyLegend.vue'
 import ProductRecord from '@/components/domain/ProductRecord.vue'
 import ProductionResult from '@/components/domain/ProductionResult.vue'
-import { useProduction, type JourneyScale, type ProdTab, type ResultFilter } from '@/composables/useProduction'
+import { useProduction, type JourneyScale, type ResultFilter } from '@/composables/useProduction'
 import { formatNumber } from '@/lib/format'
 import type { Period } from '@/types/analysis'
 import type { LineId } from '@/types/plant'
@@ -30,10 +31,8 @@ const p = useProduction(typeof route.query.q === 'string' ? route.query.q : '')
 const { tab, lineId, period, date, result, q, page, scale } = p
 watch(() => route.query.q, (v) => { if (typeof v === 'string' && v) p.findProduct(v) })
 
-const TABS = computed<{ value: ProdTab; label: string }[]>(() => [
-  { value: 'live', label: `공정 중 추적${p.wip.value ? ` ${p.wip.value.total}` : ''}` },
-  { value: 'hist', label: '이력 조회' },
-])
+/** 스위치: 켜면 현재 상황 (공정 중 추적) */
+const live = computed({ get: () => tab.value === 'live', set: (v: boolean) => { tab.value = v ? 'live' : 'hist' } })
 const SCALES: { value: JourneyScale; label: string }[] = [{ value: '60', label: '1시간' }, { value: '120', label: '2시간' }, { value: '240', label: '4시간' }]
 const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일' }, { value: 'week', label: '주' }, { value: 'month', label: '월' }]
 const LINES: { value: '' | LineId; label: string }[] = [{ value: '', label: '전체' }, ...(['A', 'B', 'C', 'D', 'E', 'F'] as LineId[]).map((l) => ({ value: l, label: `${l}라인` }))]
@@ -66,8 +65,11 @@ const columns = computed<TableColumn[]>(() => [
     <div class="layout">
       <BasePanel class="main">
         <template #head>
-          <BaseSegmented v-model="tab" label="기능" :options="TABS" />
-          <span class="meta">{{ tab === 'live' ? '줄을 누르면 오른쪽에 공정별 기록' : '제품을 기간 · 결과 · 제품 ID로 찾기 · 빗금 줄 = 불량 제외' }}</span>
+          <h2>{{ tab === 'live' ? '현재 상황 · 공정 중인 제품' : '제품 이력' }}</h2>
+          <span class="meta">{{ tab === 'live' ? '줄을 누르면 오른쪽에 공정별 기록' : '기간 · 결과 · 제품 ID로 찾기 · 빗금 줄 = 불량 제외' }}</span>
+        </template>
+        <template #tools>
+          <BaseToggle v-model="live" label="현재 상황">현재 상황<b v-if="p.wip.value" class="cnt">{{ p.wip.value.total }}</b></BaseToggle>
         </template>
 
         <template v-if="tab === 'live'">
@@ -155,6 +157,17 @@ const columns = computed<TableColumn[]>(() => [
 
 .main :deep(.ph) {
   gap: var(--sp-4);
+}
+
+.main h2 {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-strong);
+  white-space: nowrap;
+}
+
+.cnt {
+  margin-left: var(--sp-2);
+  font-weight: var(--fw-strong);
 }
 
 .meta {
