@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 E · 제품 여권 (C 발전)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* E: 앞 시안 C를 발전. 위 = 검색 + 제품 여권(기본 정보) + 공정별 걸린 시간 막대, 아래 = 결과 칩으로 거른 제품 표.
+     오른쪽 좁은 열 = 같은 라인 앞뒤 제품 (그 제품만의 일인지, 라인 전체 일인지) */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .hero { grid-column: 1; display: flex; flex-direction: column; gap: 14px; }
+  .side { grid-column: 2; grid-row: 1 / 3; }
+  .list { grid-column: 1; }
+  .dbar { display: flex; height: 40px; gap: 3px; }
+  .dseg { position: relative; display: flex; flex-direction: column; justify-content: flex-end; min-width: 64px; padding: 4px 8px; border-radius: 4px; background: var(--sunk); box-shadow: inset 0 -4px 0 var(--ink-3); font-size: 12px; }
+  .dseg.ng { box-shadow: inset 0 -4px 0 var(--ink); background: rgb(22 25 29 / 8%); }
+  .dseg.todo { background: none; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--ink-3); }
+  .dseg b { font-size: 13px; }
+  .dmove { align-self: center; width: 22px; text-align: center; color: var(--ink-3); font-size: 11px; }
+  .notes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
+  .notes .why { grid-column: 3 / 6; padding: 8px 10px; border-radius: 6px; background: var(--sunk); }
+  .near { display: flex; flex-direction: column; }
+  .near .r { display: grid; grid-template-columns: 1fr auto; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .near .r.me { background: var(--sunk); margin: 0 -8px; padding: 8px; border-radius: 4px; }
+  .near .r small { grid-column: 1 / 3; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, PROC, fmt, hms, dur } = PD
+  const { steps, result, where, J } = PDH
+  const sel = products.find((p) => p.short === 'D-0893')
+  const near = products.filter((p) => p.line === sel.line).sort((a, b) => a.inAt - b.inAt)
+  const idx = near.indexOf(sel)
+  const around = near.slice(Math.max(0, idx - 3), idx + 4)
+  const total = sel.records.reduce((a, r) => a + (r.from != null && r.to != null ? r.to - r.from : 0), 0)
+  const segs = sel.records.map((r, i) => {
+    const d = r.from != null && r.to != null ? r.to - r.from : 0
+    const grow = r.from == null ? 1 : Math.max(1, d / 20)
+    return `${i ? `<span class="dmove">→</span>` : ''}<div class="dseg ${r.j === 'ng' ? 'ng' : r.from == null ? 'todo' : ''}" style="flex:${grow}"><span>${r.p}</span><b>${r.from != null ? dur(d) : '가지 않음'}</b></div>`
+  }).join('')
+  document.getElementById('app').innerHTML = PD_SHELL('시안 E · 제품 여권', '<span class="field muted">결과 전체 ▾</span>') + `
+  <main class="page">
+    <section class="panel hero">
+      <div class="search"><span class="aux">제품 ID</span><b>${sel.id}</b><span class="aux">최근 본 제품 · B-20261119-0874 · E-20261119-0971</span></div>
+      <div class="passport">
+        <div><div class="lb">라인</div><div class="v">${sel.line}라인</div></div>
+        <div><div class="lb">투입</div><div class="v">${hms(sel.inAt)}</div></div>
+        <div><div class="lb">빠진 시각</div><div class="v">${hms(sel.records[sel.ng.at].to)}</div></div>
+        <div><div class="lb">걸린 시간</div><div class="v">${dur(sel.lead)}</div></div>
+        <div><div class="lb">결과</div><div class="v">${result(sel)}</div></div>
+      </div>
+      <div><p class="aux" style="margin-bottom:6px">공정별 처리 시간 (칸 폭 = 걸린 시간)</p><div class="dbar">${segs}</div></div>
+      <div class="notes">${sel.records.slice(0, 2).map((r) => `<div><span class="aux">${r.p}</span><br>${r.eq}<br><span class="aux">${hms(r.from)} → ${hms(r.to)} · ${J(r)}</span></div>`).join('')}<div class="why"><b>${PROC[sel.ng.at]}에서 불량 제외</b> · ${sel.records[sel.ng.at].eq} · ${hms(sel.records[sel.ng.at].from)}<br>${sel.ng.reason}</div></div>
+    </section>
+    <section class="panel list">
+      <header><h2>제품 내역</h2><span class="meta">투입 최근순 · 누르면 위에 기록</span>
+        <span class="tools"><span class="chips"><span class="chip on">전체 <b>${fmt(DAY.input)}</b></span><span class="chip">양품 출고 <b>${fmt(DAY.ok)}</b></span><span class="chip">불량 제외 <b>${DAY.ng}</b></span><span class="chip">진행 중 <b>${DAY.wip}</b></span></span></span></header>
+      <table class="tbl"><thead><tr><th>제품 ID</th><th>라인</th><th>투입</th><th>완료</th><th>걸린 시간</th><th>거친 공정</th><th>결과 · 지금 위치</th></tr></thead><tbody>
+      ${products.slice(0, 9).map((p) => `<tr><td class="id">${p.id}</td><td>${p.line}</td><td>${hms(p.inAt)}</td><td>${p.doneAt ? hms(p.doneAt) : '-'}</td><td>${dur(p.lead)}</td><td>${steps(p)}</td><td>${p.result === 'wip' ? `<span class="res wip">${where(p)}</span>` : result(p)}</td></tr>`).join('')}
+      </tbody></table>
+    </section>
+    <aside class="panel side">
+      <header><h2>같은 라인 앞뒤</h2><span class="meta">${sel.line}라인 · 투입 순</span></header>
+      <div class="near">${around.map((p) => `<div class="r ${p === sel ? 'me' : ''}"><b>${p.id.replace('-20261119', '')}</b>${result(p)}<small class="aux">투입 ${hms(p.inAt)} · ${dur(p.lead)}</small></div>`).join('')}</div>
+      <p class="aux" style="margin-top:10px">앞뒤 제품이 모두 양품이면 이 제품만의 일, 연달아 빠졌으면 설비를 본다</p>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

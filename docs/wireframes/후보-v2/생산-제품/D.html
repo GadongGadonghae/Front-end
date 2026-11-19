@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 D · 불량 제품 추적</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* D: 빠진 제품을 따라간다. 왼쪽 = 어느 공정에서 · 어떤 사유로 빠졌나, 가운데 = 불량 제외 제품 목록, 오른쪽 = 고른 제품 기록 */
+  .page { display: grid; grid-template-columns: 340px minmax(0, 1fr) 380px; gap: 16px; }
+  .bar2 { display: grid; grid-template-columns: 80px 1fr 40px; gap: 10px; align-items: center; padding: 6px 0; font-size: 13px; }
+  .bar2 .tr { height: 10px; background: var(--track); border-radius: 3px; }
+  .bar2 .tr i { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+  .bar2 b { text-align: right; }
+  .reason { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+  .reason small { color: var(--ink-3); }
+  .reason.on { background: var(--sunk); margin: 0 -8px; padding: 8px; border-radius: 4px; }
+  .key { font-size: 32px; font-weight: 600; line-height: 1.1; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, NG_BY, NG_REASON, PROC, fmt, hms, dur } = PD
+  const { J, steps } = PDH
+  const max = Math.max(...NG_BY.map((x) => x.n))
+  const ng = products.filter((p) => p.result === 'ng')
+  const sel = ng.find((p) => p.short === 'D-0893') ?? ng[0]
+  document.getElementById('app').innerHTML = PD_SHELL('시안 D · 불량 제품 추적', '<span class="field">결과 불량 제외 ▾</span><span class="field muted" style="min-width:220px">제품 ID 검색</span>') + `
+  <main class="page">
+    <section class="panel">
+      <header><h2>불량 제외</h2><span class="meta">오늘 · 공정 검사 (D-88)</span></header>
+      <p class="key">${DAY.ng}<small style="font-size:14px;font-weight:400;color:var(--ink-3)">개 · 투입의 ${(DAY.ng / DAY.input * 100).toFixed(1)}%</small></p>
+      <div style="margin:12px 0 16px">${NG_BY.map((x) => `<div class="bar2"><span>${x.p}</span><span class="tr"><i style="width:${(x.n / max) * 100}%"></i></span><b>${x.n}</b></div>`).join('')}</div>
+      <header><h2>사유</h2><span class="meta">많은 순</span></header>
+      ${NG_REASON.map((x, i) => `<div class="reason ${i === 3 ? 'on' : ''}"><span>${x.r}<br><small>${x.p}</small></span><b>${x.n}</b></div>`).join('')}
+    </section>
+    <section class="panel">
+      <header><h2>불량 제외 제품</h2><span class="meta">빠진 시각 최근순 · 사유를 누르면 그 사유만</span>
+        <span class="tools"><span class="chips"><span class="chip">전체 ${fmt(DAY.input)}</span><span class="chip on">불량 제외 <b>${DAY.ng}</b></span></span></span></header>
+      <table class="tbl"><thead><tr><th>제품 ID</th><th>라인</th><th>빠진 공정</th><th>설비</th><th>빠진 시각</th><th>사유</th></tr></thead><tbody>
+      ${ng.concat(ng).concat(ng).slice(0, 14).map((p, i) => { const r = p.records[p.ng.at]; return `<tr class="${p === sel && i < ng.length ? 'open' : ''}"><td class="id">${p.id}</td><td>${p.line}</td><td>${PROC[p.ng.at]}</td><td>${r.eq}</td><td>${hms(r.to)}</td><td>${p.ng.reason}</td></tr>` }).join('')}
+      </tbody></table>
+      <p class="aux" style="margin-top:8px">데모: 같은 사례를 반복해 표를 채움</p>
+    </section>
+    <aside class="panel">
+      <span class="aux">고른 제품</span>
+      <p style="font-size:20px;font-weight:600">${sel.id}</p>
+      <p class="aux" style="margin:2px 0 12px">${sel.line}라인 · 투입 ${hms(sel.inAt)} · ${dur(sel.lead)} 뒤 ${PROC[sel.ng.at]}에서 빠짐</p>
+      <div style="margin-bottom:14px">${steps(sel)}</div>
+      <div class="vtrail">${sel.records.map((r) => `<div class="vstep ${r.j ?? 'todo'}"><span class="dot"></span><div><div class="p">${r.p}<small>${J(r)}</small></div>${r.eq ? `<div class="m">${r.eq} · ${hms(r.from)} → ${hms(r.to)}</div>` : ''}${r.reason ? `<div class="why">${r.reason}</div>` : ''}</div></div>`).join('')}</div>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

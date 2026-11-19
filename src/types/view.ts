@@ -141,3 +141,94 @@ export interface BarRowView {
   muted?: boolean
   tone?: 'ink' | 'run' | 'stop' | 'idle' | 'down' | 'dc'
 }
+
+// ── 가동률 (SCR-003, D-108) ──
+
+/** 24시간 띠의 한 구간 (00:00부터 초) */
+export interface StateSpanView {
+  state: StateCode
+  from: number
+  to: number
+  /** 지금도 이어지는 구간 */
+  ongoing: boolean
+  title: string
+}
+
+/** 가동률 상태 줄 한 행 (라인 또는 설비) */
+export interface LedgerRowView {
+  key: string
+  label: string
+  /** 지금 이상 상태 (오늘만, 정상이면 null) → 행 바탕 */
+  now: Exclude<StateCode, 'R'> | null
+  oee: number | null
+  /** 비교 기준 (공장 OEE 또는 라인 OEE). 없으면 비교 막대 없이 숫자만 */
+  base: number | null
+  /** 손실(대기·고장) 시간 합계 초 */
+  lossSec: number | null
+  /** 일: 24시간 띠 */
+  spans: StateSpanView[]
+  /** 주·월: 날짜 칸 (OEE, 그날 기준). 아직 안 온 날은 null */
+  days: { date: string; oee: number | null; base: number | null; future: boolean; today: boolean }[]
+  /** 누르면 아래 단계로 (라인 → 설비) */
+  clickable: boolean
+}
+
+/** 비가동 코드 한 줄 */
+export interface DowntimeSliceView {
+  key: string
+  label: string
+  state: 'S' | 'I' | 'D'
+  sec: number
+  count: number
+}
+
+// ── 생산 조회 (SCR-011, D-107) ──
+
+/** 제품 여정 한 칸 (공정 하나에 머문 구간, epoch ms) */
+export interface JourneyLaneView {
+  step: number
+  label: string
+  from: number
+  to: number
+  kind: 'done' | 'now' | 'stuck' | 'ng'
+}
+
+/** 제품 여정 시간표 한 줄 */
+export interface JourneyRowView {
+  id: string
+  /** 지금 위치 글 (예: 프레스, 용접으로 이동 중, 프레스 · 설비 고장으로 멈춤) */
+  where: string
+  state: 'stuck' | 'ng' | ''
+  lanes: JourneyLaneView[]
+}
+
+/** 공정별 지금 제품 수 */
+export interface ProcessCountView {
+  key: string
+  label: string
+  count: number
+  stuck: number
+}
+
+/** 고른 제품의 기록 */
+export interface ProductRecordView {
+  id: string
+  lineLabel: string
+  state: 'stuck' | 'wip' | 'ok' | 'ng'
+  stateText: string
+  /** 진행 중이면 지금 위치, 끝났으면 결과 */
+  whereLabel: string
+  where: string
+  inputAt: string
+  /** 진행 중이면 투입 뒤 지난 시간, 끝났으면 걸린 시간 (초) */
+  leadSec: number
+  steps: {
+    key: string
+    label: string
+    kind: 'ok' | 'ng' | 'now' | 'stuck' | 'todo'
+    word: string
+    equipment: string | null
+    time: string | null
+    note: string | null
+  }[]
+}

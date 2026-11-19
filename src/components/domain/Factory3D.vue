@@ -98,7 +98,7 @@ const pop = computed(() => {
   if (!e || !l) return null
   const sec = Math.max(0, Math.floor((props.now - Date.parse(l.since)) / 1000))
   const line = e.area === 'PT' ? '도장 (공용)' : e.area === 'VI' ? '출고 (공용)' : `${e.area}라인`
-  return { e, l, line, sec, issue: isIssue(l) && !acked.value.has(ackKey(l)) }
+  return { e, l, line, sec, abnormal: isIssue(l), issue: isIssue(l) && !acked.value.has(ackKey(l)) }
 })
 function ack() {
   const l = pop.value?.l
@@ -156,7 +156,8 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
         <dt>원인 코드</dt><dd>{{ pop.l.code ? `${pop.l.code} · ${DOWNTIME_NAME[pop.l.code]}` : '-' }}</dd>
         <dt>내용</dt><dd>{{ pop.l.detail ?? '-' }}</dd>
       </dl>
-      <footer>
+      <!-- 이상 없는 설비(가동·계획 정지 등)는 할 일이 없어 버튼을 두지 않는다 -->
+      <footer v-if="pop.abnormal">
         <button v-if="pop.issue" type="button" @click="ack">확인</button>
         <button type="button" @click="goLine">라인 가기</button>
         <button type="button" @click="emit('open-action', pop.e.id)">조치 가기</button>

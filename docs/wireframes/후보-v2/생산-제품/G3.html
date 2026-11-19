@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G3 · 공정 흐름 그림</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<link rel="stylesheet" href="gk.css">
+<style>
+  /* G3: 추적 탭 = 공정 흐름 그림 (공정 칸 높이 = 그 안 제품 수, 멈춘 공정 빨강) + 시간표.
+     이력 탭 = 걸린 시간 분포 (표준 눈금) + 표. 상세 맨 위에 상태 띠 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
+  .flow { display: grid; grid-template-columns: 90px repeat(5, minmax(0, 1fr)) 140px; align-items: end; height: 170px; margin-bottom: 18px; }
+  .node { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+  .node .box { display: flex; justify-content: center; width: calc(100% - 28px); padding-top: 6px; border-radius: 6px 6px 0 0; background: rgb(22 25 29 / 12%); }
+  .node .box b { font-size: 20px; font-weight: 600; }
+  .node.stuck .box { background: rgb(198 40 40 / 14%); box-shadow: inset 0 0 0 1.5px var(--down); }
+  .node.stuck .box b { color: var(--down); }
+  .node .nm { width: 100%; padding-top: 6px; border-top: 2px solid var(--ink-2); text-align: center; font-size: 14px; font-weight: 600; }
+  .node .sub { margin-bottom: 4px; color: var(--down); font-size: 12px; font-weight: 600; }
+  .node:not(:last-child)::after { content: "›"; position: absolute; right: -4px; bottom: 0; color: var(--ink-3); font-size: 18px; }
+  .node.end .nm { color: var(--ink-2); font-weight: 400; }
+  .node.end .v { margin-bottom: 4px; font-size: 20px; font-weight: 600; }
+  .node.end .v.ok { color: #2149c4; }
+  .hrow { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: end; margin-bottom: 14px; }
+  .hrow h3 { font-size: 14px; font-weight: 600; }
+  .hrow .aux { display: block; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script src="gk.js"></script>
+<script>
+  const { DAY, PROC, fmt } = PD
+  const counts = PROC.map((_, i) => GK.wip.filter((p) => GK.atProc(p).i === i))
+  const max = Math.max(...counts.map((l) => l.length), 1)
+  const flow = `<div class="flow"><div class="node end"><span class="v">${fmt(DAY.input)}</span><span class="nm">투입</span></div>
+    ${counts.map((l, i) => { const st = l.filter((p) => p.records[i]?.stuck).length; return `<div class="node ${st ? 'stuck' : ''}">${st ? `<span class="sub">고장으로 멈춤 ${st}</span>` : ''}<div class="box" style="height:${28 + (l.length / max) * 96}px"><b>${l.length}</b></div><span class="nm">${PROC[i]}</span></div>` }).join('')}
+    <div class="node end"><span class="v ok">${fmt(DAY.ok)}</span><span class="nm">양품 출고 · 불량 ${DAY.ng}</span></div></div>`
+  GK.mount('시안 G3 · 공정 흐름 그림', (tab) => `<main class="page">
+    <section class="panel main"><header>${GK.tabs(tab)}<span class="meta" style="margin-left:12px">${tab === 'live' ? '칸 높이 = 그 공정 안 제품 수 · 빨강 = 고장으로 멈춤' : '끝난 제품 · 걸린 시간이 표준과 얼마나 다른지'}</span></header>
+      ${tab === 'live' ? flow + GK.gantt(GK.wip.slice(0, 10), GK.selLive, { thick: 18 })
+        : GK.histBar() + `<div class="hrow"><div><h3>걸린 시간 분포</h3><span class="aux">오늘 끝난 제품 ${GK.done.length}개 (데모) · 파랑 = 표준보다 빠름 · 먹색 = 느림 · 멀수록 진하게</span></div>${GK.leadHist(64)}</div>` + GK.histTable(GK.done.slice(0, 13), GK.selHist)}</section>
+    <aside class="panel detail">${GK.detail(tab === 'live' ? GK.selLive : GK.selHist, tab === 'live' ? '공정 중에서 고름' : '이력에서 고름', { band: true })}</aside></main>`)
+</script>
+</body>
+</html>

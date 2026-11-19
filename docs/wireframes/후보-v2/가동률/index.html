@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가동률 시안 비교</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root { --canvas: #eef0f2; --surface: #fff; --ink: #16191d; --ink-2: #4a515b; --ink-3: #626a75; --line: rgb(20 24 31 / 9%); --line-strong: rgb(20 24 31 / 18%); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.5 pretendard, "Malgun Gothic", system-ui, sans-serif; }
+  .wrap { max-width: 1760px; margin: 0 auto; padding: 32px 32px 64px; }
+  h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
+  .lead { margin: 0 0 8px; color: var(--ink-2); max-width: 72em; }
+  .rules { margin: 0 0 24px; padding: 12px 16px; background: var(--surface); border-radius: 8px; color: var(--ink-2); font-size: 13px; }
+  .rules b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .card { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--surface); border-radius: 8px; }
+  .card header { display: flex; align-items: baseline; gap: 10px; }
+  .card h2 { margin: 0; font-size: 18px; font-weight: 600; }
+  .card .tag { color: var(--ink-3); font-size: 13px; }
+  .card a.open { margin-left: auto; color: var(--ink-2); font-size: 13px; }
+  .frame { position: relative; width: 100%; aspect-ratio: 1920 / 940; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--canvas); }
+  .frame iframe, .frame img { position: absolute; left: 0; top: 0; width: 1920px; height: 940px; border: 0; transform-origin: 0 0; }
+  .frame img { width: 100%; height: 100%; }
+  .idea { margin: 0; color: var(--ink); }
+  dl { display: grid; grid-template-columns: 5.5em 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+  dt { color: var(--ink-3); }
+  dd { margin: 0; color: var(--ink-2); }
+  table { width: 100%; border-collapse: collapse; margin-top: 32px; background: var(--surface); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 400; }
+  td.c { text-align: center; }
+  h2.sec { margin: 40px 0 8px; font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>가동률 화면 시안 비교 (SCR-003 개편)</h1>
+  <p class="lead">목적: <b>타임라인을 보며 라인별 가동률을 비교</b>하는 화면. 다섯 시안은 같은 데모 장면(2026-11-19 14:20, B라인 프레스 3단 고장 진행 중)과 같은 색 규칙을 쓰고, <b>비교하는 방식만</b> 다르다. 각 화면은 1920×940 기준을 줄여 보였다 — "열기"로 실제 크기를 본다.</p>
+  <p class="rules"><b>공통 규칙</b> · 타임라인은 이상만 색 (가동 = 옅은 회색, 대기 노랑 · 고장 빨강 · 통신 끊김 보라, 계획정지 = 회색 빗금이며 가동률 계산에서 뺌) · 진행 중 사건은 먹색 테두리 · 핵심 숫자는 화면에 하나 · 명세 항목(조회 조건, OEE + 3요소, 라인별 OEE, 비가동 코드별, 상태 타임라인)은 모두 들어 있음 · 주·월 선택 시 일별 추이는 이번 시안에서 그리지 않음 · 값은 데모</p>
+
+  <div class="grid" id="grid"></div>
+
+  <h2 class="sec">비교 기준 (06 문서 6.4 + 이번 목적)</h2>
+  <table>
+    <thead><tr><th>질문</th><th>A 줄마다 숫자 + 띠</th><th>B 라인 카드 격자</th><th>C 라인 → 설비 펼치기</th><th>D 시간대 히트맵</th><th>E 순위 + 사건 주석</th></tr></thead>
+    <tbody>
+      <tr><td>2초 안에 "어느 라인이 낮은가"</td><td class="c">○ 숫자 열 + 밑줄</td><td class="c">○ 굵은 테두리 카드</td><td class="c">△ 오른쪽 막대</td><td class="c">○ 오른쪽 순위</td><td class="c">◎ 맨 위 한 줄 답</td></tr>
+      <tr><td>"언제 빠졌나" (시간 비교)</td><td class="c">◎ 같은 축 8줄</td><td class="c">△ 카드마다 작은 축</td><td class="c">○ 위 8줄 촘촘</td><td class="c">◎ 시간 칸으로 바로</td><td class="c">○ 사건 위치</td></tr>
+      <tr><td>"왜 빠졌나" (사유)</td><td class="c">△ 마우스 올려야</td><td class="c">○ 가장 긴 손실 한 줄</td><td class="c">◎ 설비별 + 사건 표</td><td class="c">○ 고른 칸 사건</td><td class="c">◎ 띠 위 주석</td></tr>
+      <tr><td>공장 > 라인 > 설비 계층</td><td class="c">△</td><td class="c">△</td><td class="c">◎</td><td class="c">△</td><td class="c">△</td></tr>
+      <tr><td>글자 읽기 · 정보량</td><td class="c">○</td><td class="c">△ 카드 8장 반복</td><td class="c">○</td><td class="c">○ 글자 적음</td><td class="c">△ 주석이 많아지면 겹침</td></tr>
+      <tr><td>주·월로 바꿨을 때</td><td class="c">○ 띠 → 일별 칸</td><td class="c">○</td><td class="c">○</td><td class="c">◎ 칸 = 날짜로 그대로</td><td class="c">△ 사건이 너무 많음</td></tr>
+      <tr><td>지금 부품 재사용</td><td class="c">◎ ChartTimeline·막대</td><td class="c">○</td><td class="c">◎</td><td class="c">△ 히트맵 새로</td><td class="c">△ 주석 배치 새로</td></tr>
+    </tbody>
+  </table>
+  <p class="lead" style="margin-top:12px">◎ 매우 좋음 · ○ 좋음 · △ 약함 — 만든 사람의 1차 판단이며, 고를 때 섞어도 된다 (예: E의 맨 위 한 줄 + A의 줄 구성 + C의 펼치기).</p>
+</div>
+<script>
+  const ITEMS = [
+    { id: 'G', title: 'G · 라인별 상태 하나로 (F 수정)', tag: '합친 안', idea: 'F에서 위 "라인별 OEE" 칸을 없애고, 줄마다 공장 대비 막대(가운데 기준선 = 공장 OEE)를 한 열로 넣음. 왼쪽 = 공장 종합 + 비가동 코드별',
+      good: '라인 비교와 시간이 한 줄에, OEE가 한 번만 나옴, 표가 화면 높이를 다 씀', weak: '공장 대비 막대가 좁아 차이가 작은 라인은 막대가 짧음 · 사유는 마우스를 올려야 보임' },
+    { id: 'F', title: 'F · A 타임라인 + E 비교 (사용자 선택안)', tag: '합친 안', idea: '왼쪽 = 공장 종합 + 비가동 코드별. 오른쪽 위 = 공장 평균 기준선 대비 라인별 OEE (모든 라인 같은 무게, "가장 낮은 라인" 제목 없음). 오른쪽 아래 = 줄마다 OEE · 손실 · 24시간 띠',
+      good: '비교(위)와 시간(아래)이 같은 라인 순서로 이어짐, 공장 OEE가 화면의 핵심 숫자 하나', weak: '라인 OEE가 위 막대와 아래 줄에 두 번 나옴 · 사유는 아직 마우스를 올려야 보임' },
+    { id: '기준안', title: '지금 화면', tag: '비교 기준', img: '기준안-지금화면.png', idea: '라인별 OEE 막대 · 비가동 코드가 위, 타임라인은 아래 보조. 가동을 꽉 찬 초록으로 칠함',
+      good: '명세 항목이 다 있음', weak: '타임라인이 주인공이 아님, 초록 면적이 손실을 가림, 숫자와 시간이 다른 칸에 떨어져 있음' },
+    { id: 'A', title: 'A · 줄마다 숫자 + 띠', tag: '표형', idea: '한 표에서 줄(라인)마다 OEE · 3요소 · 손실 시간 · 24시간 띠를 나란히. 정렬(라인순 / OEE 낮은 순)',
+      good: '숫자와 시간을 한 줄에서 비교, 같은 시간축 8줄이라 "언제"가 바로 보임, 지금 부품으로 만들기 쉬움', weak: '사유는 마우스를 올려야 보임, 설비 단계는 없음' },
+    { id: 'B', title: 'B · 라인 카드 격자', tag: '스몰 멀티플', idea: '라인마다 같은 모양 카드: OEE와 공장 대비, 24시간 띠, 부하시간 구성 막대, 손실 분해, 가장 긴 손실',
+      good: '라인 하나를 완결해서 읽음, 공장 대비 ± 숫자', weak: '카드마다 축이 작아 시간 비교가 약함, 같은 카드 8장 반복이라 템플릿처럼 보일 수 있음' },
+    { id: 'C', title: 'C · 라인 → 설비 펼치기', tag: '드릴다운', idea: '위 = 8개 라인 촘촘한 타임라인 + OEE, 고른 라인을 아래에 설비별 타임라인과 비가동 표로 펼침',
+      good: '공장 > 라인 > 설비 계층 (피드백 2), "왜"를 설비까지 바로', weak: '라인 비교 자체는 위 칸이 작음, 화면이 세 덩어리' },
+    { id: 'D', title: 'D · 시간대 히트맵', tag: '히트맵', idea: '라인 × 1시간 칸, 진하기 = 그 시간에 잃은 비율, 칸 글자 = 가장 큰 손실 상태. 칸을 고르면 그 시간 사건',
+      good: '"어느 라인이 언제" 한 장, 주·월로 바꿔도 칸 = 날짜로 그대로', weak: '1시간 단위라 짧은 정지 위치가 뭉개짐, 칸 진하기를 배워야 읽음' },
+    { id: 'E', title: 'E · 순위 + 사건 주석', tag: '이야기형', idea: '맨 위에 비교의 답 한 줄("가장 낮은 B라인 68.9%, 이유"), 공장 평균 기준선 대비 위아래 막대, 아래는 가는 띠 위에 사건마다 주석',
+      good: '열자마자 답과 이유, 사건이 읽힘 (피드백 5 목적이 드러남)', weak: '사건이 많은 날은 주석이 겹침, 주·월에는 그대로 쓰기 어려움' },
+  ]
+  const grid = document.getElementById('grid')
+  grid.innerHTML = ITEMS.map((x) => `
+    <section class="card">
+      <header><h2>${x.title}</h2><span class="tag">${x.tag}</span>${x.img ? '' : `<a class="open" href="${x.id}.html" target="_blank">열기 ↗</a>`}</header>
+      <div class="frame">${x.img ? `<img src="${x.img}" alt="지금 가동률 화면">` : `<iframe src="${x.id}.html" title="${x.title}"></iframe>`}</div>
+      <p class="idea">${x.idea}</p>
+      <dl><dt>좋은 점</dt><dd>${x.good}</dd><dt>약한 점</dt><dd>${x.weak}</dd></dl>
+    </section>`).join('')
+  const fit = () => document.querySelectorAll('.frame iframe').forEach((f) => { f.style.transform = `scale(${f.parentElement.clientWidth / 1920})` })
+  addEventListener('resize', fit); fit()
+</script>
+</body>
+</html>

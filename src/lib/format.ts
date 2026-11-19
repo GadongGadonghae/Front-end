@@ -49,3 +49,15 @@ export function toDateStr(ms: number): string {
 export function formatHm(isoString: string | null | undefined): string {
   return isoString ? formatTime(isoString).slice(0, 5) : EMPTY
 }
+
+/** 사람이 읽는 길이: 3시간 12분 · 34분 · 4분 5초 · 40초 (가동률 손실, 걸린 시간) */
+export function formatSpan(totalSec: number | null | undefined): string {
+  if (totalSec == null || totalSec < 0 || Number.isNaN(totalSec)) return EMPTY
+  const s = Math.round(totalSec)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  if (h > 0) return m ? `${h}시간 ${m}분` : `${h}시간`
+  if (m >= 10) return `${m}분`
+  if (m > 0) return s % 60 ? `${m}분 ${s % 60}초` : `${m}분`
+  return `${s}초`
+}

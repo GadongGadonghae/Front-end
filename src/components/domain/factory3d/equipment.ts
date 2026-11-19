@@ -12,7 +12,7 @@ const Z = Math.PI / 2
 
 export function makeKit(P: Palette) {
   const M = (c: string, o: THREE.MeshStandardMaterialParameters = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.55, metalness: 0.3, ...o })
-  const m = { frame: M(P.frame), steel: M(P.metal), dark: M(P.dark), body: M(P.body, { metalness: 0.1 }), chrome: M(P.chrome, { metalness: 0.8, roughness: 0.2 }), robot: M(P.robot, { metalness: 0.2 }), glass: M(P.glass, { transparent: true, opacity: 0.22, metalness: 0, roughness: 0.1 }), floor: M(P.dark, { metalness: 0.1 }), wood: M(P.wood, { metalness: 0.05, roughness: 0.8 }), carton: M(P.carton, { metalness: 0.05, roughness: 0.8 }), black: M(P.dark, { roughness: 0.8 }) }
+  const m = { frame: M(P.frame), steel: M(P.metal), dark: M(P.dark), body: M(P.body, { metalness: 0.1 }), chrome: M(P.chrome, { metalness: 0.8, roughness: 0.2 }), robot: M(P.robot, { metalness: 0.2 }), glass: M(P.glass, { transparent: true, opacity: 0.22, metalness: 0, roughness: 0.1 }), floor: M(P.dark, { metalness: 0.1 }), coil: M(P.metal, { metalness: 0.2, roughness: 0.5 }), wood: M(P.wood, { metalness: 0.05, roughness: 0.8 }), carton: M(P.carton, { metalness: 0.05, roughness: 0.8 }), black: M(P.dark, { roughness: 0.8 }) }
   const B = (p: THREE.Object3D, w: number, h: number, d: number, mat: Mat, x: number, y: number, z: number) => {
     const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
     o.position.set(x, y + h / 2, z)
@@ -47,7 +47,7 @@ export function makeKit(P: Palette) {
   const reel = (p: THREE.Object3D, x: number, r: number) => {
     B(p, 0.9, 3.4, 3.2, m.frame, x, 0.3, 0)
     C(p, 0.35, 3.6, m.steel, x, 2.3, 0, Z)
-    C(p, r, 1.8, m.chrome, x, 2.3, 0, Z)
+    C(p, r, 1.8, m.coil, x, 2.3, 0, Z)
     C(p, r * 0.45, 1.85, m.dark, x, 2.3, 0, Z)
   }
   const strip = (p: THREE.Object3D, x0: number, x1: number, y: number) => B(p, x1 - x0, 0.06, 2.4, m.chrome, (x0 + x1) / 2, y, 0)
@@ -68,7 +68,7 @@ export function makeKit(P: Palette) {
     B(p, 16, 0.3, 6, m.floor, 0.5, 0, 0)
     for (const z of [-1.4, 1.4]) B(p, 6, 0.15, 0.3, m.steel, -6.5, 0.3, z)
     B(p, 2.4, 0.5, 3.4, m.frame, -6.5, 0.45, 0)
-    C(p, 1.7, 1.8, m.chrome, -6.5, 2.2, 0, Z)
+    C(p, 1.7, 1.8, m.coil, -6.5, 2.2, 0, Z)
     C(p, 0.75, 1.85, m.dark, -6.5, 2.2, 0, Z)
     reel(p, -3.2, 1.7)
     strip(p, -3.2, 5.5, 1.3)
@@ -118,9 +118,9 @@ export function makeKit(P: Palette) {
     }
   }
 
-  /** 용접: 안전 펜스가 있는 로봇 용접 셀. 가로 약 11, 세로 8 */
+  /** 용접: 안전 펜스가 있는 로봇 용접 셀. 가로 약 11, 세로 8. 바닥판 = 상태 색 (펜스 안 지그만으로는 위에서 잘 안 보인다) */
   const welder = (p: THREE.Object3D) => {
-    B(p, 11, 0.2, 8, m.floor, 0, 0, 0)
+    B(p, 11, 0.2, 8, P.cap, 0, 0, 0)
     B(p, 11, 4, 0.1, m.glass, 0, 0.2, -4)
     B(p, 0.1, 4, 8, m.glass, -5.5, 0.2, 0)
     B(p, 0.1, 4, 8, m.glass, 5.5, 0.2, 0)
