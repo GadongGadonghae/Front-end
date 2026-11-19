@@ -65,13 +65,13 @@ export function makeKit(P: Palette) {
 
   /** 슬리팅: 코일카 + 언코일러 + 슬리터 + 스크랩 와인더 + 리코일러. 길이 약 20 */
   const slitter = (p: THREE.Object3D) => {
-    B(p, 20, 0.3, 6, m.floor, 0, 0, 0)
-    for (const z of [-1.4, 1.4]) B(p, 6, 0.15, 0.3, m.steel, -9.5, 0.3, z)
-    B(p, 2.4, 0.5, 3.4, m.frame, -9.5, 0.45, 0)
-    C(p, 1.7, 1.8, m.chrome, -9.5, 2.2, 0, Z)
-    C(p, 0.75, 1.85, m.dark, -9.5, 2.2, 0, Z)
-    reel(p, -5.5, 1.7)
-    strip(p, -5, 5, 1.3)
+    B(p, 16, 0.3, 6, m.floor, 0.5, 0, 0)
+    for (const z of [-1.4, 1.4]) B(p, 6, 0.15, 0.3, m.steel, -6.5, 0.3, z)
+    B(p, 2.4, 0.5, 3.4, m.frame, -6.5, 0.45, 0)
+    C(p, 1.7, 1.8, m.chrome, -6.5, 2.2, 0, Z)
+    C(p, 0.75, 1.85, m.dark, -6.5, 2.2, 0, Z)
+    reel(p, -3.2, 1.7)
+    strip(p, -3.2, 5.5, 1.3)
     B(p, 3.2, 2.8, 3.4, m.frame, -0.5, 0.3, 0)
     B(p, 3.3, 0.35, 3.5, P.cap, -0.5, 3.1, 0)
     C(p, 0.35, 3.8, m.steel, -0.5, 1.0, 0, Z)

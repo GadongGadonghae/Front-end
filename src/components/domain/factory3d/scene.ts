@@ -61,7 +61,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   scene.background = new THREE.Color(C.bg)
 
   const persp = new THREE.PerspectiveCamera(40, W() / H(), 1, 1000)
-  persp.position.set(-64, 96, 110)
+  persp.position.set(-52, 96, 110)
   const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1000)
   ortho.up.set(0, 0, -1)
   const fitOrtho = () => {
@@ -79,7 +79,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     c.enableDamping = true
     c.screenSpacePanning = false
     c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
-    c.target.set(-12, 0, 4)
+    c.target.set(0, 0, 4)
     return c
   }
   const cP = mkCtl(persp)
@@ -183,10 +183,10 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     const n0 = scene.children.length
     box(76, 0.6, 2.2, belt, -15, 0, z)
     const slit = new THREE.Group()
-    slit.position.set(-44, 0, z)
+    slit.position.set(-42, 0, z)
     slit.scale.setScalar(0.85)
     kit.slitter(slit)
-    addEq(slit, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -44, z, h: 3.4, pw: 17, pd: 5 })
+    addEq(slit, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -42, z, h: 3.4, pw: 14, pd: 5 })
     for (let p = 0; p < 4; p++) {
       const x = -25 + p * 8.5
       const pg = new THREE.Group()
@@ -243,7 +243,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   })
   // 구역 이름: 코일 적재장·도장·비전·출하는 눌러서 상세 화면으로 (2D 배치도와 같은 이동)
   const ZONES: [string, number, number, number, ZoneId | null][] = [
-    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -44, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
+    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -42, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
     ['도장 1', 48, 9, -24, 'paint'], ['도장 2', 48, 9, 12, 'paint'], ['비전 검사', 74, 8, -6, 'outbound'], ['출하', 86, 6, -16, 'outbound'],
   ]
   for (const [n, x, y, z, go] of ZONES) {
@@ -550,7 +550,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       return
     }
     if (m === 'top') {
-      const t = new THREE.Vector3(-8, 0, 0)
+      const t = new THREE.Vector3(2, 0, 0)
       ortho.zoom = 1
       ortho.updateProjectionMatrix()
       fly(new THREE.Vector3(t.x, 150, t.z + 0.01), t, 600, () => {
