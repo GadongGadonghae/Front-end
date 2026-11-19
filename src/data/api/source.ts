@@ -198,8 +198,12 @@ export function createApiSource(): DataSource {
       onSnapshot: (cb) => poll(SNAPSHOT_MS, async () => cb(await snapshot())),
       onSummary: (cb) => poll(SUMMARY_MS, async () => cb(await summary())),
       onProductMove: () => () => {},
-      // 백엔드 API 없음: 위치 API가 생기면 여기서 폴링한다
-      onFlowPositions: () => () => {},
+      // 제품 위치 API는 아직 없음 → 코일 재공만 M-16(stockQty)으로 1초마다 채우고 products는 비워 둔다 (11/19)
+      // 위치 API(제안: GET /production/flow/positions)가 생기면 여기서 그 API로 바꾸면 된다 (coilWip 계산은 같음)
+      onFlowPositions: (cb) => poll(SNAPSHOT_MS, async () => {
+        const coil = await api.M16()
+        cb({ at: isoLocal(Date.now()), products: [], coilWip: coil.stockQty })
+      }),
       onAlarm(cb) {
         alarmListeners.add(cb)
         stopAlarmPoll ??= startAlarmPoll()
