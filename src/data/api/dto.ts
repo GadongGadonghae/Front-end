@@ -150,6 +150,18 @@ export interface WipDto {
   wipQty: number
 }
 
+/** M-17 공장 안 제품 위치 (3D 물류, 11/19 추가). equipmentId(설비 안)와 pile(공정 사이) 중 하나만 값이 있다 */
+export interface FlowPositionsDto {
+  at: string
+  products: {
+    productId: string
+    lineId: string
+    equipmentId: string | null
+    /** SL-PR · PR-WD · WD-PT (라인 안, 라인 접두어 없음) · PT1:PT-VI · PT2:PT-VI */
+    pile: string | null
+  }[]
+}
+
 /** M-16 코일 입고 현황 (1롤 = 제품 20개, 11/18 추가) */
 export interface CoilTodayDto {
   date: string

@@ -507,7 +507,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       P.lab.el.textContent = P.n > PILE_CAP ? `${PILE_CAP}+ / ${P.n}` : String(P.n)
       P.lab.el.style.visibility = P.n ? 'visible' : 'hidden'
     }
-    coilLab.el.textContent = `코일 재공 ${coilWip}개`
+    coilLab.el.textContent = `코일 재고 ${(coilWip / 20).toFixed(1)}롤` // coilWip은 제품 수 (1롤 = 20개), 슬리팅 전이라 롤로 보여 줌
   }
   const pv = new THREE.Vector3()
   const placeTags = () => {

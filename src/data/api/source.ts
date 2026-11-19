@@ -2,8 +2,8 @@
 // - 실시간은 STOMP 라이브러리 결정 전까지 REST 주기 조회로 대신한다 (상태 1초 M-01, 요약 10초, 알림 5초). 결정되면 W-01~04로 바꾼다
 // - 백엔드에 아직 없는 기능(예지보전·제품 내역·시간대별 생산·리포트 등, docs/API-차이-v3.1.md)은 빈 값을 돌려준다 → 화면은 "데이터 없음"
 import type { DataSource, Unsubscribe } from '@/data/contracts'
-import type { ControlLimit, DowntimeCodeDef, Equipment, EquipmentType, EquipmentTypeCode, Line, LineId, MasterData, Process, ProcessId } from '@/types/plant'
-import type { EquipmentLive, PlantSnapshot, PlantSummary } from '@/types/live'
+import type { ControlLimit, DowntimeCodeDef, Equipment, EquipmentType, EquipmentTypeCode, Line, LineId, MasterData, Process, ProcessId, ProductionLineId } from '@/types/plant'
+import type { EquipmentLive, FlowPositions, PlantSnapshot, PlantSummary } from '@/types/live'
 import type { AlarmEvent, HistoryEvent, StateEvent } from '@/types/events'
 import type { TelemetryTick } from '@/types/process'
 import type { DowntimeCode, StopState } from '@/types/state'
@@ -198,11 +198,16 @@ export function createApiSource(): DataSource {
       onSnapshot: (cb) => poll(SNAPSHOT_MS, async () => cb(await snapshot())),
       onSummary: (cb) => poll(SUMMARY_MS, async () => cb(await summary())),
       onProductMove: () => () => {},
-      // 제품 위치 API는 아직 없음 → 코일 재공만 M-16(stockQty)으로 1초마다 채우고 products는 비워 둔다 (11/19)
-      // 위치 API(제안: GET /production/flow/positions)가 생기면 여기서 그 API로 바꾸면 된다 (coilWip 계산은 같음)
+      // 3D 물류: 제품 위치 M-17 + 코일 재공 M-16(stockQty, 제품 수) 1초마다 (11/19)
+      // M-17 pile은 라인 안이면 라인 접두어가 없어서 3D 키(`A:SL-PR`)로 맞춘다. 도장 뒤(`PT1:PT-VI`)는 그대로
       onFlowPositions: (cb) => poll(SNAPSHOT_MS, async () => {
-        const coil = await api.M16()
-        cb({ at: isoLocal(Date.now()), products: [], coilWip: coil.stockQty })
+        const [pos, coil] = await Promise.all([api.M17(), api.M16()])
+        const products: FlowPositions['products'] = pos.products.map((p) => ({
+          productId: p.productId,
+          lineId: p.lineId as ProductionLineId,
+          location: p.equipmentId ? { eq: p.equipmentId } : { pile: p.pile!.includes(':') ? p.pile! : `${p.lineId}:${p.pile}` },
+        }))
+        cb({ at: pos.at, products, coilWip: coil.stockQty })
       }),
       onAlarm(cb) {
         alarmListeners.add(cb)
