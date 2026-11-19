@@ -71,7 +71,11 @@ export interface LineFlowView {
     ng: number | null
     /** 예: 4단 뒤 검사 */
     note: string | null
+    /** 설비를 세로로 쌓는다 (도장 #1·#2 병렬) */
+    stack?: boolean
   }[]
+  /** 도장 라인: 앞 끝에 생산 라인들을 세로로 두고, 각 라인이 지금 보내는 도장 설비로 흐린 선을 잇는다 (도장 경로) */
+  feeds?: { label: string; to: string | null }[]
   /** 공정 사이 재공 (groups.length - 1개) */
   wip: (number | null)[]
   /** 라인 앞(입고)·뒤(도장/출고) 재공. 값이 없으면 null */

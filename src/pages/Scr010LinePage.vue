@@ -10,7 +10,7 @@ import BaseTabs from '@/components/base/BaseTabs.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
-import ChartProgress from '@/components/charts/ChartProgress.vue'
+import ChartBarList from '@/components/charts/ChartBarList.vue'
 import ChartDonut from '@/components/charts/ChartDonut.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
@@ -34,7 +34,7 @@ const router = useRouter()
 const lineId = route.params.lineId as LineId
 const name = lineLabel(lineId)
 
-const { flow, now } = useLineDetail(lineId)
+const { flow, now, oeeRows } = useLineDetail(lineId)
 const { rows: alerts, ongoingCount } = useTodayAlerts({ area: lineId })
 const { equipmentById } = useMaster()
 
@@ -114,7 +114,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 
         <BasePanel title="라인 OEE">
           <BaseFigure label="" :value="now.oee" :digits="1" unit="%" size="lg" />
-          <ChartProgress :percent="now.oee" :label="`OEE ${formatNumber(now.oee, 1)}%`" />
+          <div class="oee-parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
         </BasePanel>
 
         <BasePanel :title="`오늘 불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
@@ -153,6 +153,16 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 </template>
 
 <style scoped>
+/* OEE 아래 3요소: 대시보드 종합 가동률 카드와 같은 모양 */
+.oee-parts {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-2);
+  border-top: var(--line-w) solid var(--c-line);
+}
+
 /* 위: 고장 띠 → 카드 3장. 아래: 라인 흐름(남는 폭) | 오른쪽 열(알람 이력 · 비가동 누적) */
 .layout {
   display: grid;
