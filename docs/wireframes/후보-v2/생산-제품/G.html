@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G · 공정 중 추적 / 이력 조회 탭</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* G: 두 기능을 탭으로. [공정 중 추적] = 공정 칸 보드 + 아래 시간표(제품 여정), [이력 조회] = 검색 · 기간 · 결과 + 큰 표 + 오른쪽 상세.
+     두 탭 모두 오른쪽 상세 칸은 같은 모양 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
+  .tabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--sunk); }
+  .tabs button { padding: 6px 16px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); font: inherit; cursor: pointer; }
+  .tabs button b { margin-left: 6px; font-weight: 600; }
+  .tabs button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-strong); }
+  .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .col { display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: 8px; background: var(--sunk); }
+  .col h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; font-weight: 600; }
+  .col h3 b { font-size: 20px; }
+  .col .stuckn { color: var(--down); font-size: 12px; font-weight: 600; }
+  .card { display: flex; justify-content: space-between; gap: 6px; padding: 5px 8px; border-radius: 5px; background: var(--surface); font-size: 12px; }
+  .card b { font-weight: 600; }
+  .card span { color: var(--ink-3); }
+  .card.stuck { box-shadow: inset 0 0 0 1.5px var(--down); }
+  .card.stuck span { color: var(--down); font-weight: 600; }
+  .card.sel { box-shadow: inset 0 0 0 2px var(--ink); }
+  .gantt { display: grid; grid-template-columns: 140px 150px minmax(0, 1fr); gap: 0 14px; align-items: center; font-size: 13px; }
+  .gantt > * { height: 26px; display: flex; align-items: center; border-bottom: 1px solid var(--line); }
+  .gantt .h { color: var(--ink-3); border-bottom-color: var(--line-strong); }
+  .lane { position: relative; flex: 1; height: 14px; }
+  .lane i { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: #a7aeb8; }
+  .lane i.now { background: none; box-shadow: inset 0 0 0 1.5px #2149c4; }
+  .lane i.stuck { background: var(--down); }
+  .lane .gap { position: absolute; top: 6px; height: 2px; background: var(--line-strong); }
+  .lane .nowl { position: absolute; top: -6px; bottom: -6px; border-left: 1.5px dashed var(--ink-3); }
+  .hbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .hbar .search { padding: 6px 12px; min-width: 300px; }
+  .hbar .search b { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+  .detail h3 { font-size: 20px; font-weight: 600; }
+  .detail .passport { grid-template-columns: repeat(2, auto); gap: 10px 24px; margin: 8px 0 18px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, PROC, NOW, fmt, hms, hm, dur } = PD
+  const { steps, result, where, J } = PDH
+  const atProc = (p) => { const r = p.records.findIndex((x) => x.from != null && x.to == null); return r >= 0 ? { i: r, move: false } : { i: p.records.findIndex((x) => x.from == null), move: true } }
+  const wip = products.filter((p) => p.result === 'wip')
+  const done = products.filter((p) => p.result !== 'wip')
+  const S = { tab: new URLSearchParams(location.search).get('tab') || 'live' }
+  const T0 = 14 * 3600 + 5 * 60; const T1 = 14 * 3600 + 22 * 60
+  const x = (s) => `${Math.max(0, (s - T0) / (T1 - T0)) * 100}%`
+  const lane = (p) => {
+    let h = ''; let prev = null
+    p.records.forEach((r) => {
+      if (r.from == null) return
+      if (prev != null) h += `<span class="gap" style="left:${x(prev)};width:calc(${x(r.from)} - ${x(prev)})"></span>`
+      const to = r.to ?? NOW
+      h += `<i class="${r.to == null ? (r.stuck ? 'stuck' : 'now') : ''}" style="left:${x(r.from)};width:calc(${x(to)} - ${x(r.from)})" title="${r.p}"></i>`
+      prev = r.to
+    })
+    return `<div class="lane">${h}<span class="nowl" style="left:${x(NOW)}"></span></div>`
+  }
+  const detail = (sel, from) => `
+    <span class="aux">${from}</span><h3>${sel.id}</h3>
+    <div class="passport">
+      <div><div class="lb">라인</div><div class="v">${sel.line}라인</div></div>
+      <div><div class="lb">${sel.result === 'wip' ? '지금 위치' : '결과'}</div><div class="v">${sel.result === 'wip' ? where(sel) : result(sel)}</div></div>
+      <div><div class="lb">투입</div><div class="v">${hms(sel.inAt)}</div></div>
+      <div><div class="lb">${sel.result === 'wip' ? '투입 뒤' : '걸린 시간'}</div><div class="v">${dur(sel.lead)}${sel.result === 'wip' ? '째' : ''}</div></div>
+    </div>
+    <div class="vtrail">${sel.records.map((r) => `<div class="vstep ${r.j ?? (r.from != null ? (r.stuck ? 'stuck' : 'now') : 'todo')}"><span class="dot"></span><div><div class="p">${r.p}<small>${J(r)}</small></div>${r.eq ? `<div class="m">${r.eq}</div>` : ''}${r.from != null ? `<div class="m">${hms(r.from)} → ${r.to ? `${hms(r.to)} · ${dur(r.to - r.from)}` : `${Math.round((NOW - r.from) / 60)}분째`}</div>` : ''}${r.stuck ? '<div class="why">B라인 프레스 3단 고장 (14:08부터) · 앞에서 대기</div>' : ''}${r.reason ? `<div class="why">${r.reason}</div>` : ''}</div></div>`).join('')}</div>`
+  const live = () => {
+    const sel = wip.find((p) => p.records.some((r) => r.stuck)) ?? wip[0]
+    const col = (i) => { const list = wip.filter((p) => atProc(p).i === i); const st = list.filter((p) => p.records[i].stuck).length
+      return `<div class="col"><h3>${PROC[i]}<b>${list.length}</b></h3>${st ? `<span class="stuckn">고장으로 멈춤 ${st}</span>` : ''}${list.slice(0, 5).map((p) => `<div class="card ${p.records[i].stuck ? 'stuck' : ''} ${p === sel ? 'sel' : ''}"><b>${p.short}</b><span>${p.records[i].stuck ? `${Math.round((NOW - p.records[i].from) / 60)}분 멈춤` : atProc(p).move ? '들어오는 중' : `${hm(p.records[i].from)}부터`}</span></div>`).join('')}${list.length > 5 ? `<span class="aux" style="text-align:center">외 ${list.length - 5}개</span>` : ''}</div>` }
+    return { main: `
+      <div class="board">${[0, 1, 2, 3, 4].map(col).join('')}</div>
+      <div class="gantt"><span class="h">제품 ID</span><span class="h">지금 위치</span><span class="h" style="justify-content:space-between">${[5, 10, 15, 20].map((m) => `<span>14:${String(m).padStart(2, '0')}</span>`).join('')}</span>
+        ${wip.slice(0, 12).map((p) => `<span style="font-weight:600">${p.id}</span><span class="res wip" style="${p.records.some((r) => r.stuck) ? 'color:var(--down);font-weight:600' : ''}">${where(p)}</span>${lane(p)}`).join('')}</div>`, side: detail(sel, '공정 중에서 고름') }
+  }
+  const histTab = () => {
+    const sel = done.find((p) => p.short === 'D-0893') ?? done[0]
+    return { main: `
+      <div class="hbar"><span class="search"><b>제품 ID 검색 (예: D-20261118-0412)</b></span><span class="field">기간 11/13 ~ 11/19</span><span class="field">라인 전체 ▾</span>
+        <span class="chips"><span class="chip on">전체</span><span class="chip">양품 출고 <b>${fmt(DAY.ok)}</b></span><span class="chip">불량 제외 <b>${DAY.ng}</b></span></span><span class="aux" style="margin-left:auto">끝난 제품 · 끝난 시각 최근순 · 90일 보관</span></div>
+      <table class="tbl"><thead><tr><th>제품 ID</th><th>라인</th><th>투입</th><th>끝남</th><th>걸린 시간</th><th>거친 공정</th><th>결과</th></tr></thead><tbody>
+      ${done.slice(0, 18).map((p) => { const end = p.doneAt ?? p.records[p.ng.at].to; return `<tr class="${p === sel ? 'open' : ''}"><td class="id">${p.id}</td><td>${p.line}</td><td>${hms(p.inAt)}</td><td>${hms(end)}</td><td>${dur(p.lead)}</td><td>${steps(p)}</td><td>${result(p)}</td></tr>` }).join('')}
+      </tbody></table>`, side: detail(sel, '이력에서 고름') }
+  }
+  const render = () => {
+    const v = S.tab === 'live' ? live() : histTab()
+    document.getElementById('app').innerHTML = PD_SHELL('시안 G · 공정 중 추적 / 이력 조회 탭') + `
+    <main class="page">
+      <section class="panel"><header><span class="tabs"><button data-t="live" class="${S.tab === 'live' ? 'on' : ''}">공정 중 추적<b>${wip.length}</b></button><button data-t="hist" class="${S.tab === 'hist' ? 'on' : ''}">이력 조회</button></span>
+        <span class="meta" style="margin-left:12px">${S.tab === 'live' ? '지금 공정 안에 있는 제품 · 1초마다 갱신 · 빨강 = 설비 고장으로 멈춤' : '끝난 제품을 ID · 기간 · 라인 · 결과로 찾기'}</span></header>${v.main}</section>
+      <aside class="panel detail">${v.side}</aside>
+    </main>`
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-t]'); if (b) { S.tab = b.dataset.t; render() } })
+  render()
+</script>
+</body>
+</html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 F · 공정 중 추적 + 이력 조회 (한 화면)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* F: 두 기능을 한 화면에. 위 = 지금 공정 중인 제품 (공정마다 칸, 제품 칩, 멈춘 제품 빨강),
+     아래 = 지난 제품 이력 조회 (검색 · 기간 · 결과 + 표). 오른쪽 상세 칸은 둘이 같이 쓴다 (위·아래 어디서 골라도 여기) */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 400px; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .live { grid-column: 1; }
+  .hist { grid-column: 1; }
+  .detail { grid-column: 2; grid-row: 1 / 3; }
+  .pipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; }
+  .stage { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px 12px; border-left: 1px solid var(--line); }
+  .stage:first-child { border-left: 0; padding-left: 0; }
+  .stage h3 { display: flex; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 600; }
+  .stage h3 b { font-size: 20px; }
+  .stage h3 small { color: var(--down); font-size: 12px; font-weight: 600; }
+  .pids { display: flex; flex-wrap: wrap; gap: 4px; }
+  .pid { padding: 2px 6px; border-radius: 4px; background: var(--sunk); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pid.move { background: none; box-shadow: inset 0 0 0 1px var(--line-strong); color: var(--ink-2); font-weight: 400; }
+  .pid.stuck { background: var(--down); color: #fff; }
+  .pid.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .pipe-arrow { display: flex; justify-content: space-between; margin-top: 2px; font-size: 12px; color: var(--ink-3); }
+  .hbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .hbar .search { padding: 6px 12px; min-width: 300px; }
+  .hbar .search b { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+  .detail h3 { font-size: 20px; font-weight: 600; }
+  .detail .passport { grid-template-columns: repeat(2, auto); gap: 10px 24px; margin: 8px 0 18px; }
+  .from { display: inline-block; margin-bottom: 6px; padding: 2px 8px; border-radius: 4px; background: rgb(33 73 196 / 8%); color: #2149c4; font-size: 12px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, PROC, NOW, fmt, hms, hm, dur } = PD
+  const { steps, result, where, J } = PDH
+  const atProc = (p) => { const r = p.records.findIndex((x) => x.from != null && x.to == null); return r >= 0 ? { i: r, move: false } : { i: p.records.findIndex((x) => x.from == null), move: true } }
+  const wip = products.filter((p) => p.result === 'wip')
+  const sel = wip.find((p) => p.records.some((r) => r.stuck)) ?? wip[0]
+  const stage = (i) => {
+    const list = wip.filter((p) => atProc(p).i === i)
+    const stuck = list.filter((p) => p.records[i].stuck).length
+    return `<div class="stage"><h3>${PROC[i]}<b>${list.length}</b>${stuck ? `<small>멈춤 ${stuck}</small>` : ''}</h3><div class="pids">${list.map((p) => { const a = atProc(p); return `<span class="pid ${a.move ? 'move' : ''} ${p.records[i].stuck ? 'stuck' : ''} ${p === sel ? 'sel' : ''}" title="${p.id} · ${a.move ? '들어오는 중' : `${hm(p.records[i].from)}부터`}">${p.short}</span>` }).join('')}</div></div>`
+  }
+  const hist = products.filter((p) => p.result !== 'wip').slice(0, 9)
+  document.getElementById('app').innerHTML = PD_SHELL('시안 F · 공정 중 추적 + 이력 조회') + `
+  <main class="page">
+    <section class="panel live">
+      <header><h2>지금 공정 중인 제품</h2><span class="meta">${wip.length}개 (데모 장면) · 1초마다 갱신 · 칩을 누르면 오른쪽에 기록</span>
+        <span class="tools"><span class="aux">흰 칩 = 다음 공정으로 이동 중 · 빨강 = 설비 고장으로 멈춤</span></span></header>
+      <div class="pipe">${[0, 1, 2, 3, 4].map(stage).join('')}</div>
+      <div class="pipe-arrow"><span>투입 →</span><span>→ 양품 출고</span></div>
+    </section>
+    <section class="panel hist">
+      <header><h2>제품 이력 조회</h2><span class="meta">끝난 제품 (양품 출고 · 불량 제외) · 90일 보관 (D-86)</span></header>
+      <div class="hbar">
+        <span class="search"><b>제품 ID 검색 (예: D-20261118-0412)</b></span>
+        <span class="field">기간 11/13 ~ 11/19</span><span class="field">라인 전체 ▾</span>
+        <span class="chips"><span class="chip on">전체</span><span class="chip">양품 출고 <b>${fmt(DAY.ok)}</b></span><span class="chip">불량 제외 <b>${DAY.ng}</b></span></span>
+        <span class="aux" style="margin-left:auto">오늘 ${fmt(DAY.ok + DAY.ng)}건 · 최근순</span>
+      </div>
+      <table class="tbl"><thead><tr><th>제품 ID</th><th>라인</th><th>투입</th><th>끝남</th><th>걸린 시간</th><th>거친 공정</th><th>결과</th></tr></thead><tbody>
+      ${hist.map((p) => { const end = p.doneAt ?? p.records[p.ng.at].to; return `<tr><td class="id">${p.id}</td><td>${p.line}</td><td>${hms(p.inAt)}</td><td>${hms(end)}</td><td>${dur(p.lead)}</td><td>${steps(p)}</td><td>${result(p)}</td></tr>` }).join('')}
+      </tbody></table>
+    </section>
+    <aside class="panel detail">
+      <span class="from">공정 중에서 고름</span>
+      <h3>${sel.id}</h3>
+      <div class="passport">
+        <div><div class="lb">라인</div><div class="v">${sel.line}라인</div></div>
+        <div><div class="lb">지금 위치</div><div class="v" style="color:var(--down)">${where(sel)}</div></div>
+        <div><div class="lb">투입</div><div class="v">${hms(sel.inAt)}</div></div>
+        <div><div class="lb">투입 뒤</div><div class="v">${dur(sel.lead)}째</div></div>
+      </div>
+      <div class="vtrail">${sel.records.map((r) => `
+        <div class="vstep ${r.j ?? (r.from != null ? (r.stuck ? 'stuck' : 'now') : 'todo')}"><span class="dot"></span><div>
+          <div class="p">${r.p}<small>${J(r)}</small></div>
+          ${r.eq ? `<div class="m">${r.eq}</div>` : ''}
+          ${r.from != null ? `<div class="m">${hms(r.from)} → ${r.to ? `${hms(r.to)} · ${dur(r.to - r.from)}` : `${Math.round((NOW - r.from) / 60)}분째`}</div>` : ''}
+          ${r.stuck ? '<div class="why">B라인 프레스 3단 고장 (14:08부터) · 앞에서 대기</div>' : ''}
+          ${r.reason ? `<div class="why">${r.reason}</div>` : ''}
+        </div></div>`).join('')}</div>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

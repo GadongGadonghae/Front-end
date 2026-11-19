@@ -35,6 +35,21 @@
   --c-down-tint: #fbe9e9;     /* 진행 중 고장·위험 행 바탕 */
   --c-idle-tint: #fdf3d0;     /* 진행 중 대기 행 바탕 */
 
+  /* ── 가동률·생산 개편 (D-107·D-108): "이상만 색" ── */
+  --c-run-quiet: #dde2e8;     /* 타임라인의 가동: 칠하지 않은 듯한 옅은 중립 (정상은 색을 쓰지 않음) */
+  --c-stop-hatch: #9aa1ab;    /* 계획정지 빗금 선 (가동률에서 뺌) */
+  --c-dc-tint: #f0ebf6;       /* 진행 중 통신 끊김 행 바탕 */
+  --c-loss-a: #dde1e6;        /* OEE 다리: 시간 손실 */
+  --c-loss-p: #bcc2ca;        /* 성능 손실 */
+  --c-loss-q: #9aa1ab;        /* 품질 손실 */
+  --c-step-1: #c7ccd3;        /* 제품 여정: 공정마다 머문 칸 (슬리팅 → 출고, 뒤로 갈수록 진하게) */
+  --c-step-2: #a7aeb8;
+  --c-step-3: #8a929e;
+  --c-step-4: #6b737f;
+  --c-step-5: #4a515b;
+  --c-accent-tint: rgb(33 73 196 / 14%);  /* 지금 처리 중 칸, 진행 중 조각 */
+  --c-ng-hatch: rgb(22 25 29 / 6%);       /* 불량 제외 행 빗금 */
+
   /* ── 어두운 표면 (고장 토스트) ── */
   --c-inverse: var(--c-ink);
   --c-inverse-ink: #fff;
@@ -79,6 +94,7 @@
   /* 글자 크기 5단계: 보조 · 본문 · 제목·보조 숫자 · 요약 숫자 · 핵심 숫자 */
   --fs-sm: 13px;
   --fs-md: 14px;
+  --fs-row: 16px;   /* 목록 줄의 이름·값 (가동률 상태 줄, 제품 기록 칸). 시안 G·G4 크기로 (사용자 요청 2026-11-19) */
   --fs-lg: 20px;   /* 패널 제목 */
   --fs-xl: 32px;
   --fs-page: 24px;   /* 화면 제목 (생산 조회·가동률·이동 경로 끝). 패널 제목보다 한 단계 크게 */
@@ -97,6 +113,16 @@
   --col-summary: clamp(280px, 17vw, 320px);
   --col-side: clamp(340px, 22vw, 440px);
   --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
+  --col-detail: clamp(340px, 20vw, 400px); /* 고른 제품 기록 열 (생산 조회) */
+  --ledger-name-w: 96px;                    /* 가동률 상태 줄: 이름 칸 */
+  --ledger-oee-w: 148px;                    /* OEE · 기준 대비 칸 */
+  --ledger-loss-w: 88px;                    /* 손실 시간 칸 */
+  --ledger-row-min: 40px;                   /* 상태 줄 최소 높이 */
+  --ledger-row-max: 96px;                   /* 상태 줄 최대 높이 (줄이 적을 때) */
+  --track-h-lg: 28px;                       /* 굵은 24시간 띠 · 제품 여정 칸 */
+  --donut-size: 160px;
+  --journey-id-w: 150px;                    /* 제품 여정: 제품 ID 칸 */
+  --journey-where-w: 168px;                 /* 지금 위치 칸 */
   --doc-w: 920px;                           /* 계획수정 보고서 본문 최대 폭 (읽기 좋은 줄 길이) */
   --doc-label-w: 9em;                       /* 보고서 절 제목 칸 */
   --limits-w: 960px;                        /* 관리값 기준 표 최대 폭 (입력 칸이 멀리 흩어지지 않게) */

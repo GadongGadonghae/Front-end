@@ -11,7 +11,7 @@ import BasePanel from '@/components/base/BasePanel.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import ChartBarList from '@/components/charts/ChartBarList.vue'
-import ChartDonut from '@/components/charts/ChartDonut.vue'
+import ChartDonutValue from '@/components/charts/ChartDonutValue.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
 import StateLegend from '@/components/domain/StateLegend.vue'
@@ -99,7 +99,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
       <div class="cards">
         <BasePanel title="오늘 라인 실적 / 계획">
           <div class="donutrow">
-            <ChartDonut
+            <ChartDonutValue
               :parts="[{ value: now.rate ?? 0, color: 'var(--c-accent)' }, { value: Math.max(0, 100 - (now.rate ?? 0)), color: 'var(--c-track)' }]"
               :center="now.rate != null ? `${formatNumber(now.rate, 1)}%` : '-'"
               sub="달성률"
@@ -122,7 +122,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 
         <BasePanel :title="`오늘 불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
           <div class="donutrow">
-            <ChartDonut :parts="ngParts" :center="ngRate != null ? `${formatNumber(ngRate, 1)}%` : '-'" sub="불량률" :label="`불량률 ${formatNumber(ngRate, 1)}%`" />
+            <ChartDonutValue :parts="ngParts" :center="ngRate != null ? `${formatNumber(ngRate, 1)}%` : '-'" sub="불량률" :label="`불량률 ${formatNumber(ngRate, 1)}%`" />
             <ul class="ng" aria-label="공정별 불량 제외">
               <li v-for="r in ngParts" :key="r.name"><i :style="{ background: r.color }"></i><span>{{ r.name }}</span><b>{{ r.value }}</b></li>
             </ul>

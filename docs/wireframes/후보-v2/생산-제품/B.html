@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 B · 제품 여정 시간표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* B: 제품마다 한 줄, 가로 = 시각. 공정마다 머문 구간을 칸으로 그려 "어디서 오래 머물렀나 · 어디서 빠졌나 · 지금 어디 있나"를 본다 */
+  .page { display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 16px; }
+  .gantt { display: grid; grid-template-columns: 150px 120px minmax(0, 1fr); gap: 0 16px; align-items: center; }
+  .gh { padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); color: var(--ink-3); font-size: 13px; }
+  .gr { height: 30px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .gr.open { background: var(--sunk); }
+  .gr .id { font-weight: 600; }
+  .lane { position: relative; flex: 1; width: 100%; height: 18px; }
+  .lane i { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
+  .lane i.p0 { background: #c7ccd3; } .lane i.p1 { background: #a7aeb8; } .lane i.p2 { background: #8a929e; } .lane i.p3 { background: #6b737f; } .lane i.p4 { background: #4a515b; }
+  .lane i.now { background: none; box-shadow: inset 0 0 0 1.5px #2149c4; }
+  .lane i.stuck { background: var(--down); }
+  .lane i.ng { background: var(--ink); }
+  .lane .x { position: absolute; top: 0; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .lane .gap { position: absolute; top: 8px; height: 2px; background: var(--line-strong); }
+  .nowline { position: absolute; top: 0; bottom: 0; border-left: 1.5px dashed var(--ink-3); }
+  .ticks { position: relative; height: 16px; font-size: 12px; color: var(--ink-3); }
+  .ticks span { position: absolute; transform: translateX(-50%); }
+  .key { display: flex; gap: 14px; font-size: 12px; color: var(--ink-2); flex-wrap: wrap; }
+  .key span { display: inline-flex; align-items: center; gap: 5px; }
+  .key i { width: 14px; height: 10px; border-radius: 2px; display: inline-block; }
+  .bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; }
+  .htrail { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; font-size: 13px; }
+  .htrail b { display: block; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, NOW, DAY, PROC, fmt, hms, hm, dur } = PD
+  const { result, where, J } = PDH
+  const T0 = 13 * 3600 + 50 * 60 // 보이는 구간 13:50 ~ 14:25 (최근 투입 제품이 다 들어오게)
+  const T1 = 14 * 3600 + 25 * 60
+  const x = (s) => `${((s - T0) / (T1 - T0)) * 100}%`
+  const sel = products.find((p) => p.short === 'B-0874') ?? products.find((p) => p.line === 'B' && p.result === 'wip')
+  const rows = products.filter((p) => p.inAt > T0).slice(0, 19)
+  const lane = (p) => {
+    let html = ''
+    let prevTo = null
+    p.records.forEach((r, i) => {
+      if (r.from == null) return
+      if (prevTo != null) html += `<span class="gap" style="left:${x(prevTo)};width:calc(${x(r.from)} - ${x(prevTo)})"></span>`
+      const to = r.to ?? NOW
+      const cls = r.j === 'ng' ? 'ng' : r.to == null ? (r.stuck ? 'stuck' : 'now') : `p${i}`
+      html += `<i class="${cls}" style="left:${x(r.from)};width:calc(${x(to)} - ${x(r.from)})" title="${r.p} ${hms(r.from)}~${r.to ? hms(r.to) : '처리 중'}"></i>`
+      if (r.j === 'ng') html += `<span class="x" style="left:calc(${x(to)} + 4px)">✕ ${r.p}</span>`
+      prevTo = r.to
+    })
+    return `<div class="lane">${html}<span class="nowline" style="left:${x(NOW)}"></span></div>`
+  }
+  document.getElementById('app').innerHTML = PD_SHELL('시안 B · 제품 여정 시간표', '<span class="field muted" style="min-width:240px">제품 ID 검색</span>') + `
+  <main class="page">
+    <section class="panel">
+      <header><h2>제품 여정</h2><span class="meta">최근 투입 ${rows.length}개 · 칸 = 공정에 머문 시간, 가는 선 = 이동·대기</span>
+        <span class="tools"><span class="key">${PROC.map((p, i) => `<span><i style="background:${['#c7ccd3', '#a7aeb8', '#8a929e', '#6b737f', '#4a515b'][i]}"></i>${p}</span>`).join('')}<span><i style="box-shadow:inset 0 0 0 1.5px #2149c4"></i>처리 중</span><span><i style="background:var(--down)"></i>고장으로 멈춤</span><span><i style="background:var(--ink)"></i>불량 제외</span></span>
+        <span class="chips"><span class="chip on">전체 <b>${fmt(DAY.input)}</b></span><span class="chip">불량 제외 <b>${DAY.ng}</b></span><span class="chip">진행 중 <b>${DAY.wip}</b></span></span></span></header>
+      <div class="gantt"><span class="gh">제품 ID</span><span class="gh">결과 · 지금 위치</span><div class="gh ticks">${[13 * 60 + 50, 13 * 60 + 55, 14 * 60, 14 * 60 + 5, 14 * 60 + 10, 14 * 60 + 15, 14 * 60 + 20].map((m) => `<span style="left:${x(m * 60)}">${hm(m * 60)}</span>`).join('')}</div>
+        ${rows.map((p) => `<span class="gr id ${p === sel ? 'open' : ''}" style="display:flex;align-items:center">${p.id}</span><span class="gr ${p === sel ? 'open' : ''}" style="display:flex;align-items:center">${p.result === 'wip' ? `<span class="res wip">${where(p)}</span>` : result(p)}</span><div class="gr ${p === sel ? 'open' : ''}" style="display:flex;align-items:center">${lane(p)}</div>`).join('')}
+      </div>
+    </section>
+    <section class="panel bottom">
+      <div><p class="aux">고른 제품 · ${sel.line}라인 · 투입 ${hms(sel.inAt)} · ${dur(sel.lead)}째</p><p style="font-size:20px;font-weight:600">${sel.id}</p></div>
+      <div class="htrail">${sel.records.map((r) => `<div><span class="aux">${r.p}</span><b>${J(r)}</b>${r.eq ? `<span class="aux">${r.eq}${r.from != null ? ` · ${hm(r.from)}` : ''}</span>` : ''}</div>`).join('')}</div>
+    </section>
+  </main>`
+</script>
+</body>
+</html>

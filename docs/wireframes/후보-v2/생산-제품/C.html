@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 C · 공정 위치 보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* C: 지금 제품들이 어디 있나. 열 = 공정 (투입 → 슬리팅 → 프레스 → 용접 → 도장 → 출고 검사 → 양품 출고), 카드 = 그 공정에 있는 제품.
+     불량 제외는 맨 오른쪽 따로. 카드를 누르면 오른쪽 아래에 그 제품 기록 */
+  .page { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .sum { flex-direction: row; align-items: center; gap: 28px; padding: 12px 16px; }
+  .sum .k { display: flex; flex-direction: column; }
+  .sum .k b { font-size: 20px; font-weight: 600; }
+  .sum .k span { color: var(--ink-3); font-size: 13px; }
+  .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) minmax(0, 1fr) minmax(0, 1.1fr); gap: 10px; min-height: 0; }
+  .col { display: flex; flex-direction: column; gap: 6px; min-height: 0; padding: 10px; border-radius: 8px; background: var(--surface); }
+  .col h3 { display: flex; align-items: baseline; justify-content: space-between; font-size: 14px; font-weight: 600; padding-bottom: 6px; border-bottom: 1px solid var(--line-strong); }
+  .col h3 b { font-size: 20px; }
+  .col.ok { background: rgb(33 73 196 / 5%); }
+  .col.ng { background: var(--sunk); }
+  .card { display: flex; flex-direction: column; gap: 2px; padding: 7px 9px; border-radius: 6px; background: var(--surface); box-shadow: inset 0 0 0 1px var(--line-strong); font-size: 12px; }
+  .card b { font-size: 13px; }
+  .card .t { color: var(--ink-3); }
+  .card.stuck { box-shadow: inset 0 0 0 1.5px var(--down); }
+  .card.stuck .t { color: var(--down); font-weight: 600; }
+  .card.sel { box-shadow: inset 0 0 0 2px var(--ink); }
+  .more { margin-top: auto; color: var(--ink-3); font-size: 12px; text-align: center; }
+  .drawer { position: fixed; right: 40px; bottom: 36px; width: 360px; padding: 16px; border-radius: 10px; background: var(--surface); box-shadow: 0 8px 24px rgb(20 24 31 / 14%), 0 0 0 1px var(--line-strong); }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, WIP_AT, PROC, NOW, fmt, hms, hm, dur } = PD
+  const { J, result } = PDH
+  const atProc = (p) => { const r = p.records.findIndex((x) => x.from != null && x.to == null); return r >= 0 ? r : p.records.findIndex((x) => x.from == null) }
+  const wip = products.filter((p) => p.result === 'wip')
+  const sel = products.find((p) => p.short === 'B-0874') ?? wip[0]
+  const col = (i) => {
+    const list = wip.filter((p) => atProc(p) === i)
+    const cards = list.slice(0, 6).map((p) => { const r = p.records[i]; const t = r.stuck ? `고장으로 멈춤 · ${Math.round((NOW - r.from) / 60)}분째` : r.from == null ? `들어오는 중 · ${p.line}라인` : `${hm(r.from)}부터 · ${p.line}라인`; return `<div class="card ${r.stuck ? 'stuck' : ''} ${p === sel ? 'sel' : ''}"><b>${p.id.replace('-20261119', '')}</b><span class="t">${t}</span></div>` }).join('')
+    return `<div class="col"><h3>${PROC[i]}<b>${Math.max(WIP_AT[PROC[i]], list.length)}</b></h3>${cards}${Math.max(WIP_AT[PROC[i]], list.length) > Math.min(6, list.length) ? `<span class="more">외 ${Math.max(WIP_AT[PROC[i]], list.length) - Math.min(6, list.length)}개</span>` : ''}</div>`
+  }
+  const done = products.filter((p) => p.result === 'ok').sort((a, b) => b.doneAt - a.doneAt).slice(0, 6)
+  const ng = products.filter((p) => p.result === 'ng')
+  document.getElementById('app').innerHTML = PD_SHELL('시안 C · 공정 위치 보드', '<span class="field muted" style="min-width:240px">제품 ID 검색</span>') + `
+  <main class="page">
+    <section class="panel sum">
+      <div class="k"><span>투입</span><b>${fmt(DAY.input)}</b></div>
+      <div class="k"><span>지금 공정 안</span><b style="color:#2149c4">${DAY.wip}</b></div>
+      <div class="k"><span>양품 출고</span><b>${fmt(DAY.ok)}</b></div>
+      <div class="k"><span>불량 제외</span><b>${DAY.ng}</b></div>
+      <span class="aux" style="margin-left:auto">출고 ${fmt(DAY.ok)} · 지금 계획 ${fmt(DAY.expected)} · <b style="color:#2149c4">${fmt(DAY.ok - DAY.expected)}개 앞섬</b></span>
+    </section>
+    <section class="board">
+      ${[0, 1, 2, 3, 4].map(col).join('')}
+      <div class="col ok"><h3>양품 출고<b>${fmt(DAY.ok)}</b></h3>${done.map((p) => `<div class="card"><b>${p.id.replace('-20261119', '')}</b><span class="t">${hms(p.doneAt)} 출고 · ${dur(p.lead)}</span></div>`).join('')}<span class="more">최근 6개</span></div>
+      <div class="col ng"><h3>불량 제외<b>${DAY.ng}</b></h3>${ng.map((p) => `<div class="card"><b>${p.id.replace('-20261119', '')}</b><span class="t">${PROC[p.ng.at]} · ${p.ng.reason}</span></div>`).join('')}<span class="more">최근 ${ng.length}개</span></div>
+    </section>
+  </main>
+  <aside class="drawer">
+    <p class="aux">고른 제품</p><p style="font-size:18px;font-weight:600">${sel.id}</p>
+    <p class="aux" style="margin-bottom:10px">${sel.line}라인 · 투입 ${hms(sel.inAt)} · ${dur(sel.lead)}째</p>
+    <div class="vtrail">${sel.records.map((r) => `<div class="vstep ${r.j ?? (r.from != null ? (r.stuck ? 'stuck' : 'now') : 'todo')}"><span class="dot"></span><div><div class="p">${r.p}<small>${J(r)}</small></div>${r.from != null ? `<div class="m">${r.eq} · ${hms(r.from)}</div>` : ''}</div></div>`).join('')}</div>
+  </aside>`
+</script>
+</body>
+</html>
