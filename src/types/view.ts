@@ -74,6 +74,8 @@ export interface LineFlowView {
   }[]
   /** 공정 사이 재공 (groups.length - 1개) */
   wip: (number | null)[]
+  /** 라인 앞(입고)·뒤(도장/출고) 재공. 값이 없으면 null */
+  endWip?: [number | null, number | null]
 }
 
 /** 라인 요약 열 (SCR-010 2번) */

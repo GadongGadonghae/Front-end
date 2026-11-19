@@ -65,7 +65,7 @@ export function useLineDetail(lineId: LineId) {
       note: INSPECTION_NOTE[p] ?? null,
     }))
     const wip = lineId === 'PT' ? [] : (lineSummary.value?.wip.map((w) => w.qty) ?? [null, null])
-    return { from: lineId === 'PT' ? '라인에서' : '입고에서', to: lineId === 'PT' ? '출고로' : '도장으로', groups, wip }
+    return { from: lineId === 'PT' ? '라인에서' : '입고에서', to: lineId === 'PT' ? '출고로' : '도장으로', groups, wip, endWip: lineId === 'PT' ? undefined : [null, null] }
   })
 
   const now_ = computed<LineNowView>(() => {

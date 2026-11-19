@@ -2,13 +2,14 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-defineProps<{ items: { key: string; label: string; to: string }[]; active: string; label: string }>()
+defineProps<{ items: { key: string; label: string; to: string; disabled?: boolean }[]; active: string; label: string }>()
 </script>
 
 <template>
   <nav class="tabs" :aria-label="label">
+    <span v-for="t in items.filter((x) => x.disabled)" :key="t.key" class="off" aria-disabled="true" :title="`${t.label}는 준비 중`">{{ t.label }}</span>
     <RouterLink
-      v-for="t in items"
+      v-for="t in items.filter((x) => !x.disabled)"
       :key="t.key"
       :to="t.to"
       :class="{ on: t.key === active }"
@@ -26,20 +27,27 @@ defineProps<{ items: { key: string; label: string; to: string }[]; active: strin
   background: var(--c-surface);
 }
 
-a {
+/* 칸 사이 구분선은 앞 칸의 오른쪽 선으로 (준비 중 칸이 앞에 와도 같은 모양) */
+a,
+.off {
   display: flex;
   align-items: center;
   height: var(--control-h);
   padding: 0 var(--sp-4);
-  border-left: var(--line-w) solid var(--c-line);
+  border-right: var(--line-w) solid var(--c-line);
   color: var(--c-ink-2);
   font-size: var(--fs-md);
   text-decoration: none;
   white-space: nowrap;
 }
 
-a:first-child {
-  border-left: 0;
+.off {
+  color: var(--c-ink-3);
+  cursor: not-allowed;
+}
+
+a:last-child {
+  border-right: 0;
 }
 
 a:hover {

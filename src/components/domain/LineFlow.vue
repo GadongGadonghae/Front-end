@@ -24,6 +24,8 @@ const columns = computed(() => {
 })
 /** 묶음 i가 놓이는 격자 열 (1부터) */
 const col = (i: number) => 2 + i * 2
+/** 병목 의심: 재공이 쌓이는데 바로 뒤 공정에 고장·대기 설비가 있을 때 */
+const bottleneck = (i: number) => (props.view.wip[i] ?? 0) > 0 && props.view.groups[i + 1]?.cells.some((c) => c.state === 'D' || c.state === 'I')
 
 function cellLabel(c: FlowCellView, group: string) {
   const why = c.reason ? `, ${c.reason.code}${c.reason.detail ? ` ${c.reason.detail}` : ''}` : ''
@@ -58,11 +60,11 @@ function onKey(e: KeyboardEvent, go: () => void) {
           생산 <b>{{ formatNumber(g.output) }}</b> · 불량 {{ formatNumber(g.ng) }}<span v-if="g.note" class="note"> ({{ g.note }})</span>
         </p>
         <div v-if="i < view.groups.length - 1" class="link" :style="{ gridColumn: col(i) + 1 }">
-          <span>재공 <b>{{ formatNumber(view.wip[i]) }}</b></span>
+          <span :class="{ warn: bottleneck(i) }">재공 <b>{{ formatNumber(view.wip[i]) }}</b><em v-if="bottleneck(i)">⚠ 병목 의심</em></span>
         </div>
       </template>
-      <div class="end start"><span>{{ view.from }}</span></div>
-      <div class="end finish" :style="{ gridColumn: col(view.groups.length - 1) + 1 }"><span>{{ view.to }}</span></div>
+      <div class="end start"><span>{{ view.from }}<template v-if="view.endWip"><br>재공 <b>{{ formatNumber(view.endWip[0]) }}</b></template></span></div>
+      <div class="end finish" :style="{ gridColumn: col(view.groups.length - 1) + 1 }"><span>{{ view.to }}<template v-if="view.endWip"><br>재공 <b>{{ formatNumber(view.endWip[1]) }}</b></template></span></div>
     </div>
   </div>
 </template>
@@ -211,6 +213,26 @@ function onKey(e: KeyboardEvent, go: () => void) {
   font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
+}
+
+.link .warn {
+  border: var(--line-w) solid var(--c-idle-edge);
+  background: var(--c-idle-tint);
+}
+
+.link em {
+  display: block;
+  color: var(--c-caution-ink);
+  font-size: var(--fs-sm);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.end b {
+  display: block;
+  color: var(--c-ink);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-strong);
 }
 
 @media (height <= 860px) {
