@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 조회 · 제품 중심 시안 비교</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root { --canvas: #eef0f2; --surface: #fff; --ink: #16191d; --ink-2: #4a515b; --ink-3: #626a75; --line: rgb(20 24 31 / 9%); --line-strong: rgb(20 24 31 / 18%); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--canvas); color: var(--ink); font: 14px/1.5 pretendard, "Malgun Gothic", system-ui, sans-serif; }
+  .wrap { max-width: 1760px; margin: 0 auto; padding: 32px 32px 64px; }
+  h1 { margin: 0 0 4px; font-size: 24px; font-weight: 600; }
+  .lead { margin: 0 0 8px; color: var(--ink-2); max-width: 72em; }
+  .rules { margin: 0 0 24px; padding: 12px 16px; background: var(--surface); border-radius: 8px; color: var(--ink-2); font-size: 13px; }
+  .rules b { color: var(--ink); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .card { display: flex; flex-direction: column; gap: 12px; padding: 16px; background: var(--surface); border-radius: 8px; }
+  .card header { display: flex; align-items: baseline; gap: 10px; }
+  .card h2 { margin: 0; font-size: 18px; font-weight: 600; }
+  .card .tag { color: var(--ink-3); font-size: 13px; }
+  .card a.open { margin-left: auto; color: var(--ink-2); font-size: 13px; }
+  .frame { position: relative; width: 100%; aspect-ratio: 1920 / 940; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--canvas); }
+  .frame iframe, .frame img { position: absolute; left: 0; top: 0; width: 1920px; height: 940px; border: 0; transform-origin: 0 0; }
+  .frame img { width: 100%; height: 100%; }
+  .idea { margin: 0; color: var(--ink); }
+  dl { display: grid; grid-template-columns: 5.5em 1fr; gap: 4px 12px; margin: 0; font-size: 13px; }
+  dt { color: var(--ink-3); }
+  dd { margin: 0; color: var(--ink-2); }
+  table { width: 100%; border-collapse: collapse; margin-top: 32px; background: var(--surface); border-radius: 8px; overflow: hidden; font-size: 13px; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+  th { color: var(--ink-3); font-weight: 400; }
+  td.c { text-align: center; }
+  h2.sec { margin: 40px 0 8px; font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>생산 조회 · 제품 중심 시안 비교</h1>
+  <p class="lead">생산 화면의 주인공은 <b>생산품(제품)</b>. 앞 시안 C(제품 추적 먼저)를 출발점으로, 지금 데이터가 주는 제품 정보(제품 ID · 라인 · 투입/완료 · 거친 공정 · 결과 · 공정별 설비/시각/판정/사유)만 써서 <b>보여 주는 방식</b>을 다섯 가지로 나눴다. 같은 데모 장면(2026-11-19 14:20, B라인 프레스 3단 고장 → B라인 제품이 프레스에서 멈춤). "열기"로 1920×940 실제 크기.</p>
+  <p class="rules"><b>공통 규칙</b> · 결과 = 양품 출고 / 불량 제외(어느 공정) / 진행 중(지금 위치) · 거친 공정 칩: 지남(회색) · 처리 중(파랑 테두리) · 고장으로 멈춤(빨강, 고장 뜻) · 불량 제외 위치(먹색) · 결과 칩에 오늘 수(전체 5,831 · 양품 5,567 · 불량 229 · 진행 중 35) · 계획 대비는 작게 한 줄만 · 값은 데모</p>
+  <p class="rules"><b>G1~G5 디자인 요소</b> (가동률 시안 G와 같은 원칙: 데이터 뜻만 그림, 빨강 = 고장 하나) · 행 바탕 = 그 제품의 지금 상태 (고장으로 멈춤 옅은 빨강 · 불량 제외 먹색 빗금) · 걸린 시간 막대 = 표준(오늘 양품 중앙값, 데모) 대비, 빠름 파랑 · 느림 먹색, 차이 클수록 진하게 (불량은 비교 안 함) · 결과 도넛 · 투입 흐름 막대 · 시간표 지금 이후 옅은 칸 · 공정 칸 쌓임 막대. 카드마다 "이력 탭"으로 두 번째 탭을 바로 열 수 있음</p>
+  <div class="grid" id="grid"></div>
+  <h2 class="sec">비교 기준</h2>
+  <table>
+    <thead><tr><th>질문</th><th>A 표 + 오른쪽 상세</th><th>B 제품 여정 시간표</th><th>C 공정 위치 보드</th><th>D 불량 제품 추적</th><th>E 제품 여권</th></tr></thead>
+    <tbody>
+      <tr><td>이 제품 지금 어디 있나 / 어떻게 됐나</td><td class="c">◎</td><td class="c">◎</td><td class="c">○ 카드</td><td class="c">△ 불량만</td><td class="c">◎</td></tr>
+      <tr><td>어디서 오래 걸렸나 (공정별 시간)</td><td class="c">○ 세로 기록</td><td class="c">◎ 칸 길이</td><td class="c">△</td><td class="c">○</td><td class="c">◎ 칸 폭</td></tr>
+      <tr><td>지금 공정마다 몇 개 있나 · 막힌 곳</td><td class="c">△</td><td class="c">○ 빨간 칸이 몰림</td><td class="c">◎ 열마다 수</td><td class="c">△</td><td class="c">△</td></tr>
+      <tr><td>왜 빠졌나 (불량 사유)</td><td class="c">○</td><td class="c">△</td><td class="c">○</td><td class="c">◎ 공정·사유 순위</td><td class="c">◎ + 앞뒤 제품</td></tr>
+      <tr><td>여러 제품을 한 번에 훑기</td><td class="c">◎ 큰 표</td><td class="c">◎</td><td class="c">○</td><td class="c">○</td><td class="c">○ 표는 아래</td></tr>
+      <tr><td>주·월로 바꿨을 때</td><td class="c">◎ 표 그대로</td><td class="c">△ 시각축이 넓어짐</td><td class="c">△ "지금"만 뜻 있음</td><td class="c">◎</td><td class="c">◎</td></tr>
+    </tbody>
+  </table>
+  <p class="lead" style="margin-top:12px">◎ 매우 좋음 · ○ 좋음 · △ 약함 — 만든 사람의 1차 판단. 섞어도 된다.</p>
+</div>
+<script>
+  const ITEMS = [
+    { id: 'G1', title: 'G1 · 왼쪽 요약 열', tag: 'G 변형 · 가동률 G 틀', idea: '가동률 시안 G와 같은 3열. 왼쪽 = 오늘 흐름 (계획 대비 앞섬 큰 숫자 · 투입 흐름 막대 · 결과 도넛 · 고장으로 멈춘 제품 상자), 가운데 = 탭 (보드에 쌓임 막대 + 시간표 / 이력 표), 오른쪽 = 고른 제품', good: '가동률 화면과 틀이 같아 두 화면을 오갈 때 익숙함. 오늘 숫자가 늘 보임', weak: '가운데가 좁아져 시간표 · 이력 표 폭이 줄어듦' },
+    { id: 'G2', title: 'G2 · 위 요약 띠 + 쌓임 보드', tag: 'G 변형', idea: '위 한 줄 = 투입 · 계획 대비 + 투입 흐름 막대(양품 · 불량 · 진행 중). 보드 칸마다 쌓인 정도 막대, 멈춘 공정 칸은 옅은 빨강 바탕', good: '요약이 한 줄로 끝나 아래 탭이 넓음. 막힌 공정이 칸 바탕으로 먼저 보임', weak: '흐름 막대는 양품이 95%라 불량 · 진행 중 조각이 얇음' },
+    { id: 'G3', title: 'G3 · 공정 흐름 그림', tag: 'G 변형', idea: '추적 탭 = 투입 → 공정 5칸 → 양품 출고 흐름 그림, 칸 높이 = 그 안 제품 수, 멈춘 공정 빨강. 이력 탭 = 걸린 시간 분포(표준 눈금, 빠름 파랑 · 느림 먹색) + 표. 상세 맨 위 상태 띠', good: '공정 사이 흐름과 쌓인 곳이 그림 하나로 읽힘. 이력에서 오래 걸린 제품이 분포로 보임', weak: '흐름 그림은 개별 제품 ID가 안 보임 (시간표로 봐야 함)' },
+    { id: 'G4', title: 'G4 · 시간표 중심', tag: 'G 변형', idea: '추적 탭 = 굵은 제품 여정 시간표가 주인공 (행 바탕 = 지금 상태, 지금 이후 옅은 칸), 위에 공정별 개수 한 줄. 이력 탭 = 왼쪽 결과 도넛 · 걸린 시간 분포, 오른쪽 표', good: '어디서 얼마나 머물렀나, 멈춘 제품이 한꺼번에 보임. 한 화면에 14개 제품', weak: '공정별 제품 목록(보드)은 숫자만 남음' },
+    { id: 'G5', title: 'G5 · 제품 기록 강조', tag: 'G 변형', idea: '오른쪽 상세가 넓음(500px). 맨 위 상태 띠(멈춤 옅은 빨강 · 불량 빗금 · 양품 옅은 파랑) + 공정마다 머문 시간 막대 + 단계 기록. 왼쪽은 작은 보드 + 시간표 / 이력 표', good: '제품 하나를 깊게 볼 때 가장 좋음. 어느 공정에서 오래 걸렸는지 막대로 바로', weak: '왼쪽 목록 폭이 가장 좁음' },
+    { id: 'F', title: 'F · 공정 중 추적 + 이력 조회 (한 화면)', tag: '두 기능 중점', idea: '위 = 지금 공정 중인 제품 (공정마다 칸 · 제품 칩 · 멈춘 제품 빨강), 아래 = 끝난 제품 이력 조회 (ID 검색 · 기간 · 라인 · 결과 + 표). 오른쪽 상세 칸은 둘이 같이 씀', good: '두 기능이 한눈에, 지금 일과 지난 일을 오가며 같은 상세 칸에서 봄', weak: '두 기능이 화면을 나눠 써서 각각 크기가 작음' },
+    { id: 'G', title: 'G · 공정 중 추적 / 이력 조회 탭', tag: '두 기능 중점', idea: '탭 [공정 중 추적] = 공정 칸 보드 + 제품 여정 시간표, [이력 조회] = 검색 · 기간 · 결과 + 큰 표. 두 탭 모두 오른쪽 상세 칸', good: '각 기능이 화면 전체를 씀. 추적은 보드와 시간표로 깊게, 이력은 표가 큼', weak: '두 기능을 오가려면 탭을 눌러야 함' },
+    { id: 'A', title: 'A · 표 + 오른쪽 상세', tag: '목록-상세', idea: '왼쪽 큰 제품 표(소요 시간 · 거친 공정 · 결과/지금 위치), 오른쪽에 고른 제품의 여권과 공정별 기록(설비 · 들어온/나간 시각 · 걸린 시간 · 판정 · 사유)', good: '익숙한 목록-상세, 표를 훑다가 바로 한 제품 깊이', weak: '"지금 막힌 곳"은 표를 읽어야 보임' },
+    { id: 'B', title: 'B · 제품 여정 시간표', tag: '간트', idea: '제품마다 한 줄, 가로 = 시각. 공정마다 머문 구간을 칸으로, 이동·대기는 가는 선. 처리 중 · 고장으로 멈춤 · 불량 제외가 한눈에', good: '어디서 오래 머물렀나, B라인 제품이 프레스에서 한꺼번에 멈춘 게 바로 보임', weak: '긴 기간(주·월)은 가로축이 넓어져 맞지 않음' },
+    { id: 'C', title: 'C · 공정 위치 보드', tag: '칸반', idea: '열 = 슬리팅 → 프레스 → 용접 → 도장 → 출고 검사 → 양품 출고 / 불량 제외, 카드 = 그 공정에 지금 있는 제품. 카드를 누르면 기록', good: '"지금 제품들이 어디 있나", 공정마다 쌓인 수와 멈춘 제품', weak: '지난 일(오늘 전체 이력) 찾기는 약함' },
+    { id: 'D', title: 'D · 불량 제품 추적', tag: '품질', idea: '왼쪽 = 공정별 불량 수와 사유 순위, 가운데 = 불량 제외 제품 목록(빠진 공정 · 설비 · 시각 · 사유), 오른쪽 = 고른 제품 기록', good: '빠진 제품을 사유 → 제품 → 설비로 좁혀 감', weak: '양품·진행 중 제품은 뒤로 밀림 (불량 화면에 가까움)' },
+    { id: 'E', title: 'E · 제품 여권', tag: '앞 시안 C 발전', idea: '검색 + 제품 여권(라인 · 투입 · 빠진 시각 · 걸린 시간 · 결과) + 공정별 걸린 시간 칸, 오른쪽 = 같은 라인 앞뒤 제품, 아래 = 결과 칩 표', good: '제품 하나를 완결해서 보고, 앞뒤 제품으로 "이 제품만의 일인지" 판단', weak: '여러 제품을 비교하는 힘은 A·B보다 약함' },
+  ]
+  const grid = document.getElementById('grid')
+  grid.innerHTML = ITEMS.map((x) => `
+    <section class="card">
+      <header><h2>${x.title}</h2><span class="tag">${x.tag}</span><a class="open" href="${x.id}.html" target="_blank">열기 ↗</a>${x.id.startsWith('G') ? `<a class="open" style="margin-left:0" href="${x.id}.html?tab=hist" target="_blank">이력 탭 ↗</a>` : ''}</header>
+      <div class="frame"><iframe src="${x.id}.html" title="${x.title}"></iframe></div>
+      <p class="idea">${x.idea}</p>
+      <dl><dt>좋은 점</dt><dd>${x.good}</dd><dt>약한 점</dt><dd>${x.weak}</dd></dl>
+    </section>`).join('')
+  const fit = () => document.querySelectorAll('.frame iframe').forEach((f) => { f.style.transform = `scale(${f.parentElement.clientWidth / 1920})` })
+  addEventListener('resize', fit); fit()
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G5 · 제품 기록 강조</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<link rel="stylesheet" href="gk.css">
+<style>
+  /* G5: 오른쪽 상세가 넓고 주인공. 맨 위 상태 띠 (멈춤 = 옅은 빨강, 불량 = 빗금, 양품 = 옅은 파랑),
+     공정마다 머문 시간 막대, 그 아래 단계 기록. 왼쪽은 작은 보드 + 시간표 / 이력 표 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 500px; gap: 16px; }
+  .main .gboard { margin-bottom: 14px; }
+  .detail .sec { margin: 0 0 8px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script src="gk.js"></script>
+<script>
+  GK.mount('시안 G5 · 제품 기록 강조', (tab) => {
+    const sel = tab === 'live' ? GK.selLive : GK.selHist
+    const d = GK.detail(sel, tab === 'live' ? '공정 중에서 고름' : '이력에서 고름', { band: true, dbar: true }).replace('<div class="dbars">', '<div class="sec">공정마다 머문 시간</div><div class="dbars">')
+    return `<main class="page">
+    <section class="panel main"><header>${GK.tabs(tab)}<span class="meta" style="margin-left:12px">${tab === 'live' ? '제품을 누르면 오른쪽에 공정별 기록' : '행 바탕 = 결과 · 걸린 시간 막대 = 표준 대비'}</span></header>
+      ${tab === 'live' ? GK.board(sel, { compact: true }) + GK.gantt(GK.wip.slice(0, 12), sel) : GK.histBar() + GK.histTable(GK.done.slice(0, 17), sel)}</section>
+    <aside class="panel detail">${d}</aside></main>`
+  })
+</script>
+</body>
+</html>

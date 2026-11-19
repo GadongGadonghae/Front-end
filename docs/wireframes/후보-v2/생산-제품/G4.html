@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G4 · 시간표 중심</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<link rel="stylesheet" href="gk.css">
+<style>
+  /* G4: 추적 탭 = 굵은 시간표가 주인공 (행 바탕 = 지금 상태, 지금 이후 옅은 칸), 위에 공정별 개수 한 줄.
+     이력 탭 = 왼쪽 결과 도넛 · 걸린 시간 분포, 오른쪽 표 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; }
+  .cnt { display: flex; gap: 6px; margin-bottom: 14px; }
+  .cnt span { flex: 1; display: flex; justify-content: space-between; align-items: baseline; padding: 8px 12px; border-radius: 6px; background: var(--sunk); font-size: 13px; }
+  .cnt span b { font-size: 20px; font-weight: 600; }
+  .cnt span.stuck { background: rgb(198 40 40 / 8%); box-shadow: inset 0 0 0 1px rgb(198 40 40 / 30%); }
+  .cnt span.stuck b { color: var(--down); }
+  .cnt span.arrow { flex: 0 0 auto; padding: 8px 0; background: none; color: var(--ink-3); }
+  .main .grow > * { min-height: 40px; }
+  .hsplit { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; min-height: 0; }
+  .hsplit h3 { margin: 16px 0 4px; font-size: 14px; font-weight: 600; }
+  .hsplit h3:first-child { margin-top: 0; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script src="gk.js"></script>
+<script>
+  const { PROC } = PD
+  const cnt = `<div class="cnt">${PROC.map((n, i) => { const l = GK.wip.filter((p) => GK.atProc(p).i === i); const st = l.some((p) => p.records[i]?.stuck); return `${i ? '<span class="arrow">›</span>' : ''}<span class="${st ? 'stuck' : ''}">${n}<b>${l.length}</b></span>` }).join('')}</div>`
+  GK.mount('시안 G4 · 시간표 중심', (tab) => `<main class="page">
+    <section class="panel main"><header>${GK.tabs(tab)}<span class="meta" style="margin-left:12px">${tab === 'live' ? '막대 = 공정마다 머문 시간 · 파랑 테두리 = 지금 · 오른쪽 옅은 칸 = 지금 이후' : '끝난 제품을 ID · 기간 · 라인 · 결과로 찾기'}</span></header>
+      ${tab === 'live' ? cnt + GK.gantt(GK.wip.slice(0, 14), GK.selLive, { thick: 24, })
+        : GK.histBar() + `<div class="hsplit"><div><h3>오늘 결과</h3>${GK.donut(170)}${GK.legend3()}<h3>걸린 시간 분포</h3>${GK.leadHist(80)}</div><div>${GK.histTable(GK.done.slice(0, 16), GK.selHist, { lead: false })}</div></div>`}</section>
+    <aside class="panel detail">${GK.detail(tab === 'live' ? GK.selLive : GK.selHist, tab === 'live' ? '공정 중에서 고름' : '이력에서 고름')}</aside></main>`)
+</script>
+</body>
+</html>

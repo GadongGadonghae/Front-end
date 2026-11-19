@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가동률 시안 E · 순위 + 사건 주석 타임라인</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  /* E: 위 = 비교의 답 한 줄 ("가장 낮은 라인과 이유") + 공장 평균 기준선 대비 라인 순위.
+     아래 = 가는 띠 위에 손실 사건마다 주석(사유·지속)을 단 타임라인. 이야기처럼 읽힌다 */
+  .page { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .answer { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 32px; align-items: center; padding: 16px 20px; }
+  .answer .lead p.aux { margin-bottom: 4px; }
+  .answer .lead .why { margin-top: 6px; color: var(--ink-2); }
+  .diverge { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 12px; align-items: end; height: 120px; }
+  .dv { display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; }
+  .dv .area { position: relative; flex: 1; width: 100%; }
+  .dv .area .base { position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--ink-3); }
+  .dv .area i { position: absolute; left: 30%; right: 30%; border-radius: 2px; background: var(--ink-3); }
+  .dv.low .area i { background: var(--ink); }
+  .dv b { font-size: 13px; }
+  .dv span { font-size: 12px; color: var(--ink-3); }
+  .story { min-height: 0; }
+  .lane { position: relative; display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 12px; align-items: center; flex: 1; min-height: 52px; border-bottom: 1px solid var(--line); }
+  .lane .nm { font-weight: 600; }
+  .lane .nm small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+  .lane .tk { position: relative; height: 100%; }
+  .lane .tk .track { position: absolute; left: 0; right: 0; top: 60%; height: 6px; transform: translateY(-50%); background: none; }
+  .note { position: absolute; top: 4px; display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px 1px 2px; border: 1px solid var(--line-strong); border-radius: 4px; background: var(--surface); font-size: 12px; white-space: nowrap; transform: translateX(-2px); }
+  .note.on { border-color: var(--ink); font-weight: 600; }
+  .note::after { content: ""; position: absolute; left: 2px; top: 100%; height: 10px; border-left: 1px solid var(--ink-3); }
+  .lanes { display: flex; flex-direction: column; flex: 1; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+  const { LINES, PLANT, NOW, fmtDur, fmtHM } = UT
+  const { track, axis, legend, key, pct } = UTH
+  const worst = LINES.slice().sort((a, b) => a.oee - b.oee)[0]
+  const span = 30 // 기준선 ±15%p를 막대 높이 50%로
+  const bar = (l) => {
+    const d = l.oee - PLANT.oee
+    const h = Math.min(50, (Math.abs(d) / span) * 100)
+    return `<div class="dv ${d < -5 ? 'low' : ''}"><div class="area"><span class="base"></span><i style="${d >= 0 ? `bottom:50%;height:${h}%` : `top:50%;height:${h}%`}"></i></div><b>${l.oee.toFixed(1)}</b><span>${l.name} ${d > 0 ? '+' : ''}${d.toFixed(1)}</span></div>`
+  }
+  const lane = (l) => `<div class="lane"><span class="nm">${l.name}<small>손실 ${l.loss ? fmtDur(l.loss) : '-'}</small></span>
+    <div class="tk">${track(l, { height: 6, now: true })}${l.events.filter((e) => e.s !== 'S' || true).map((e) => `<span class="note ${e.ongoing ? 'on' : ''}" style="left:${pct(e.from)}">${key(e.s)}${e.eq.replace(/^\S+라인 /, '')} · ${e.code} · ${e.ongoing ? `${Math.round((NOW - e.from) / 60)}분째` : fmtDur(e.to - e.from)}</span>`).join('')}</div></div>`
+  document.getElementById('app').innerHTML = UT_SHELL('E · 순위 + 사건 주석') + `
+  <main class="page">
+    <section class="panel answer">
+      <div class="lead">
+        <p class="aux">오늘 가장 낮은 라인 · 공장 ${PLANT.oee}%</p>
+        <p class="key">${worst.name} ${worst.oee}<small>%</small></p>
+        <p class="why">공장보다 ${(PLANT.oee - worst.oee).toFixed(1)}%p 낮음 · 프레스 3단 고장 진행 중 (14:08부터)</p>
+      </div>
+      <div><p class="aux" style="margin-bottom:6px">라인별 OEE · 점선 = 공장 ${PLANT.oee}% (위는 높음, 아래는 낮음)</p><div class="diverge">${LINES.map(bar).join('')}</div></div>
+    </section>
+    <section class="panel story">
+      <header><h2>오늘 손실 사건</h2><span class="meta">띠 위 주석 = 설비 · 사유 · 지속</span><span class="tools">${legend()}</span></header>
+      <div class="lanes">${LINES.map(lane).join('')}</div>
+      <div style="display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;padding-top:6px"><span></span>${axis()}</div>
+    </section>
+  </main>`
+</script>
+</body>
+</html>
