@@ -26,3 +26,5 @@ dist-ssr
 # impeccable: 캐시는 제외, 점검기 설정(config.json)은 커밋
 .impeccable/*
 !.impeccable/config.json
+__pycache__/
+shots/
