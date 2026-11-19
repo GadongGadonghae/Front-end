@@ -212,7 +212,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
       <div class="right">
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
-          <DowntimeHistory :rows="history.rows.value" @save="history.saveMemo" />
+          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
         </BasePanel>
         <BasePanel title="공정 검사" :meta="`${INSPECT_META[process]} · 오늘`">
           <InspectionPanel

@@ -254,7 +254,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const rMat = [C.route, C.route2, C.routeAlt].map((c) => new THREE.MeshBasicMaterial({ color: c }))
   let rMesh: THREE.Mesh[] = []
   const drawRoutes = () => {
-    rMesh.forEach((m) => scene.remove(m))
+    // 막대마다 geometry와 복제한 재질을 새로 만들므로 같이 정리한다 (안 하면 그래픽 메모리에 남는다)
+    rMesh.forEach((m) => { scene.remove(m); m.geometry.dispose(); (m.material as THREE.Material).dispose() })
     rMesh = []
     const s = (w: number, d: number, x: number, z: number, mat: THREE.MeshBasicMaterial, r: { line?: string; paint?: number }) => {
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), mat.clone())

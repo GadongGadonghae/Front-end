@@ -98,10 +98,15 @@ async function hourlyOf(date: string, lineId?: string) {
   return { date, target, hours }
 }
 
-/** 주기 조회로 구독을 흉내 낸다. 처음 한 번 바로 부른다 */
+/** 주기 조회로 구독을 흉내 낸다. 처음 한 번 바로 부른다. 앞 요청이 안 끝났으면 그 주기는 건너뛴다 (늦은 옛 응답이 새 값을 덮지 않게) */
 function poll(ms: number, run: () => Promise<void>): Unsubscribe {
   let alive = true
-  const tick = () => { if (alive) run().catch(() => { /* 다음 주기에 다시 */ }) }
+  let busy = false
+  const tick = () => {
+    if (!alive || busy) return
+    busy = true
+    run().catch(() => { /* 다음 주기에 다시 */ }).finally(() => { busy = false })
+  }
   tick()
   const t = setInterval(tick, ms)
   return () => { alive = false; clearInterval(t) }
@@ -169,6 +174,25 @@ export function createApiSource(): DataSource {
     return p.items.map(eventOf)
   }
 
+  // 알람 발생·해제: 진행 중인 건만 (1분 미만도) 5초마다 받아 지난번과 비교한다. 구독이 여럿이어도 조회는 하나 (W-01·W-02로 바꿀 자리)
+  const alarmListeners = new Set<(a: AlarmEvent) => void>()
+  let stopAlarmPoll: Unsubscribe | null = null
+  function startAlarmPoll(): Unsubscribe {
+    let prev = new Map<string, StateEvent>()
+    let first = true
+    return poll(ALARM_MS, async () => {
+      const p = await api.U08({ ...todayRange(), inProgress: true, minMinutes: 0, page: 1, size: 100 })
+      const now = new Map(p.items.map(eventOf).map((e) => [e.id, e]))
+      const emit = (a: AlarmEvent) => alarmListeners.forEach((cb) => cb(a))
+      if (!first) {
+        for (const [id, e] of now) if (!prev.has(id)) emit({ kind: 'raised', event: e })
+        for (const [id, e] of prev) if (!now.has(id)) emit({ kind: 'cleared', event: { ...e, end: isoLocal(Date.now()) } })
+      }
+      prev = now
+      first = false
+    })
+  }
+
   return {
     demo: false,
     live: {
@@ -177,29 +201,24 @@ export function createApiSource(): DataSource {
       onProductMove: () => () => {},
       // 백엔드 API 없음: 위치 API가 생기면 여기서 폴링한다
       onFlowPositions: () => () => {},
-      // 진행 중 고장·대기 목록을 비교해 생김·풀림을 만든다 (W-01·W-02로 바꿀 자리)
       onAlarm(cb) {
-        let prev = new Map<string, StateEvent>()
-        let first = true
-        return poll(ALARM_MS, async () => {
-          const now = new Map((await todayEvents()).filter((e) => !e.end).map((e) => [e.id, e]))
-          if (!first) {
-            for (const [id, e] of now) if (!prev.has(id)) cb({ kind: 'raised', event: e } satisfies AlarmEvent)
-            for (const [id, e] of prev) if (!now.has(id)) cb({ kind: 'cleared', event: { ...e, end: isoLocal(Date.now()) } })
-          }
-          prev = now
-          first = false
-        })
+        alarmListeners.add(cb)
+        stopAlarmPoll ??= startAlarmPoll()
+        return () => {
+          alarmListeners.delete(cb)
+          if (!alarmListeners.size && stopAlarmPoll) { stopAlarmPoll(); stopAlarmPoll = null }
+        }
       },
       onRiskChanged: () => () => {},
       onRisk: (cb) => { cb([]); return () => {} },
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
-        let since = Date.now()
+        // after: 그 시각보다 뒤의 점만 (M-03, 11/19 백엔드 추가). 처음은 구독한 시각부터 (그 앞은 getTelemetry가 받음)
+        let lastTs = isoLocal(Date.now())
         return poll(TELEMETRY_MS, async () => {
-          const to = Date.now()
-          const m = await api.M03(equipmentId, { from: dateOf(since), to: dateOf(to) })
-          since = to
+          const today = dateOf(Date.now())
+          const m = await api.M03(equipmentId, { from: today, to: today, after: lastTs })
           const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
+          for (const v of values) if (Date.parse(v.t) > Date.parse(lastTs)) lastTs = v.t
           if (values.length) cb({ equipmentId, values })
         })
       },
@@ -343,24 +362,28 @@ export function createApiSource(): DataSource {
           const r = await api.C01({ loginId: userId, password })
           token.set(r.accessToken)
           return { ok: true, name: r.userName }
-        } catch { return { ok: false } }
+        } catch (e) {
+          // 401(LOGIN_FAILED)만 아이디·비밀번호 오류. 서버가 꺼졌거나 다른 오류는 던져서 화면이 다른 문구를 보여 준다
+          if (e instanceof ApiError && e.status === 401) return { ok: false }
+          throw e
+        }
       },
       logout: async () => { token.set(null) },
       async saveActionMemo(eventId, memo) {
         // 조치 담당자 번호(actionUserId)는 로그인 응답에 없어서 보내지 않는다 (백엔드 확인 필요)
-        await api.U09(Number(eventId), { memo: memo.trim() })
-        const e = (await todayEvents()).find((x) => x.id === eventId)
-        if (!e) throw new Error(`상태 이력 없음: ${eventId}`)
-        return e
+        // U-09 응답은 바뀐 뒤의 비가동 1건 (U-08 items[]와 같은 모양, 11/19 백엔드 변경)
+        return eventOf(await api.U09(Number(eventId), { memo: memo.trim() }))
       },
       createReplanReport: async () => { throw new Error('계획수정 보고서는 백엔드가 자동으로 만든다 (R-01)') },
       async saveTarget(date, quantity) {
         // 공장 목표 → 라인별 계획(G-03)으로 나눠 저장 (D-87: 라인 계획 = 목표 ÷ 6)
-        try {
-          const each = Math.round(quantity / LINES.length)
-          await Promise.all(LINES.map((l) => api.G03(date, { lineId: l, planQty: each })))
-          return { ok: true, value: { date, quantity: each * LINES.length, done: null, updatedBy: null } }
-        } catch (e) { return fail(e) }
+        // 몫을 모든 라인에, 나머지는 앞 라인부터 1개씩 → 합이 입력값과 같다 (1000 → 167·167·167·167·166·166)
+        const each = Math.floor(quantity / LINES.length)
+        const rest = quantity % LINES.length
+        const results = await Promise.allSettled(LINES.map((l, i) => api.G03(date, { lineId: l, planQty: each + (i < rest ? 1 : 0) })))
+        const failed = LINES.filter((_, i) => results[i].status === 'rejected')
+        if (failed.length) return { ok: false, error: `${failed.map((l) => `${l}라인`).join(', ')} 계획을 저장하지 못했습니다` }
+        return { ok: true, value: { date, quantity, done: null, updatedBy: null } }
       },
       async setPaintRoute(lineId, paintId, reason) {
         try { return { ok: true, value: await api.M09(lineId, { paintId, reason }) } } catch (e) { return fail(e) }

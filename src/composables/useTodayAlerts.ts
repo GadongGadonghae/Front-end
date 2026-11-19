@@ -1,7 +1,7 @@
 // 오늘 알림: 상태 이력(API-022) + 예지보전 위험 이력(API-023). 처음에 조회하고 실시간 이벤트로 이어 붙인다.
 // 화면에는 알림 한 줄 모양(AlertRowView)으로 넘긴다: 진행 중 위, 해제는 아래, 각각 최근순 (화면정의서 SCR-001 10번)
 // 같은 범위(전체 또는 라인)는 앱 전체가 하나를 공유한다: 헤더와 대시보드가 같이 써도 조회·구독은 한 번
-import { computed, effectScope, onScopeDispose, ref, type ComputedRef, type EffectScope } from 'vue'
+import { computed, effectScope, onScopeDispose, ref, watch, type ComputedRef, type EffectScope } from 'vue'
 import { source } from '@/data'
 import type { Unsubscribe } from '@/data/contracts'
 import type { RiskEvent, StateEvent } from '@/types/events'
@@ -29,8 +29,8 @@ function create(area: string | undefined): Shared {
   const filter = area ? { area } : undefined
 
   const reload = () => {
-    source.q.getTodayStateEvents(filter).then((list) => { events.value = list })
-    source.q.getTodayRiskEvents(filter).then((list) => { risks.value = list })
+    source.q.getTodayStateEvents(filter).then((list) => { events.value = list }).catch(() => { /* 실시간으로 이어 붙인다 */ })
+    source.q.getTodayRiskEvents(filter).then((list) => { risks.value = list }).catch(() => { /* 실시간으로 이어 붙인다 */ })
   }
   reload()
 
@@ -47,6 +47,8 @@ function create(area: string | undefined): Shared {
   const { rows, ongoingCount } = scope.run(() => {
     const { equipmentName } = useMaster()
     const now = useNow()
+    // 화면을 밤새 띄워 두면 자정에 어제 알림을 비우고 오늘 것을 다시 읽는다
+    watch(() => new Date(now.value).toDateString(), reload)
 
     /** 진행 중이면 지금까지, 해제면 "지속 시간" */
     const duration = (start: string, end: string | null) => {

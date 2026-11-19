@@ -45,7 +45,7 @@ async function request<T>(method: string, path: string, opts: { query?: Query; b
     if (res.status === 401 && path !== '/auth/login') {
       token.set(null)
       try { localStorage.removeItem(SESSION_KEY) } catch { /* 저장소를 못 쓰면 무시 */ }
-      if (location.pathname !== '/login') location.assign(`/login?redirect=${encodeURIComponent(location.pathname)}`)
+      if (location.pathname !== '/login') location.assign(`/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
     }
     throw new ApiError(res.status, e.code ?? `HTTP_${res.status}`, e.message ?? res.statusText)
   }

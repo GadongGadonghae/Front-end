@@ -2,7 +2,7 @@
 // 명세가 바뀌면 여기만 고친다. 화면 계약으로 바꾸는 일은 source.ts
 import { http } from '@/data/api/http'
 import type {
-  AlarmDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeEventUpdatedDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
+  AlarmDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
   ProductionSummaryDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
@@ -18,7 +18,7 @@ export const api = {
   /** M-02 라인별 상태 요약 */
   M02: () => http.get<LineStatusSummaryDto[]>('/monitoring/lines/summary'),
   /** M-03 설비 공정 값 추이 (상·하한 포함) */
-  M03: (equipmentId: string, q: Range & { metric?: string; interval?: 'raw' | '5s' }) => http.get<MetricsDto>(`/equipments/${encodeURIComponent(equipmentId)}/metrics`, { ...q }),
+  M03: (equipmentId: string, q: Range & { metric?: string; interval?: 'raw' | '5s'; after?: string }) => http.get<MetricsDto>(`/equipments/${encodeURIComponent(equipmentId)}/metrics`, { ...q }),
   /** M-04 현재 활성 알람 */
   M04: (q: { lineId?: string } = {}) => http.get<AlarmDto[]>('/alarms/active', q),
   /** M-05 알람 이력 */
@@ -61,7 +61,7 @@ export const api = {
     actionUserId?: number; equipmentId?: string; minMinutes?: number; page: number; size: number
   }) => http.get<Page<DowntimeEventDto>>('/downtime/events', { ...q }),
   /** U-09 비가동 사유·조치 담당자·메모 (P2) */
-  U09: (eventId: number, body: { reasonCode?: ReasonCode; memo?: string; actionUserId?: number | null }) => http.patch<DowntimeEventUpdatedDto>(`/downtime/events/${eventId}`, body),
+  U09: (eventId: number, body: { reasonCode?: ReasonCode; memo?: string; actionUserId?: number | null }) => http.patch<DowntimeEventDto>(`/downtime/events/${eventId}`, body),
   /** U-11 양품률 추이 */
   U11: (q: Range & { unit: 'day'; groupBy?: 'line' | 'paint' }) => http.get<YieldTrendDto[]>('/production/yield', { ...q }),
   /** U-12 설비 상태 타임라인 (P2) */
