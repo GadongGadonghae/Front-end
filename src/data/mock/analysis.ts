@@ -46,12 +46,16 @@ export function createAnalysis(ctx: Ctx) {
   /** 범위 키 하나의 하루 OEE. 오늘 공장·라인은 scenario 값, 나머지는 그 둘레 난수 */
   function oeeOf(key: string, date: string): number | null {
     if (date > today()) return null
-    const line = key.split(':')[0]
+    // 설비 키(B-PR3)면 그 설비의 구역(B)을 기준으로 삼는다
+    const eq = MASTER.equipment.find((e) => e.id === key)
+    const line = eq ? eq.area : key.split(':')[0]
     const anchor = date === today()
       ? (key === 'plant' ? PLANT_OEE.oee : LINE_DETAIL[line]?.oee ?? 90)
       : 72 + noise('oee', key === 'plant' ? 'plant' : line, date) * 14
     if (key === 'plant' || key === line) return round1(anchor)
-    return round1(Math.min(99, anchor + (noise('oee-part', key, date) - 0.5) * 8))
+    // 설비: 그날 손실(대기·고장)이 길수록 낮게 [데모]
+    const lossMin = eq ? stopsOf(eq, date).filter((x) => x.state !== 'S').reduce((a, x) => a + (x.to - x.from), 0) / 60 : 0
+    return round1(Math.max(40, Math.min(99, anchor + 3 + (noise('oee-part', key, date) - 0.5) * 6 - lossMin * 0.3)))
   }
 
   /** OEE를 3요소로 나눈다: 성능·양품을 정하고 시간가동률 = OEE ÷ (성능 × 양품) */
