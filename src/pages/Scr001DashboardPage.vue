@@ -1,17 +1,15 @@
 <!-- SCR-001 메인 대시보드 (화면정의서 3장 SCR-001)
      11/18 변경: 첫 화면은 3D 공장만 크게. 오늘 생산 · 종합 가동률 · 품질은 왼쪽 카드 열.
-     알림 열(D-46)은 뺐다 (고장은 토스트·헤더 알림으로). 2D 배치도는 전환으로 남김
+     알림 열(D-46)은 뺐다 (고장은 토스트·헤더 알림으로). 2D 전환은 없앰 (3D 탑뷰로 대신)
      설비 대수는 배치도 범례에 함께 적는다. 화면은 조립만 하고 값은 composable이 만든다 -->
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import BasePanel from '@/components/base/BasePanel.vue'
-import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import ChartBarList, { type BarRow } from '@/components/charts/ChartBarList.vue'
 import StateLegend from '@/components/domain/StateLegend.vue'
-import FactoryMap from '@/components/domain/FactoryMap.vue'
 import { useFactoryMap } from '@/composables/useFactoryMap'
 import { useFactory3d } from '@/composables/useFactory3d'
 import { useLiveSummary } from '@/composables/useLiveSummary'
@@ -19,13 +17,12 @@ import { linePath } from '@/lib/routes'
 import { formatNumber } from '@/lib/format'
 
 const router = useRouter()
-const { view: map, counts } = useFactoryMap()
+const { counts } = useFactoryMap()
 const summary = useLiveSummary()
 const f3d = useFactory3d()
 // 3D(three.js)는 무거워서 3D를 고를 때만 받는다
 const Factory3D = defineAsyncComponent(() => import('@/components/domain/Factory3D.vue'))
 
-const mode = ref<'2d' | '3d'>('3d')
 const plant = computed(() => summary.value?.plant ?? null)
 
 // 종합 가동률 3요소 (OEE = 시간 × 성능 × 양품, D-21)
@@ -75,10 +72,9 @@ const ngRows = computed<BarRow[]>(() =>
     <BasePanel title="공장 배치도" meta="설비 39대">
       <template #tools>
         <StateLegend :counts="counts" pdm />
-        <BaseSegmented v-model="mode" label="보기" size="sm" :options="[{ value: '3d', label: '3D' }, { value: '2d', label: '2D' }]" />
       </template>
       <Factory3D
-        v-if="mode === '3d' && f3d.view.value"
+        v-if="f3d.view.value"
         v-bind="f3d.view.value"
         :flow="f3d.flow.value"
         :now="f3d.now.value"
@@ -86,13 +82,6 @@ const ngRows = computed<BarRow[]>(() =>
         @open-outbound="router.push('/outbound')"
         @open-inbound="router.push('/inbound')"
         @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
-      />
-      <FactoryMap
-        v-else-if="mode === '2d' && map"
-        :view="map"
-        @open-line="(id) => router.push(linePath(id))"
-        @open-inbound="router.push('/inbound')"
-        @open-outbound="router.push('/outbound')"
       />
       <BaseEmpty v-else />
     </BasePanel>
