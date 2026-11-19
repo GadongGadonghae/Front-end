@@ -3,6 +3,7 @@
 // 값은 밖에서 넣는다 (setStates · setIssues · setRoutes · setFlow). 이 파일은 데이터를 부르지 않는다
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { makeKit } from '@/components/domain/factory3d/equipment'
 import type { StateCode } from '@/types/state'
 import type { FlowPositions, FlowLocation } from '@/types/live'
 import type { ProductionLineId } from '@/types/plant'
@@ -13,7 +14,7 @@ export type ViewMode = '3d' | 'top'
 export interface SceneColors {
   state: Record<StateCode, string>
   bg: string; floor: string; grid: string; yard: string; body: string; frame: string
-  metal: string; belt: string; route: string; route2: string; routeAlt: string; product: string; cap: string
+  metal: string; dark: string; chrome: string; glass: string; belt: string; route: string; route2: string; routeAlt: string; product: string; cap: string
 }
 
 export interface SceneHandlers {
@@ -123,6 +124,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   scene.add(grid)
   box(18, 0.05, 86, M(C.yard), -62, 0, 0)
   const capM = M(C.cap)
+  const kit = makeKit({ cap: capM, frame: C.frame, metal: C.metal, body: C.body, dark: C.dark, chrome: C.chrome, glass: C.glass, robot: C.routeAlt })
   const metal = M(C.metal, { metalness: 0.2, roughness: 0.5 })
   const frame = M(C.frame)
   const belt = M(C.belt)
@@ -176,27 +178,25 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     const z = lineZ(i)
     const n0 = scene.children.length
     box(70, 0.6, 2.2, belt, -12, 0, z)
-    const g = new THREE.Group()
-    cyl(1.6, 3.4, metal, -45, 2.6, z, g).rotation.x = Math.PI / 2
-    box(6, 2.6, 4.4, body, -40, 0, z, g)
-    box(6, 0.7, 4.6, capM, -40, 2.6, z, g)
-    addEq(g, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -41, z, h: 3.3, pw: 9 })
+    const slit = new THREE.Group()
+    slit.position.set(-41, 0, z)
+    slit.scale.setScalar(0.85)
+    kit.slitter(slit)
+    addEq(slit, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -41, z, h: 3.4, pw: 17, pd: 5 })
     for (let p = 0; p < 4; p++) {
       const x = -25 + p * 8.5
       const pg = new THREE.Group()
-      box(5.4, 1.4, 5, frame, x, 0, z, pg)
-      for (const [dx, dz] of [[-2.1, -1.9], [2.1, -1.9], [-2.1, 1.9], [2.1, 1.9]]) box(1, 5.4, 1, metal, x + dx, 1.4, z + dz, pg)
-      box(4.2, 1.2, 4.2, metal, x, 3.4, z, pg)
-      box(5.8, 2.4, 5.4, capM, x, 6.8, z, pg)
-      addEq(pg, { id: `${L}-PR${p + 1}`, line: L, kind: 'PR', no: `PR${p + 1}`, x, z, h: 9.2 })
+      pg.position.set(x, 0, z)
+      pg.scale.setScalar(0.85)
+      const v = (['A', 'B', 'C', 'A'] as const)[p]
+      kit.press(pg, v)
+      addEq(pg, { id: `${L}-PR${p + 1}`, line: L, kind: 'PR', no: `PR${p + 1}`, x, z, h: v === 'C' ? 10.2 : v === 'B' ? 9 : 7.5 })
     }
     const wg = new THREE.Group()
-    box(7, 1, 5.5, frame, 18, 0, z, wg)
-    box(7.2, 0.25, 5.7, capM, 18, 1, z, wg)
-    cyl(1, 1.4, metal, 20.2, 1.7, z + 1.6, wg)
-    box(0.9, 3.8, 0.9, metal, 20.2, 2.4, z + 1.6, wg).rotation.z = -0.5
-    box(0.7, 3, 0.7, metal, 18.3, 5, z + 1, wg).rotation.z = 1.1
-    addEq(wg, { id: `${L}-WD`, line: L, kind: 'WD', no: 'WD', x: 18, z, h: 6.4, pw: 8 })
+    wg.position.set(18, 0, z)
+    wg.scale.setScalar(0.62)
+    kit.welder(wg)
+    addEq(wg, { id: `${L}-WD`, line: L, kind: 'WD', no: 'WD', x: 18, z, h: 5, pw: 7, pd: 5 })
     box(6, 0.6, 2.2, belt, 25, 0, z)
     lineObjs[L] = scene.children.slice(n0)
     lineObjs[L].forEach((o) => o.traverse((m) => { if ((m as THREE.Mesh).isMesh && !m.userData.eq) (m as THREE.Mesh).material = matOf(m).clone() }))
