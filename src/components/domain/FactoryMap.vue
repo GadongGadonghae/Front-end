@@ -45,7 +45,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           @keydown="onKey($event, () => emit('openInbound'))"
         >
           <span class="inb-name">코일입고</span>
-          <span class="inb-row"><b>{{ formatNumber(view.inbound.today) }}</b><span>재고 {{ formatNumber(view.inbound.stock) }}</span></span>
+          <span class="inb-row"><b>{{ formatNumber(view.inbound.today) }}</b><span>재고 {{ formatNumber(view.inbound.stock, Number.isInteger(view.inbound.stock) ? 0 : 1) }}</span></span>
         </div>
       </div>
       <div class="branch full" aria-hidden="true"></div>

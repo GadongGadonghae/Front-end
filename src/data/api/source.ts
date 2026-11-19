@@ -127,15 +127,14 @@ export function createApiSource(): DataSource {
   }
 
   async function snapshot(): Promise<PlantSnapshot> {
-    const [status, counts, wip] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M13()])
-    const coil = wip.find((w) => w.process === 'COIL')?.wipQty ?? 0
+    const [status, counts, coil] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M16()])
     return {
       at: isoLocal(Date.now()),
       equipment: status.map(liveOf),
       plant: { done: counts.ok },
       lines: counts.byGroup.map((g) => ({ lineId: g.key as LineId, done: g.good })),
-      // M-13 코일입고 재공은 제품 수 (1롤 = 20개) → 롤로. 오늘 입고 수는 API에 없음
-      inbound: { today: 0, stock: Math.round(coil / 20) },
+      // M-16: 오늘 입고 롤 수, 재고는 롤(소수 1자리, 1롤 = 20개 → 74개면 3.7)
+      inbound: { today: coil.receivedRolls, stock: coil.stockRolls },
     }
   }
 
@@ -270,9 +269,13 @@ export function createApiSource(): DataSource {
       },
       getMicrostopsToday: async (equipmentId) => ({ equipmentId, count: 0, lossSec: 0, bands: [] }),
       async getInboundToday() {
-        const wip = await api.M13()
-        const coil = wip.find((w) => w.process === 'COIL')?.wipQty ?? 0
-        return { today: 0, stock: Math.round(coil / 20), input: 0, receipts: [], stockTrend: [] }
+        const coil = await api.M16()
+        // 같은 시각에 들어온 롤은 한 줄로 묶어요 (예: 0초에 4롤 → 한 줄 "4"), 최근순
+        const byTime = new Map<string, number>()
+        for (const r of coil.receipts) byTime.set(r.receivedAt, (byTime.get(r.receivedAt) ?? 0) + 1)
+        const receipts = [...byTime].map(([t, coils]) => ({ t, coils })).reverse()
+        // 재고 추이(stockTrend)는 API가 없어서 비워 둬요
+        return { today: coil.receivedRolls, stock: coil.stockRolls, input: coil.inputQty, receipts, stockTrend: [] }
       },
       async getOee(q) {
         const { first, last } = periodRange(q.period, q.date)

@@ -2,7 +2,7 @@
 // 명세가 바뀌면 여기만 고친다. 화면 계약으로 바꾸는 일은 source.ts
 import { http } from '@/data/api/http'
 import type {
-  AlarmDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
+  AlarmDto, CoilTodayDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
   ProductionSummaryDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
@@ -41,6 +41,8 @@ export const api = {
   M13: (q: { lineId?: string; paintId?: string } = {}) => http.get<WipDto[]>('/production/wip', q),
   /** M-15 설비별 사이클 수·평균 CT (date 생략 시 오늘) */
   M15: (process: ProcessCode, q: { lineId?: string; date?: string } = {}) => http.get<CycleDto[]>(`/monitoring/processes/${process}/cycles`, q),
+  /** M-16 코일 입고 현황: 오늘 입고 롤·개수, 재고(롤·개수), 슬리팅 투입, 입고 목록 (date 생략 시 오늘) */
+  M16: (q: { date?: string } = {}) => http.get<CoilTodayDto>('/coil/today', q),
 
   // ── 가동률 (U) ──
   /** U-01 가동률 요약 (목표/실적, OEE, lineYield) */

@@ -150,6 +150,19 @@ export interface WipDto {
   wipQty: number
 }
 
+/** M-16 코일 입고 현황 (1롤 = 제품 20개, 11/18 추가) */
+export interface CoilTodayDto {
+  date: string
+  receivedRolls: number
+  receivedQty: number
+  /** 슬리팅 앞 코일 재고 (제품 수) */
+  stockQty: number
+  /** 코일 재고 (롤, 소수 1자리. 예: 74개 → 3.7) */
+  stockRolls: number
+  inputQty: number
+  receipts: { materialId: string; receivedAt: string; productQty: number }[]
+}
+
 // ── 가동률 (U) ──
 
 /** U-01 (v3.2: lineYield 추가) */
