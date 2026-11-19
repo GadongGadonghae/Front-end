@@ -14,16 +14,27 @@ const emit = defineEmits<{ openCell: [id: string]; openGroup: [process: ProcessI
 
 /** 끝 | 묶음 | 재공 | 묶음 | … | 끝. 묶음 폭 = 설비 수 비율 */
 const columns = computed(() => {
-  const parts = ['var(--flow-end-w)']
+  const parts = [props.view.feeds ? 'calc(var(--flow-end-w) * 2)' : 'var(--flow-end-w)']
   props.view.groups.forEach((g, i) => {
     if (i) parts.push('var(--flow-link-w)')
-    parts.push(`minmax(0, ${g.cells.length}fr)`)
+    parts.push(`minmax(0, ${g.stack ? 1 : g.cells.length}fr)`)
   })
   parts.push('var(--flow-end-w)')
   return parts.join(' ')
 })
+/** 도장 경로 선: 라인 i(왼쪽, 세로 위치) → 지금 붙은 도장 칸의 세로 위치 (%, 0~100). 붙은 곳이 없으면 null */
+const feedLines = computed(() => {
+  const feeds = props.view.feeds ?? []
+  const cells = props.view.groups[0]?.cells ?? []
+  return feeds.map((f, i) => {
+    const k = cells.findIndex((c) => c.id === f.to)
+    return { label: f.label, from: ((i + 0.5) / feeds.length) * 100, to: k < 0 ? null : ((k + 0.5) / cells.length) * 100, name: cells[k]?.name ?? '연결 없음' }
+  })
+})
 /** 묶음 i가 놓이는 격자 열 (1부터) */
 const col = (i: number) => 2 + i * 2
+/** 병목 의심: 재공이 쌓이는데 바로 뒤 공정에 고장·대기 설비가 있을 때 */
+const bottleneck = (i: number) => (props.view.wip[i] ?? 0) > 0 && props.view.groups[i + 1]?.cells.some((c) => c.state === 'D' || c.state === 'I')
 
 function cellLabel(c: FlowCellView, group: string) {
   const why = c.reason ? `, ${c.reason.code}${c.reason.detail ? ` ${c.reason.detail}` : ''}` : ''
@@ -42,7 +53,7 @@ function onKey(e: KeyboardEvent, go: () => void) {
         <button class="head" type="button" :style="{ gridColumn: col(i) }" @click="emit('openGroup', g.process)">
           {{ g.name }}<BaseIcon name="chevron-right" :size="16" />
         </button>
-        <div class="grp" :style="{ gridColumn: col(i) }">
+        <div class="grp" :class="{ stack: g.stack }" :style="{ gridColumn: col(i) }">
           <div
             v-for="c in g.cells"
             :key="c.id"
@@ -58,11 +69,17 @@ function onKey(e: KeyboardEvent, go: () => void) {
           생산 <b>{{ formatNumber(g.output) }}</b> · 불량 {{ formatNumber(g.ng) }}<span v-if="g.note" class="note"> ({{ g.note }})</span>
         </p>
         <div v-if="i < view.groups.length - 1" class="link" :style="{ gridColumn: col(i) + 1 }">
-          <span>재공 <b>{{ formatNumber(view.wip[i]) }}</b></span>
+          <span :class="{ warn: bottleneck(i) }">재공 <b>{{ formatNumber(view.wip[i]) }}</b><em v-if="bottleneck(i)">⚠ 병목 의심</em></span>
         </div>
       </template>
-      <div class="end start"><span>{{ view.from }}</span></div>
-      <div class="end finish" :style="{ gridColumn: col(view.groups.length - 1) + 1 }"><span>{{ view.to }}</span></div>
+      <div v-if="view.feeds" class="feeds" role="list" aria-label="라인별 도장 경로">
+        <svg class="route" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <template v-for="l in feedLines" :key="l.label"><path v-if="l.to != null" :d="`M45 ${l.from} L100 ${l.to}`" /></template>
+        </svg>
+        <span v-for="l in feedLines" :key="l.label" class="feed" role="listitem" :aria-label="`${l.label} → ${l.name}`">{{ l.label }}</span>
+      </div>
+      <div v-else class="end start"><span>{{ view.from }}<template v-if="view.endWip"><br>재공 <b>{{ formatNumber(view.endWip[0]) }}</b></template></span></div>
+      <div class="end finish" :style="{ gridColumn: col(view.groups.length - 1) + 1 }"><span>{{ view.to }}<template v-if="view.endWip"><br>재공 <b>{{ formatNumber(view.endWip[1]) }}</b></template></span></div>
     </div>
   </div>
 </template>
@@ -134,6 +151,62 @@ function onKey(e: KeyboardEvent, go: () => void) {
   right: 0;
   left: 0;
   border-top: var(--line-w-strong) solid var(--c-line-ink);
+}
+
+/* 도장 #1·#2 병렬: 세로로 쌓고 왼쪽에 붙인다 (라인에서 오는 선이 칸 왼쪽 끝에 닿게) */
+.grp.stack {
+  grid-auto-flow: row;
+  grid-auto-rows: minmax(0, 1fr);
+  justify-content: start;
+}
+
+.grp.stack::before {
+  display: none;
+}
+
+/* 쌓으면 칸이 낮아 맨 아래 상태 줄(R/S/I/D·지속시간)이 잘린다: 설비번호(도장 #1 = PT1)는 빼고 상태 줄을 칸 아래에 붙인다 */
+.grp.stack :deep(.eid) {
+  display: none;
+}
+
+.grp.stack :deep(.lg) {
+  justify-content: space-between;
+}
+
+/* 도장 라인 앞 끝: A~F 라인 이름 (세로로 고르게) + 지금 보내는 도장으로 가는 흐린 선 */
+.feeds {
+  position: relative;
+  display: grid;
+  grid-row: 2;
+  grid-column: 1;
+  grid-auto-rows: minmax(0, 1fr);
+}
+
+.feed {
+  position: relative;
+  place-self: center start;
+  padding: 0 var(--sp-1);
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
+}
+
+.route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.route path {
+  fill: none;
+  stroke: var(--c-line-ink);
+  stroke-dasharray: 4 3;
+  stroke-width: var(--line-w-strong);
+  vector-effect: non-scaling-stroke;
 }
 
 .hit {
@@ -213,7 +286,32 @@ function onKey(e: KeyboardEvent, go: () => void) {
   line-height: var(--lh-tight);
 }
 
+.link .warn {
+  border: var(--line-w) solid var(--c-idle-edge);
+  background: var(--c-idle-tint);
+}
+
+.link em {
+  display: block;
+  color: var(--c-caution-ink);
+  font-size: var(--fs-sm);
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.end b {
+  display: block;
+  color: var(--c-ink);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-strong);
+}
+
 @media (height <= 860px) {
+  /* 낮은 창: 쌓인 칸의 오늘 생산은 숨긴다 (아래 '생산 · 불량' 합계와 도장 상세에 있다) */
+  .grp.stack :deep(.info) {
+    display: none;
+  }
+
   .wrap {
     padding: var(--sp-3) var(--sp-4);
   }

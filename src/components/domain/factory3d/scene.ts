@@ -500,7 +500,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (mode === 'top') {
         const chip = e.chip.el.firstElementChild as HTMLElement
         chip.dataset.state = e.state
-        chip.textContent = `${e.no} ${e.state}`
+        // 가동(R)은 색으로 충분해 설비번호만. 이상 상태(S·I·D·DC)는 색만으로 구분하지 않게 상태 글자를 붙인다 (CLAUDE.md 색약 대비)
+        chip.textContent = e.state === 'R' ? e.no : `${e.no} ${e.state}`
       }
     }
     for (const P of PILES.values()) {

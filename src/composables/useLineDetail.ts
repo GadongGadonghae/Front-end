@@ -3,14 +3,14 @@ import { computed } from 'vue'
 import { source } from '@/data'
 import type { Equipment, LineId, ProcessId } from '@/types/plant'
 import type { ProcessToday } from '@/types/process'
-import type { FlowCellView, LineFlowView, LineNowView } from '@/types/view'
+import type { BarRowView, FlowCellView, LineFlowView, LineNowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState } from '@/lib/status'
-import { formatDuration, formatNumber } from '@/lib/format'
+import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
 
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
@@ -25,6 +25,13 @@ export function useLineDetail(lineId: LineId) {
 
   const processes: ProcessId[] = lineId === 'PT' ? ['PAINTING'] : ['SLITTING', 'PRESS', 'WELDING']
   const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
+  // 라인 OEE 3요소 (가동률 화면과 같은 API-050, 오늘·이 라인)
+  const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(Date.now()), lineId }), PROCESS_POLL_MS)
+  const oeeRows = computed<BarRowView[]>(() => {
+    const o = oeeReport.value?.oee
+    const row = (key: string, label: string, v: number | null | undefined): BarRowView => ({ key, label, value: v ?? null, display: v == null ? '-' : formatNumber(v, 1) })
+    return [row('a', '시간가동률', o?.availability), row('p', '성능가동률', o?.performance), row('q', '양품률', o?.quality)]
+  })
 
   const equipment = computed(() => (master.value?.equipment ?? []).filter((e) => e.area === lineId))
   const liveById = computed(() => new Map((snapshot.value?.equipment ?? []).map((e) => [e.id, e])))
@@ -56,7 +63,7 @@ export function useLineDetail(lineId: LineId) {
 
   const flow = computed<LineFlowView | null>(() => {
     if (!master.value || !snapshot.value) return null
-    const groups = processes.map((p) => ({
+    const groups: LineFlowView['groups'] = processes.map((p) => ({
       process: p,
       name: PROCESS_NAME[p],
       cells: equipment.value.filter((e) => e.process === p).sort((a, b) => a.order - b.order).map(cell),
@@ -64,8 +71,14 @@ export function useLineDetail(lineId: LineId) {
       ng: lineSummary.value?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? null,
       note: INSPECTION_NOTE[p] ?? null,
     }))
-    const wip = lineId === 'PT' ? [] : (lineSummary.value?.wip.map((w) => w.qty) ?? [null, null])
-    return { from: lineId === 'PT' ? '라인에서' : '입고에서', to: lineId === 'PT' ? '출고로' : '도장으로', groups, wip }
+    if (lineId === 'PT') {
+      // 도장 #1·#2는 병렬: 세로로 쌓고, A~F 라인이 지금 어느 도장으로 보내는지 선으로 보인다
+      groups[0].stack = true
+      const feeds = master.value.lines.filter((l) => l.kind === 'production').map((l) => ({ label: l.name, to: l.currentPaintId }))
+      return { from: '라인에서', to: '출고로', groups, wip: [], feeds }
+    }
+    const wip = lineSummary.value?.wip.map((w) => w.qty) ?? [null, null]
+    return { from: '입고에서', to: '도장으로', groups, wip, endWip: [null, null] }
   })
 
   const now_ = computed<LineNowView>(() => {
@@ -90,5 +103,5 @@ export function useLineDetail(lineId: LineId) {
     }
   })
 
-  return { flow, now: now_ }
+  return { flow, now: now_, oeeRows }
 }
