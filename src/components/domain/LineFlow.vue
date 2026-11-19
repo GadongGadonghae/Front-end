@@ -54,10 +54,13 @@ function onKey(e: KeyboardEvent, go: () => void) {
           {{ g.name }}<BaseIcon name="chevron-right" :size="16" />
         </button>
         <div class="grp" :class="{ stack: g.stack }" :style="{ gridColumn: col(i) }">
+          <!-- 대각선 배치에서 둘째 칸부터: 라인에서 오는 선을 빈 왼쪽 칸을 가로질러 칸 왼쪽 끝까지 잇는다 -->
+          <template v-if="g.stack"><i v-for="k in g.cells.length - 1" :key="k" class="hop" :style="{ gridRow: k + 1, gridColumn: `1 / ${k + 1}` }" /></template>
           <div
-            v-for="c in g.cells"
+            v-for="(c, k) in g.cells"
             :key="c.id"
             class="hit"
+            :style="g.stack ? { gridRow: k + 1, gridColumn: k + 1 } : undefined"
             role="button"
             tabindex="0"
             :aria-label="cellLabel(c, g.name)"
@@ -153,11 +156,23 @@ function onKey(e: KeyboardEvent, go: () => void) {
   border-top: var(--line-w-strong) solid var(--c-line-ink);
 }
 
-/* 도장 #1·#2 병렬: 세로로 쌓고 왼쪽에 붙인다 (라인에서 오는 선이 칸 왼쪽 끝에 닿게) */
+/* 도장 #1·#2 병렬: 대각선 (#1 왼쪽 위, #2 오른쪽 아래). 왼쪽에 붙여 라인에서 오는 선이 칸 왼쪽 끝에 닿게 */
 .grp.stack {
-  grid-auto-flow: row;
   grid-auto-rows: minmax(0, 1fr);
   justify-content: start;
+}
+
+.hop {
+  position: relative;
+}
+
+.hop::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: calc(var(--sp-3) * -1);
+  left: 0;
+  border-top: var(--line-w-strong) dashed var(--c-line-ink);
 }
 
 .grp.stack::before {
@@ -286,7 +301,11 @@ function onKey(e: KeyboardEvent, go: () => void) {
   line-height: var(--lh-tight);
 }
 
+/* 병목 의심: 재공 칸 폭 안에 들어가게 (넘치면 옆 설비 칸을 덮는다) */
 .link .warn {
+  max-width: calc(100% - var(--sp-3));
+  padding: 2px var(--sp-1);
+  font-size: var(--fs-sm);
   border: var(--line-w) solid var(--c-idle-edge);
   background: var(--c-idle-tint);
 }
@@ -296,7 +315,12 @@ function onKey(e: KeyboardEvent, go: () => void) {
   color: var(--c-caution-ink);
   font-size: var(--fs-sm);
   font-style: normal;
-  white-space: nowrap;
+  line-height: var(--lh-tight);
+  word-break: keep-all;
+}
+
+.warn b {
+  font-size: var(--fs-figure);
 }
 
 .end b {

@@ -85,16 +85,17 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
       <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: name }]" />
       <BaseTabs :items="tabs" :active="lineId" label="라인" />
     </template>
-
-    <div class="layout">
-      <!-- 진행 중 고장이 있을 때만: 무엇이 · 얼마나 · 조치 가기 -->
-      <div v-if="fault" class="fault" role="alert">
-        <StatusKey state="D" size="md" />
+    <!-- 진행 중 고장이 있을 때만: 제목 줄 오른쪽에 한 줄로 (본문 위에 끼우면 알람이 생길 때마다 아래 내용이 밀린다) -->
+    <template v-if="fault" #head-right>
+      <div class="fault" role="alert">
+        <StatusKey state="D" size="sm" />
         <b>{{ fault.title }} 고장<template v-if="faultCount > 1"> 외 {{ faultCount - 1 }}건</template></b>
         <span class="why">{{ fault.message }} · 지속 {{ fault.duration }}</span>
-        <BaseButton class="go" @click="openAlert(fault)">조치 가기 ›</BaseButton>
+        <BaseButton size="sm" @click="openAlert(fault)">조치 가기 ›</BaseButton>
       </div>
+    </template>
 
+    <div class="layout">
       <div class="cards">
         <BasePanel title="오늘 라인 실적 / 계획">
           <div class="donutrow">
@@ -105,7 +106,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
               :label="`달성률 ${formatNumber(now.rate, 1)}%`"
             />
             <div>
-              <BaseFigure label="" :value="now.done" :suffix="now.plan != null ? `/ ${formatNumber(now.plan)}` : undefined" size="lg" />
+              <BaseFigure class="big" label="" :value="now.done" :suffix="now.plan != null ? `/ ${formatNumber(now.plan)}` : undefined" size="lg" />
               <span v-if="behind != null && behind > 0" class="late">목표 대비 -{{ formatNumber(behind) }}개</span>
               <span v-else-if="now.plan == null" class="unset">목표 미설정</span>
             </div>
@@ -113,8 +114,10 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
         </BasePanel>
 
         <BasePanel title="라인 OEE">
-          <BaseFigure label="" :value="now.oee" :digits="1" unit="%" size="lg" />
-          <div class="oee-parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
+          <div class="oeerow">
+            <BaseFigure class="big" label="" :value="now.oee" :digits="1" unit="%" size="lg" />
+            <div class="oee-parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
+          </div>
         </BasePanel>
 
         <BasePanel :title="`오늘 불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
@@ -153,21 +156,34 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 </template>
 
 <style scoped>
-/* OEE 아래 3요소: 대시보드 종합 가동률 카드와 같은 모양 */
+/* 요약 카드의 대표 숫자(라인 실적·라인 OEE)는 카드 안에서 가장 크게 */
+.big :deep(.value) {
+  font-size: var(--fs-xl);
+}
+
+/* 라인 OEE: 숫자는 왼쪽, 3요소 막대는 오른쪽 */
+.oeerow {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-5);
+  min-height: 0;
+}
+
 .oee-parts {
   display: flex;
   flex: 1;
-  min-height: 0;
-  margin-top: var(--sp-2);
-  padding-top: var(--sp-2);
-  border-top: var(--line-w) solid var(--c-line);
+  align-self: stretch;
+  min-width: 0;
+  padding-left: var(--sp-5);
+  border-left: var(--line-w) solid var(--c-line);
 }
 
 /* 위: 고장 띠 → 카드 3장. 아래: 라인 흐름(남는 폭) | 오른쪽 열(알람 이력 · 비가동 누적) */
 .layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) var(--col-side);
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--sp-4);
   height: 100%;
   min-height: 0;
@@ -175,22 +191,23 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 
 .fault {
   display: flex;
-  grid-column: 1 / 3;
   align-items: center;
-  gap: var(--sp-4);
-  padding: var(--sp-3) var(--sp-5);
+  gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
   border: var(--line-w) solid var(--c-down);
-  border-radius: var(--r-3);
+  border-radius: var(--r-2);
   background: var(--c-down-tint);
   font-size: var(--fs-md);
+  white-space: nowrap;
 }
 
+/* 좁으면 원인·지속 글을 줄인다 (전체는 조치 가기 → 알람 이력) */
 .fault .why {
+  overflow: hidden;
+  min-width: 0;
   color: var(--c-ink-2);
-}
-
-.fault .go {
-  margin-left: auto;
+  text-overflow: ellipsis;
 }
 
 .cards {
@@ -218,13 +235,13 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 }
 
 .flowp {
-  grid-row: 3;
+  grid-row: 2;
   grid-column: 1;
 }
 
 .side {
   display: flex;
-  grid-row: 3;
+  grid-row: 2;
   grid-column: 2;
   flex-direction: column;
   gap: var(--sp-4);
@@ -239,9 +256,17 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   flex: none;
 }
 
+/* 합계는 아래 막대 숫자와 같은 줄 크기로 (칸을 낮춰 위 알람 이력에 자리를 준다) */
+.total {
+  margin: 0 0 var(--sp-2);
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
+}
+
 .total b {
   margin-left: var(--sp-2);
-  font-size: var(--fs-xl);
+  color: var(--c-ink);
+  font-size: var(--fs-figure);
   font-weight: var(--fw-strong);
 }
 
@@ -276,6 +301,10 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   margin-left: auto;
   color: var(--c-ink);
   font-weight: var(--fw-strong);
+}
+
+.bars {
+  gap: var(--sp-1);
 }
 
 .bars li {
