@@ -31,14 +31,17 @@ withDefaults(defineProps<{
   font-size: var(--fs-figure);
 }
 
-/* 값은 이름과 같은 크기, 굵기·진한 색으로만 구분한다 (sm·md·lg 모두) */
+/* 값은 이름과 같은 크기, 굵기·진한 색으로만 구분한다 (sm·md) */
 .value {
   font-size: var(--fs-figure);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }
 
-
+/* 화면·카드의 대표 숫자(lg)만 이름보다 한 단계 크게 (대시보드 기준, 모든 화면) */
+.lg .value {
+  font-size: var(--fs-lg);
+}
 
 .sub {
   margin-top: var(--sp-1);

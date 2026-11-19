@@ -118,11 +118,6 @@ const ngRows = computed<BarRow[]>(() =>
   padding-bottom: var(--sp-1);
 }
 
-/* 카드 대표 숫자 (실적·OEE·출고 불량률)는 지표 이름보다 한 단계 크게: 첫 화면에서 멀리서도 읽히게 */
-.cards :deep(.fig.lg .value) {
-  font-size: var(--fs-lg);
-}
-
 .lead {
   display: flex;
   flex: none;
