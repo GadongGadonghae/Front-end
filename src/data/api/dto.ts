@@ -206,7 +206,7 @@ export interface DowntimeSummaryDto {
   byGroup: ({ key: string; totalMin: number } & Partial<Record<ReasonCode, number>>)[]
 }
 
-/** U-08 */
+/** U-08 items[] · U-09 응답 (11/19부터 바뀐 뒤의 1건 전체) */
 export interface DowntimeEventDto {
   eventId: number
   lineId: string | null
@@ -223,14 +223,6 @@ export interface DowntimeEventDto {
   actionUserName: string | null
   actionAt: string | null
   memo: string
-}
-
-/** U-09 응답 */
-export interface DowntimeEventUpdatedDto {
-  eventId: number
-  reasonCode: ReasonCode
-  actionUserId: number | null
-  actionUserName: string | null
 }
 
 /** U-11 */

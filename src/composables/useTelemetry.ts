@@ -20,7 +20,9 @@ export function useTelemetry(equipmentId: Ref<string | null>, range: Ref<Telemet
     series.value = {
       ...s,
       items: s.items.map((it) => {
-        const add = tick.values.filter((v) => v.item === it.item).map((v) => ({ t: v.t, value: v.value, result: v.result }))
+        // 이미 가진 마지막 점보다 뒤의 것만 (처음 조회와 실시간이 겹치는 구간의 중복을 버린다)
+        const last = it.points.length ? Date.parse(it.points[it.points.length - 1].t) : -Infinity
+        const add = tick.values.filter((v) => v.item === it.item && Date.parse(v.t) > last).map((v) => ({ t: v.t, value: v.value, result: v.result }))
         return add.length ? { ...it, points: [...it.points.filter((p) => Date.parse(p.t) >= cutoff), ...add] } : it
       }),
     }
@@ -30,7 +32,7 @@ export function useTelemetry(equipmentId: Ref<string | null>, range: Ref<Telemet
     series.value = null
     if (!id) return
     const n = ++seq
-    source.q.getTelemetry(id, r).then((s) => { if (n === seq) series.value = s })
+    source.q.getTelemetry(id, r).then((s) => { if (n === seq) series.value = s }).catch(() => { /* 그래프는 "데이터 없음" */ })
     const off = source.live.onTelemetry(id, append)
     onCleanup(off)
   }, { immediate: true })

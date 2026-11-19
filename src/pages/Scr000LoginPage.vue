@@ -16,13 +16,21 @@ const { demo } = useDataInfo()
 const userId = ref('')
 const password = ref('')
 const failed = ref(false)
+const unreachable = ref(false)
 const busy = ref(false)
 
 async function submit() {
   busy.value = true
-  failed.value = !(await login(userId.value, password.value))
-  busy.value = false
-  if (failed.value) return
+  failed.value = false
+  unreachable.value = false
+  try {
+    failed.value = !(await login(userId.value, password.value))
+  } catch {
+    unreachable.value = true
+  } finally {
+    busy.value = false
+  }
+  if (failed.value || unreachable.value) return
   // 로그인 후 원래 가려던 화면, 없으면 대시보드 (FN-016)
   const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/'
   router.replace(redirect)
@@ -36,6 +44,7 @@ async function submit() {
       <BaseInput v-model="userId" label="아이디" autocomplete="username" :invalid="failed" />
       <BaseInput v-model="password" label="비밀번호" type="password" autocomplete="current-password" :invalid="failed" />
       <p v-if="failed" class="error" role="alert">아이디 또는 비밀번호가 맞지 않습니다</p>
+      <p v-else-if="unreachable" class="error" role="alert">서버에 연결할 수 없습니다</p>
       <BaseButton variant="primary" type="submit" :disabled="busy">로그인</BaseButton>
       <p v-if="demo" class="note">데모 데이터: 아이디·비밀번호를 아무거나 입력하면 들어갑니다</p>
     </form>

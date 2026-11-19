@@ -8,16 +8,13 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import type { HistoryRowView } from '@/types/view'
 
-defineProps<{ rows: HistoryRowView[] }>()
-const emit = defineEmits<{ save: [id: string, memo: string] }>()
+// save는 저장 결과를 기다려야 해서 이벤트가 아니라 함수로 받는다
+const props = defineProps<{ rows: HistoryRowView[]; save: (id: string, memo: string) => Promise<unknown> }>()
 
 /** 메모를 쓰고 있는 행과 그 글. 열면 입력에 초점, 닫으면 연 버튼으로 */
 const memo = useInlineEdit('downtime-memo')
 const { draft } = memo
-function save(id: string) {
-  emit('save', id, draft.value)
-  memo.close()
-}
+const save = (id: string) => memo.submit(() => props.save(id, draft.value))
 const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r.ongoing && r.state === 'I' ? 't-idle' : '')
 </script>
 
@@ -33,8 +30,9 @@ const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r
 
       <form v-if="memo.editing.value === r.id" class="memo" :data-edit="memo.attr(r.id, 'form')" @submit.prevent="save(r.id)" @keydown.esc.prevent="memo.close()">
         <BaseInput v-model="draft" label="조치 메모" hide-label size="md" placeholder="조치 메모 (선택)" />
-        <BaseButton type="submit" variant="primary">저장</BaseButton>
+        <BaseButton type="submit" variant="primary" :disabled="memo.busy.value">저장</BaseButton>
         <BaseButton @click="memo.close()">취소</BaseButton>
+        <p v-if="memo.error.value" class="note err" role="alert">{{ memo.error.value }}</p>
         <p class="note">저장하면 조치 담당자는 로그인한 사람으로 기록</p>
       </form>
       <div v-else class="memo-line">
@@ -140,6 +138,11 @@ li.t-idle + li {
   flex: 1 0 100%;
   color: var(--c-ink-3);
   font-size: var(--fs-sm);
+}
+
+.note.err {
+  color: var(--c-down);
+  font-weight: var(--fw-strong);
 }
 
 .memo-line {

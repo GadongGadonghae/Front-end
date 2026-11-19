@@ -92,7 +92,7 @@ export interface Queries {
 
 /** 저장 (REST) */
 export interface Commands {
-  /** C-01 로그인. 실패하면 ok=false */
+  /** C-01 로그인. 아이디·비밀번호가 틀리면 ok=false, 서버에 닿지 못하면 오류를 던진다 */
   login(userId: string, password: string): Promise<{ ok: true; name: string } | { ok: false }>
   /** 토큰 삭제 (백엔드 호출 없음) 로그아웃 */
   logout(): Promise<void>

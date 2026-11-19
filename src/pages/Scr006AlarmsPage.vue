@@ -64,10 +64,7 @@ const riskTone = (r: RiskRow) => (r.ongoing ? 'down' : null)
 // 조치 메모: 한 번에 한 건만 고친다. 열면 입력에 초점, 닫으면 연 버튼으로
 const memo = useInlineEdit('alarm-memo')
 const { draft } = memo
-async function save(id: string) {
-  await h.saveMemo(id, draft.value)
-  memo.close()
-}
+const save = (id: string) => memo.submit(() => h.saveMemo(id, draft.value))
 
 const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
 const noState = computed(() => !states.value.D && !states.value.I && !states.value.S)
@@ -135,8 +132,9 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
         <template #cell-memo="{ row }">
           <form v-if="memo.editing.value === row.id" class="memo-edit" :data-edit="memo.attr(row.id, 'form')" @submit.prevent="save(row.id)" @keydown.esc.prevent="memo.close()">
             <BaseInput v-model="draft" label="조치 메모" hide-label size="md" placeholder="조치 메모 (선택)" />
-            <BaseButton type="submit" variant="primary">저장</BaseButton>
+            <BaseButton type="submit" variant="primary" :disabled="memo.busy.value">저장</BaseButton>
             <BaseButton @click="memo.close()">취소</BaseButton>
+            <p v-if="memo.error.value" class="memo-err" role="alert">{{ memo.error.value }}</p>
           </form>
           <span v-else class="memo">
             <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
@@ -291,6 +289,14 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 .memo-edit > .field {
   flex: 1 0 100%;
   min-width: 0;
+}
+
+.memo-err {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--c-down);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
 }
 
 .link {
