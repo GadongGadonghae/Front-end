@@ -45,30 +45,6 @@ const ngRows = computed<BarRow[]>(() =>
 <template>
   <div class="dash">
     <h1 class="sr-only">대시보드</h1>
-    <div class="cards">
-      <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
-        <BaseFigure label="실적" :value="plant?.done" size="lg" />
-        <div v-if="plant && plant.target != null" class="figs-sub">
-          <BaseFigure label="목표" :value="plant.target" size="sm" />
-          <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
-        </div>
-        <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
-      </BasePanel>
-
-      <BasePanel class="go" title="종합 가동률" meta="오늘 · OEE" @click="router.push('/utilization')">
-        <BaseFigure label="OEE" :value="plant?.oee.oee" :digits="1" unit="%" size="lg" />
-        <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
-      </BasePanel>
-
-      <BasePanel class="go" title="품질" meta="오늘 · 출고 불량률" @click="router.push('/outbound')">
-        <div class="lead">
-          <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
-          <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
-        </div>
-        <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
-      </BasePanel>
-    </div>
-
     <BasePanel title="공장 배치도" meta="설비 39대">
       <template #tools>
         <StateLegend :counts="counts" pdm />
@@ -82,26 +58,40 @@ const ngRows = computed<BarRow[]>(() =>
         @open-outbound="router.push('/outbound')"
         @open-inbound="router.push('/inbound')"
         @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
-      />
+      >
+        <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
+          <BaseFigure label="실적" :value="plant?.done" size="md" />
+          <div v-if="plant && plant.target != null" class="figs-sub">
+            <BaseFigure label="목표" :value="plant.target" size="sm" />
+            <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
+          </div>
+          <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
+        </BasePanel>
+
+        <BasePanel class="go" title="종합 가동률" meta="오늘 · OEE" @click="router.push('/utilization')">
+          <BaseFigure label="OEE" :value="plant?.oee.oee" :digits="1" unit="%" size="md" />
+          <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
+        </BasePanel>
+
+        <BasePanel class="go" title="품질" meta="오늘 · 출고 불량률" @click="router.push('/outbound')">
+          <div class="lead">
+            <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
+            <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
+          </div>
+          <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
+        </BasePanel>
+      </Factory3D>
       <BaseEmpty v-else />
     </BasePanel>
   </div>
 </template>
 
 <style scoped>
-/* 왼쪽 카드 열 | 공장 배치도(3D) */
+/* 공장 배치도(3D)가 화면 전체. 카드 3개는 3D 왼쪽 위에 띄운다 */
 .dash {
   display: grid;
-  grid-template-columns: var(--col-side) minmax(0, 1fr);
-  gap: var(--sp-4);
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
-  min-height: 0;
-}
-
-.cards {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
-  gap: var(--sp-4);
   min-height: 0;
 }
 

@@ -61,7 +61,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   scene.background = new THREE.Color(C.bg)
 
   const persp = new THREE.PerspectiveCamera(40, W() / H(), 1, 1000)
-  persp.position.set(-52, 96, 110)
+  persp.position.set(-64, 96, 110)
   const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 1000)
   ortho.up.set(0, 0, -1)
   const fitOrtho = () => {
@@ -79,7 +79,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     c.enableDamping = true
     c.screenSpacePanning = false
     c.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
-    c.target.set(0, 0, 4)
+    c.target.set(-12, 0, 4)
     return c
   }
   const cP = mkCtl(persp)
@@ -540,7 +540,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       return
     }
     if (m === 'top') {
-      const t = new THREE.Vector3(2, 0, 0)
+      const t = new THREE.Vector3(-8, 0, 0)
       ortho.zoom = 1
       ortho.updateProjectionMatrix()
       fly(new THREE.Vector3(t.x, 150, t.z + 0.01), t, 600, () => {

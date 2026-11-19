@@ -136,6 +136,8 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   <div class="f3d">
     <div ref="host" class="stage" />
 
+    <div class="cards"><slot /></div>
+
     <div class="views" role="group" aria-label="3D 보기">
       <button type="button" :aria-pressed="view === '3d'" @click="scene?.setView('3d')">3D</button>
       <button type="button" :aria-pressed="view === 'top'" @click="scene?.setView('top')">탑뷰</button>
@@ -199,10 +201,27 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   inset: 0;
 }
 
-.views {
+.cards {
   position: absolute;
+  z-index: 2;
   top: var(--sp-3);
   left: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 300px;
+  max-height: calc(100% - var(--sp-6) * 2);
+  overflow: hidden auto;
+}
+
+.cards > :deep(*) {
+  flex: none;
+}
+
+.views {
+  position: absolute;
+  bottom: var(--sp-3);
+  right: var(--sp-3);
   display: flex;
   overflow: hidden;
   border: 1px solid var(--c-line-strong);
@@ -227,7 +246,7 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
 
 .hint {
   position: absolute;
-  bottom: var(--sp-2);
+  bottom: var(--sp-3);
   left: var(--sp-3);
   margin: 0;
   color: var(--c-ink-3);
