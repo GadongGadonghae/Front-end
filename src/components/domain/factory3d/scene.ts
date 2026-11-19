@@ -181,12 +181,12 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   LINES.forEach((L, i) => {
     const z = lineZ(i)
     const n0 = scene.children.length
-    box(70, 0.6, 2.2, belt, -12, 0, z)
+    box(76, 0.6, 2.2, belt, -15, 0, z)
     const slit = new THREE.Group()
-    slit.position.set(-41, 0, z)
+    slit.position.set(-44, 0, z)
     slit.scale.setScalar(0.85)
     kit.slitter(slit)
-    addEq(slit, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -41, z, h: 3.4, pw: 17, pd: 5 })
+    addEq(slit, { id: `${L}-SL`, line: L, kind: 'SL', no: 'SL', x: -44, z, h: 3.4, pw: 17, pd: 5 })
     for (let p = 0; p < 4; p++) {
       const x = -25 + p * 8.5
       const pg = new THREE.Group()
@@ -194,7 +194,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       pg.scale.setScalar(0.85)
       const v = (['A', 'B', 'C', 'A'] as const)[p]
       kit.press(pg, v)
-      addEq(pg, { id: `${L}-PR${p + 1}`, line: L, kind: 'PR', no: `PR${p + 1}`, x, z, h: v === 'C' ? 10.2 : v === 'B' ? 9 : 7.5 })
+      addEq(pg, { id: `${L}-PR${p + 1}`, line: L, kind: 'PR', no: `PR${p + 1}`, x, z, h: v === 'C' ? 8.6 : v === 'B' ? 9 : 7.5 })
     }
     const wg = new THREE.Group()
     wg.position.set(18, 0, z)
@@ -237,13 +237,13 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   })
 
   const lineTags = LINES.map((L, i) => {
-    const t = tag(`${L}라인`, 'f3d-line', [-51, 1, lineZ(i)])
+    const t = tag(`${L}라인`, 'f3d-line', [-55, 1, lineZ(i)])
     t.el.addEventListener('click', () => on.onLine(L))
     return t
   })
   // 구역 이름: 코일 적재장·도장·비전·출하는 눌러서 상세 화면으로 (2D 배치도와 같은 이동)
   const ZONES: [string, number, number, number, ZoneId | null][] = [
-    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -41, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
+    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -44, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
     ['도장 1', 48, 9, -24, 'paint'], ['도장 2', 48, 9, 12, 'paint'], ['비전 검사', 74, 8, -6, 'outbound'], ['출하', 86, 6, -16, 'outbound'],
   ]
   for (const [n, x, y, z, go] of ZONES) {

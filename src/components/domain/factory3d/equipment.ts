@@ -109,7 +109,6 @@ export function makeKit(P: Palette) {
       B(p, 5, 1.4, 4, m.frame, 0, 0, 0)
       for (const x of [-2, 2]) for (const z of [-1.5, 1.5]) C(p, 0.38, 7, m.chrome, x, 4.9, z)
       B(p, 5, 1, 4, P.cap, 0, 8.4, 0)
-      C(p, 1.2, 2.4, m.steel, 0, 10.6, 0)
       L(p, [0, 5.7, 0], [0, 8.4, 0], 0.45, m.chrome)
       B(p, 4.2, 0.9, 3.2, m.steel, 0, 4.8, 0)
       B(p, 3.4, 0.5, 2.6, m.dark, 0, 1.4, 0)
