@@ -48,7 +48,7 @@ function colors(): SceneColors {
   const state: Record<StateCode, string> = { R: v('--c-run'), S: v('--c-stop-solid'), I: v('--c-idle'), D: v('--c-down'), DC: v('--c-dc') }
   return {
     state, bg: v('--c-3d-bg'), floor: v('--c-3d-floor'), grid: v('--c-3d-grid'), yard: v('--c-3d-yard'), body: v('--c-3d-body'),
-    frame: v('--c-3d-frame'), metal: v('--c-3d-metal'), dark: v('--c-3d-dark'), chrome: v('--c-3d-chrome'), glass: v('--c-3d-glass'), belt: v('--c-3d-belt'), route: v('--c-3d-route'), route2: v('--c-3d-route-2'),
+    frame: v('--c-3d-frame'), metal: v('--c-3d-metal'), dark: v('--c-3d-dark'), chrome: v('--c-3d-chrome'), glass: v('--c-3d-glass'), wood: v('--c-3d-wood'), carton: v('--c-3d-carton'), belt: v('--c-3d-belt'), route: v('--c-3d-route'), route2: v('--c-3d-route-2'),
     routeAlt: v('--c-3d-route-alt'), product: v('--c-3d-product'), cap: v('--c-3d-frame'),
   }
 }

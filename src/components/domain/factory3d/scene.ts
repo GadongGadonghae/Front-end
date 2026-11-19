@@ -14,7 +14,7 @@ export type ViewMode = '3d' | 'top'
 export interface SceneColors {
   state: Record<StateCode, string>
   bg: string; floor: string; grid: string; yard: string; body: string; frame: string
-  metal: string; dark: string; chrome: string; glass: string; belt: string; route: string; route2: string; routeAlt: string; product: string; cap: string
+  metal: string; dark: string; chrome: string; glass: string; wood: string; carton: string; belt: string; route: string; route2: string; routeAlt: string; product: string; cap: string
 }
 
 export interface SceneHandlers {
@@ -124,11 +124,10 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   scene.add(grid)
   box(18, 0.05, 86, M(C.yard), -62, 0, 0)
   const capM = M(C.cap)
-  const kit = makeKit({ cap: capM, frame: C.frame, metal: C.metal, body: C.body, dark: C.dark, chrome: C.chrome, glass: C.glass, robot: C.routeAlt })
+  const kit = makeKit({ cap: capM, frame: C.frame, metal: C.metal, body: C.body, dark: C.dark, chrome: C.chrome, glass: C.glass, robot: C.routeAlt, wood: C.wood, carton: C.carton })
   const metal = M(C.metal, { metalness: 0.2, roughness: 0.5 })
   const frame = M(C.frame)
   const belt = M(C.belt)
-  const body = M(C.body)
 
   // ── 겹쳐 그리는 이름표 (HTML) ──
   const layer = document.createElement('div')
@@ -173,6 +172,11 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     for (let k = 0; k < 2; k++) cyl(2.2, 2.6, metal, x, 1.4 + k * 2.7, z)
     cyl(0.7, 5.6, frame, x, 2.8, z)
   }
+  const craneG = new THREE.Group()
+  craneG.position.set(-62, 0, 0)
+  craneG.scale.setScalar(1.05)
+  kit.crane(craneG)
+  scene.add(craneG)
   const lineObjs: Record<string, THREE.Object3D[]> = {}
   LINES.forEach((L, i) => {
     const z = lineZ(i)
@@ -208,23 +212,29 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     const n0 = scene.children.length
     const z = PAINT_Z[pi]
     const g = new THREE.Group()
+    g.position.set(48, 0, z)
+    g.scale.setScalar(1.7)
+    kit.paint(g)
     box(8, 0.6, 2.2, belt.clone(), 33, 0, z)
-    box(22, 6.5, 10, body, 48, 0, z, g)
-    box(22.4, 0.8, 10.4, capM, 48, 6.5, z, g)
-    addEq(g, { id: `PT${pi + 1}`, line: null, kind: 'PT', no: `PT${pi + 1}`, x: 48, z, h: 7.3, pw: 23, pd: 11 })
+    addEq(g, { id: `PT${pi + 1}`, line: null, kind: 'PT', no: `PT${pi + 1}`, x: 48, z, h: 9, pw: 23, pd: 11 })
     box(10, 0.6, 2.2, belt.clone(), 64, 0, z)
     box(2.2, 0.6, Math.abs(z), belt.clone(), 68, 0, z / 2)
     paintObjs[pi] = scene.children.slice(n0)
   })
   const vg = new THREE.Group()
+  vg.position.set(74, 0, 0)
+  vg.scale.setScalar(1.15)
+  kit.vision(vg)
   box(10, 0.6, 2.2, belt, 72, 0, 0)
-  for (const [x, z] of [[72, -2.6], [76, -2.6], [72, 2.6], [76, 2.6]]) box(1, 5, 4, frame, x, 0, z, vg)
-  box(5, 1, 4, capM, 74, 5, -2.6, vg)
-  box(5, 1, 4, capM, 74, 5, 2.6, vg)
-  addEq(vg, { id: 'VI', line: null, kind: 'VI', no: 'VI', x: 74, z: 0, h: 6, pw: 7, pd: 9 })
+  addEq(vg, { id: 'VI', line: null, kind: 'VI', no: 'VI', x: 74, z: 0, h: 5, pw: 7, pd: 9 })
   box(10, 0.6, 2.2, belt, 82, 0, 0)
-  box(9, 4, 5, body, 86, 0, -12)
-  box(9, 4, 5, body, 86, 0, 12)
+  ;[-12, 12].forEach((z, i) => {
+    const sg = new THREE.Group()
+    sg.position.set(88, 0, z)
+    sg.scale.setScalar(0.8)
+    kit.shipping(sg, i === 0)
+    scene.add(sg)
+  })
 
   const lineTags = LINES.map((L, i) => {
     const t = tag(`${L}라인`, 'f3d-line', [-51, 1, lineZ(i)])
