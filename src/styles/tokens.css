@@ -79,8 +79,10 @@
   /* 글자 크기 5단계: 보조 · 본문 · 제목·보조 숫자 · 요약 숫자 · 핵심 숫자 */
   --fs-sm: 13px;
   --fs-md: 14px;
-  --fs-lg: 20px;
+  --fs-lg: 20px;   /* 패널 제목 */
   --fs-xl: 32px;
+  --fs-page: 24px;   /* 화면 제목 (생산 조회·가동률·이동 경로 끝). 패널 제목보다 한 단계 크게 */
+  --fs-figure: 16px; /* 지표 이름과 값 (실적·계획·OEE …). 값이 이름보다 튀지 않게 같은 크기 */
   --fs-2xl: 44px;
   --fw-regular: 400;
   --fw-strong: 600;
@@ -89,7 +91,7 @@
   --lh-body: 1.45;
 
   /* ── 크기·배치 ── */
-  --nav-h: 52px;
+  --nav-h: 60px;
   --head-h: 44px;
   --page-gutter: var(--sp-6);
   --col-summary: clamp(280px, 17vw, 320px);

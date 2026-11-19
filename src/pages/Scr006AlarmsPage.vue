@@ -174,7 +174,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

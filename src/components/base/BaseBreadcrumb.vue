@@ -45,7 +45,7 @@ a:hover {
 
 h1 {
   color: var(--c-ink);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
 }
 </style>

@@ -21,7 +21,7 @@ const empty = computed(() => props.value == null || Number.isNaN(props.value))
 .suffix {
   margin-left: 0.15em;
   color: var(--c-ink-2);
-  font-size: 0.5em;
+  font-size: 0.8em;
   font-weight: var(--fw-regular);
   letter-spacing: 0;
 }

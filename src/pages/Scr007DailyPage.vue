@@ -120,7 +120,7 @@ const ngSum = computed(() => d.processRows.value.reduce((a, p) => a + p.ng, 0))
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

@@ -47,22 +47,24 @@ const ngRows = computed<BarRow[]>(() =>
     <h1 class="sr-only">대시보드</h1>
     <div class="cards">
       <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
-        <BaseFigure label="실적" :value="plant?.done" size="lg" />
-        <div v-if="plant && plant.target != null" class="figs-sub">
+        <div class="lead">
+          <BaseFigure label="실적" :value="plant?.done" size="lg" />
+          <div v-if="plant && plant.target != null" class="figs-sub">
           <BaseFigure label="목표" :value="plant.target" size="sm" />
           <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
+          </div>
         </div>
-        <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
+        <p v-if="plant && plant.target == null" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
       </BasePanel>
 
       <BasePanel class="go" title="종합 가동률" meta="오늘 · OEE" @click="router.push('/utilization')">
-        <BaseFigure label="OEE" :value="plant?.oee.oee" :digits="1" unit="%" size="lg" />
+        <BaseFigure :value="plant?.oee.oee" :digits="1" unit="%" size="lg" />
         <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
       </BasePanel>
 
       <BasePanel class="go" title="품질" meta="오늘 · 출고 불량률" @click="router.push('/outbound')">
         <div class="lead">
-          <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
+          <BaseFigure :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
           <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
         </div>
         <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
@@ -109,17 +111,24 @@ const ngRows = computed<BarRow[]>(() =>
   cursor: pointer;
 }
 
+/* 큰 숫자 오른쪽에 보조 숫자를 둔다: 세로로 쌓지 않아 좁은 화면(1536×730)에서도 스크롤이 생기지 않게 */
 .figs-sub {
   display: flex;
   gap: var(--sp-5);
-  margin-top: var(--sp-3);
+  padding-bottom: var(--sp-1);
+}
+
+/* 카드 대표 숫자 (실적·OEE·출고 불량률)는 지표 이름보다 한 단계 크게: 첫 화면에서 멀리서도 읽히게 */
+.cards :deep(.fig.lg .value) {
+  font-size: var(--fs-lg);
 }
 
 .lead {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--sp-4);
+  gap: var(--sp-4) var(--sp-6);
 }
 
 .lead-sub {
@@ -142,4 +151,5 @@ const ngRows = computed<BarRow[]>(() =>
   padding-top: var(--sp-3);
   border-top: var(--line-w) solid var(--c-line);
 }
+
 </style>

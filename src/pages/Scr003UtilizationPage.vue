@@ -116,7 +116,7 @@ const stateOf = (key: string): StopState => u.downtime.value.find((d) => d.key =
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

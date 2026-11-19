@@ -217,10 +217,4 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   font-weight: var(--fw-strong);
 }
 
-/* 낮은 창 (1440×810, 1536×730 등): 요약 열 큰 숫자를 한 단계 줄여 열 안 스크롤이 생기지 않게. 라인 흐름 칸은 칸 안에서 줄인다 (EquipCell) */
-@media (height <= 860px) {
-  .sum :deep(.fig.lg .value) {
-    font-size: var(--fs-xl);
-  }
-}
 </style>
