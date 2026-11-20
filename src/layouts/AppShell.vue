@@ -8,29 +8,41 @@ import HeaderAlerts from '@/layouts/HeaderAlerts.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useNow } from '@/composables/useNow'
 import { useFaultToast } from '@/composables/useFaultToast'
+import { useTargetChange } from '@/composables/useTargetChange'
+import { formatNumber } from '@/lib/format'
 import { useMaster } from '@/composables/useMaster'
 import { useDataInfo } from '@/composables/useDataInfo'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDate, formatTime } from '@/lib/format'
+import { settingsTabsFor } from '@/lib/permissions'
+import { ROLE_LABEL } from '@/types/user'
 
-const MENU = [
+const BASE_MENU = [
   { name: '대시보드', to: '/' },
   { name: '생산', to: '/production' },
   { name: '가동률', to: '/utilization' },
   { name: '예지보전', to: '/pdm' },
   { name: '알람이력', to: '/alarms' },
   { name: 'AI 리포트', to: '/reports/daily' },
-  { name: '설정', to: '/settings/target' },
-] as const
+]
 
 const route = useRoute()
 const router = useRouter()
-const { userName, logout } = useAuth()
+const { userName, role, logout } = useAuth()
+// 설정: 권한 있는 첫 탭으로, 하나도 없으면(라인 담당자) 메뉴에서 숨김 (11/20)
+const MENU = computed(() => {
+  const first = settingsTabsFor(role.value)[0]
+  return first ? [...BASE_MENU, { name: '설정', to: first.to }] : BASE_MENU
+})
+const roleLabel = computed(() => (role.value ? ROLE_LABEL[role.value] : ''))
 const now = useNow()
 const nowIso = computed(() => new Date(now.value).toISOString())
 const { demo } = useDataInfo()
 const { equipmentName } = useMaster()
 const toast = useFaultToast()
+// 목표 생산량 변동 카드: 생산관리팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
+const target = useTargetChange()
+const qty = (n: number | null) => (n == null ? '미설정' : `${formatNumber(n)}개`)
 
 async function onLogout() {
   await logout()
@@ -61,13 +73,22 @@ function viewFault() {
         <span v-if="demo" class="demo">데모 데이터</span>
         <span class="clock">{{ formatDate(nowIso) }}<b>{{ formatTime(nowIso) }}</b></span>
         <HeaderAlerts />
-        <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}</span>
+        <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}<small v-if="roleLabel" class="role">{{ roleLabel }}</small></span>
         <button class="logout" type="button" aria-label="로그아웃" title="로그아웃" @click="onLogout"><BaseIcon name="log-out" :size="20" /></button>
       </div>
     </header>
 
     <!-- 주소(경로)가 바뀌면 화면을 새로 만든다: 라인·공정 탭 전환. ?eq= 같은 쿼리만 바뀌면 그대로 -->
     <main class="main print-flow"><RouterView :key="route.path" /></main>
+
+    <aside v-if="target.change.value" class="target-card no-print" role="status" aria-live="polite">
+      <div class="tc-body">
+        <b>목표 생산량 변동</b>
+        <span class="tc-qty">오늘 {{ qty(target.change.value.before) }} → <strong>{{ qty(target.change.value.after) }}</strong></span>
+        <small v-if="target.change.value.by || target.change.value.at">{{ target.change.value.by ?? '' }}{{ target.change.value.at ? ` · ${formatTime(target.change.value.at)}` : '' }}</small>
+      </div>
+      <button class="tc-close" type="button" aria-label="목표 변동 알림 닫기" title="닫기" @click="target.dismiss()"><BaseIcon name="x" :size="16" /></button>
+    </aside>
 
     <FaultToast
       v-if="toast.current.value"
@@ -208,5 +229,44 @@ nav a.on {
   .right {
     gap: var(--sp-3);
   }
+}
+/* 계정 권한 이름 (11/20): 이름 옆에 작게 */
+.user .role {
+  margin-left: var(--sp-1);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+/* 목표 생산량 변동 카드 (11/20): 머리줄 바로 아래 오른쪽, 작게 */
+.target-card {
+  position: fixed;
+  top: 64px; /* 머리줄 높이 + 여백 */
+  right: var(--sp-6);
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--c-line-strong);
+  border-left: 4px solid var(--c-accent);
+  border-radius: var(--r-3);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-float);
+}
+.tc-body {
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-sm);
+}
+.tc-body small {
+  color: var(--c-ink-3);
+}
+.tc-close {
+  display: grid;
+  place-items: center;
+  padding: 2px;
+  border: 0;
+  background: none;
+  color: var(--c-ink-2);
+  cursor: pointer;
 }
 </style>

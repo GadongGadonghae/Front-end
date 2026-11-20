@@ -2,6 +2,7 @@
      제목 줄 오른쪽: 오늘 검사 · 양품 · 불량 · 불량률. 본문 왼쪽: 비전 카드 + 라인별 출고 불량 → 불량 목록. 오른쪽 열: 비가동 이력 -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -19,6 +20,8 @@ const { card, inspections, byLine, equipmentId } = useOutbound()
 const history = useEquipmentHistory(equipmentId)
 const d = inspections.data
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
+// 조치 메모 쓰기 권한 (11/20)
+const { can } = useAuth()
 </script>
 
 <template>
@@ -50,7 +53,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         </BasePanel>
       </div>
       <BasePanel title="비가동 이력" :meta="`${card?.name ?? '비전'} · 오늘`">
-        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
+        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :can-write="can('memo')" />
       </BasePanel>
     </div>
   </PageLayout>

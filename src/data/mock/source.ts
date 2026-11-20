@@ -30,8 +30,9 @@ const LINE_DONE_PER_SEC = 1 / 17
 const DEMO_USER = '김현수'
 /** 데모 사용자 목록 (사용자 관리 화면) */
 const demoUsers: import('@/types/user').UserRow[] = [
-  { loginId: 'abc', name: DEMO_USER, role: 'MANAGER', email: null, memo: '데모 관리자', lastLoginAt: null },
-  { loginId: 'op01', name: '박서연', role: 'OPERATOR', email: null, memo: 'A·B라인', lastLoginAt: null },
+  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_MANAGER', email: null, memo: '데모 공장장', lastLoginAt: null },
+  { loginId: 'prodlead', name: '이도윤', role: 'PRODUCTION_MANAGER', email: null, memo: '데모 생산관리팀장', lastLoginAt: null },
+  { loginId: 'linelead', name: '박서연', role: 'LINE_MANAGER', email: null, memo: 'A·B라인', lastLoginAt: null },
 ]
 const PAGE_SIZE = 50
 
@@ -454,7 +455,12 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     },
     cmd: {
       // 데모 계정: 아이디·비밀번호가 비어 있지 않으면 통과 (실제 계정은 백엔드, DT-008)
-      login: async (userId, password) => (userId && password ? { ok: true, name: DEMO_USER } : { ok: false }),
+      // 데모: 아이디로 권한을 고름 (prodlead 생산관리팀장 · linelead 라인 담당자 · 그 밖 공장장)
+      login: async (userId, password) => {
+        if (!userId || !password) return { ok: false }
+        const u = demoUsers.find((x) => x.loginId === userId)
+        return { ok: true, name: u?.name ?? DEMO_USER, role: u?.role ?? 'PLANT_MANAGER' }
+      },
       logout: async () => {},
       async saveActionMemo(eventId, memo) {
         const text = memo.trim()
@@ -466,6 +472,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         return past
       },
       createReplanReport: async (eventId) => reports.create(eventId),
+      approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
       async createUser(u) {
         if (demoUsers.some((x) => x.loginId === u.loginId)) return { ok: false, error: '이미 있는 아이디입니다' }
         demoUsers.push({ loginId: u.loginId, name: u.name, role: u.role, email: u.email || null, memo: u.memo || null, lastLoginAt: null })

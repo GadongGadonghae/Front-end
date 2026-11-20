@@ -2,6 +2,9 @@
      설비 종류 → 설비 고르기 → 관리값 표 (항목 · 단위 · 하한 · 상한 · 마지막 수정). 변경 이력 목록 없음 (D-73)
      하한 > 상한이면 그 줄 아래에 오류를 보이고 저장하지 않는다. 저장하면 상태 판정·위험도에 바로 반영 (D-28) -->
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import { settingsTabsFor } from '@/lib/permissions'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -14,11 +17,9 @@ import { metricLabel } from '@/lib/metrics'
 const c = useControlLimits()
 const { type, equipmentId } = c
 
-const TABS = [
-  { key: 'target', label: '생산 목표', to: '/settings/target' },
-  { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
-  { key: 'users', label: '사용자 관리', to: '/settings/users' },
-]
+// 권한 있는 설정 탭만 (11/20, lib/permissions.ts)
+const { role: myRole } = useAuth()
+const TABS = computed(() => settingsTabsFor(myRole.value))
 </script>
 
 <template>

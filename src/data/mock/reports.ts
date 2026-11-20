@@ -218,5 +218,14 @@ export function createReports(ctx: Ctx) {
       .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
   }
 
-  return { daily, list, get, create, reportOf, seedToday }
+  /** 공장장 승인(결재) (11/20). 데모는 메모리에만 */
+  function approve(id: string, by: string): ReplanReport {
+    const r = get(id)
+    if (!r) throw new Error(`보고서 없음: ${id}`)
+    const next = { ...r, approved: true, approvedBy: by, approvedAt: new Date(ctx.now()).toISOString() }
+    made.set(id, next)
+    return next
+  }
+
+  return { daily, list, get, create, approve, reportOf, seedToday }
 }

@@ -107,6 +107,14 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return r.id
   }
 
+  /** 공장장 승인(결재) (11/20). 바뀐 보고서로 화면을 바꿔요 */
+  async function approve() {
+    const r = report.value
+    if (!r) return
+    report.value = await source.cmd.approveReplanReport(r.id)
+    await loadList()
+  }
+
   // ── 보고서 내용의 문장과 숫자 ──
   const view = computed(() => {
     const r = report.value
@@ -161,5 +169,5 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     }
   })
 
-  return { list, groups, report, view, missing, create, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
+  return { list, groups, report, view, missing, create, approve, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
 }

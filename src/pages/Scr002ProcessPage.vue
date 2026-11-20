@@ -3,6 +3,7 @@
      오른쪽 열: 비가동 이력·조치 메모 → 불량률 (도장은 비가동 이력 → 오늘 요약). 미세정지는 뺌 (11/20 검토) -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
@@ -105,6 +106,8 @@ const tabs = computed(() => (paint ? [] : [
   ...(linePaint.value ? [{ key: 'paint', label: `${PROCESS_NAME.PAINTING} (${painterName(linePaint.value)})`, to: `/lines/PT/paint?eq=${linePaint.value}` }] : []),
 ]))
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
+// 조치 메모 쓰기 권한 (11/20)
+const { can } = useAuth()
 </script>
 
 <template>
@@ -216,7 +219,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
       <div :class="['right', { paint }]">
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
-          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
+          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :can-write="can('memo')" />
         </BasePanel>
         <BasePanel v-if="paint" title="오늘 요약" meta="도장 공정">
           <div class="sum-figs">

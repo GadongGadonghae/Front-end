@@ -152,6 +152,7 @@ const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
   unmet: r.unmetQty ?? 0, target: r.targetQty ?? null, documentNo: r.documentNo,
+  approved: r.approved ?? false, approvedBy: r.approvedBy ?? null, approvedAt: r.approvedAt ?? null,
   ai: r.ai ? {
     title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
     fallbackReason: r.ai.fallbackReason ?? null, additionalRequest: r.ai.additionalRequest ?? null, interpretation: r.ai.requestInterpretation ?? null,
@@ -426,7 +427,7 @@ export function createApiSource(): DataSource {
           wip: { before: wip.find((w) => w.nextProcess === process)?.wipQty ?? null, after: wip.find((w) => w.process === process)?.wipQty ?? null },
           // M-15. 그날 행이 없는 설비는 0
           equipment: eqs.map((e) => { const c = cycles.find((x) => x.equipmentId === e.equipmentId); const w = paintWip?.get(e.equipmentId)
-            return { id: e.equipmentId, cycles: c?.cycles ?? 0, avgCtMs: c?.avgCtMs ?? null, wip: w && { before: w.find((x) => x.nextProcess === 'PAINTING')?.wipQty ?? null, after: w.find((x) => x.process === 'PAINTING')?.wipQty ?? null } } }),
+            return { id: e.equipmentId, cycles: c?.cycles ?? 0, avgCtMs: c?.avgCtMs ?? null, ng: c?.ng ?? 0, wip: w && { before: w.find((x) => x.nextProcess === 'PAINTING')?.wipQty ?? null, after: w.find((x) => x.process === 'PAINTING')?.wipQty ?? null } } }),
         }
       },
       async getTelemetry(equipmentId, range) {
@@ -623,7 +624,7 @@ export function createApiSource(): DataSource {
           return {
             date: d, quantity: day.reduce((a, p) => a + p.planQty, 0),
             done: d <= today ? rows.reduce((a, r) => a + r.actualQty, 0) : null,
-            updatedBy: last?.updatedBy ?? null,
+            updatedBy: last?.updatedBy ?? null, updatedAt: last?.updatedAt ?? null,
           }
         })
       },
@@ -697,7 +698,7 @@ export function createApiSource(): DataSource {
         try {
           const r = await api.C01({ loginId: userId, password })
           token.set(r.accessToken)
-          return { ok: true, name: r.userName }
+          return { ok: true, name: r.userName, role: r.role }
         } catch (e) {
           // 401(LOGIN_FAILED)만 아이디·비밀번호 오류. 서버가 꺼졌거나 다른 오류는 던져서 화면이 다른 문구를 보여 준다
           if (e instanceof ApiError && e.status === 401) return { ok: false }
@@ -712,6 +713,7 @@ export function createApiSource(): DataSource {
       },
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
+      approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

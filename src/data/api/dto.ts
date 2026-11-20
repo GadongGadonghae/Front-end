@@ -141,6 +141,8 @@ export interface CycleDto {
   equipmentId: string
   cycles: number
   avgCtMs: number | null
+  /** 그날 이 설비에서 공정 판정 NG(폐기)된 수. 프레스는 NG가 난 단 (11/20) */
+  ng?: number
 }
 
 /** M-13 */
@@ -361,6 +363,10 @@ export interface ReassignmentDetailDto {
   stoppedDone: number | null
   targetQty: number | null
   unmetQty: number | null
+  /** 공장장 승인(결재) (11/20, R-04) */
+  approved?: boolean
+  approvedBy?: string | null
+  approvedAt?: string | null
   /** AI 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
   ai: {
     title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null

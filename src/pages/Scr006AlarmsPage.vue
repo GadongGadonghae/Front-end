@@ -26,17 +26,22 @@ import { useInlineEdit } from '@/components/base/inlineEdit'
 import { useAlarmHistory, MAX_DAYS, type AlarmRow } from '@/composables/useAlarmHistory'
 import type { HistoryTodo } from '@/types/events'
 import { isCommsEvent } from '@/data/historyTodo'
+import { useAuth } from '@/composables/useAuth'
 import type { DowntimeCode } from '@/types/state'
 
 const route = useRoute()
 const router = useRouter()
 const h = useAlarmHistory()
+// 조치 메모 쓰기 권한 (11/20): 생산관리팀장·라인 담당자만
+const { can } = useAuth()
 const { tab, from, to, lineId, process, kind, code, ongoing, todo, page } = h
 
 // 예지보전 위험 탭은 뺌 (11/20). 알람·비가동만 (예전 주소 ?tab=risk로 와도 알람·비가동)
 tab.value = 'alarm'
 // 대시보드 팝업 "조치 가기" (?eq=설비ID): 기준정보가 오면 그 설비 건으로 필터를 맞춘다
 watch([() => route.query.eq, () => h.equipmentById.value.size], ([eq]) => { if (typeof eq === 'string') h.focusEquipment(eq) }, { immediate: true })
+// ?line=A: 라인 상세의 "오늘 알람 이력"에서 넘어올 때 그 라인으로 거름 (11/20)
+watch(() => route.query.line, (line) => { if (typeof line === 'string') h.lineId.value = line }, { immediate: true })
 
 const multi = computed(() => from.value !== to.value)
 const timeW = computed(() => (multi.value ? '9.5em' : '6.5em'))
@@ -161,7 +166,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
               <span class="memo">
                 <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
                 <button
-                  v-if="!isCommsEvent(row.id)"
+                  v-if="!isCommsEvent(row.id) && can('memo')"
                   class="link inline"
                   type="button"
                   :data-edit="memo.attr(row.id, 'open')"

@@ -2,6 +2,9 @@
      왼쪽: 하루 목표 입력 (날짜 · 수량 · 라인 계획 자동 안내, D-87). 오른쪽: 최근 목표 목록 (날짜 · 목표 · 라인 계획 · 실적 · 달성률)
      오늘과 앞으로의 날짜만, 지난 날짜는 잠김. 같은 날짜는 덮어씀 (D-71). 목표 없는 날은 "목표 미설정" (D-72) -->
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import { settingsTabsFor } from '@/lib/permissions'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -16,11 +19,9 @@ import { formatNumber } from '@/lib/format'
 const t = useTargets()
 const { date, quantity } = t
 
-const TABS = [
-  { key: 'target', label: '생산 목표', to: '/settings/target' },
-  { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
-  { key: 'users', label: '사용자 관리', to: '/settings/users' },
-]
+// 권한 있는 설정 탭만 (11/20, lib/permissions.ts)
+const { role: myRole } = useAuth()
+const TABS = computed(() => settingsTabsFor(myRole.value))
 const COLS: TableColumn[] = [
   { key: 'date', label: '날짜' },
   { key: 'quantity', label: '목표', align: 'right' },

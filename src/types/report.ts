@@ -49,6 +49,10 @@ export interface ReplanAllocation {
 /** API-083 계획수정 보고서 (FN-009). 제안만 하고 계획은 바꾸지 않는다 (D-70) */
 export interface ReplanReport extends ReplanSummary {
   createdBy: string
+  /** 공장장 승인(결재) (11/20, R-04). 승인자 이름·시각은 승인 전 null */
+  approved?: boolean
+  approvedBy?: string | null
+  approvedAt?: string | null
   stateEventId: string
   /** 고장 시작 시각과 원인 */
   start: string
@@ -107,4 +111,6 @@ export interface TargetRow {
   /** 지난 날·오늘의 실적. 앞으로의 날은 null */
   done: number | null
   updatedBy: string | null
+  /** 마지막으로 저장한 시각 (11/20 목표 변동 카드). 데모는 null */
+  updatedAt?: string | null
 }

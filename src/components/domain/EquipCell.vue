@@ -22,7 +22,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
       <p v-if="large.reason" class="why"><b>{{ large.reason.code }}</b><span v-if="large.reason.detail">{{ large.reason.detail }}</span></p>
       <p v-if="large.note" class="note">{{ large.note }}</p>
       <dl v-if="large.info.length" class="info">
-        <template v-for="i in large.info" :key="i.label"><dt>{{ i.label }}</dt><dd>{{ i.value }}</dd></template>
+        <template v-for="i in large.info" :key="i.label"><dt>{{ i.label }}</dt><dd :class="{ alert: i.alert }">{{ i.value }}</dd></template>
       </dl>
       <div class="foot">
         <span class="code">{{ large.state }}</span>
@@ -150,6 +150,11 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   margin: 0;
   font-weight: var(--fw-strong);
   text-align: right;
+}
+
+/* 불량 수가 있을 때 (11/20) */
+.info dd.alert {
+  color: var(--c-down);
 }
 
 .foot {
