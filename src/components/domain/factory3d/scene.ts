@@ -241,10 +241,10 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     t.el.addEventListener('click', () => on.onLine(L))
     return t
   })
-  // 구역 이름: 코일 적재장·도장·비전·출하는 눌러서 상세 화면으로 (2D 배치도와 같은 이동)
+  // 구역 이름: 코일 입고·비전·적재는 눌러서 상세 화면으로. 도장 1·2는 프레스·용접처럼 이름만 (11/20)
   const ZONES: [string, number, number, number, ZoneId | null][] = [
-    ['코일 적재장', -64, 7, -42, 'inbound'], ['슬리팅', -42, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
-    ['도장 1', 48, 9, -24, 'paint'], ['도장 2', 48, 9, 12, 'paint'], ['비전 검사', 74, 8, -6, 'outbound'], ['출하', 86, 6, -16, 'outbound'],
+    ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
+    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -6, 'outbound'], ['적재', 86, 6, -16, 'outbound'],
   ]
   for (const [n, x, y, z, go] of ZONES) {
     const t = tag(n, go ? 'f3d-zone f3d-go' : 'f3d-zone', [x, y, z])

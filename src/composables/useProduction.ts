@@ -185,14 +185,15 @@ export function useProduction(initialQ = '') {
       steps: p.records.map((r) => {
         const running = !!r.from && !r.to
         const kind = r.judgement === 'ok' ? 'ok' : r.judgement === 'ng' ? 'ng' : running ? (fault ? 'stuck' : 'now') : 'todo'
-        const word = { ok: '합격', ng: '불량 제외', now: '처리 중', stuck: '멈춤', todo: '가지 않음' }[kind]
+        const word = { ok: '통과', ng: '불량 제외', now: '처리 중', stuck: '멈춤', todo: '가지 않음' }[kind]
         const time = r.from
           ? `${formatTime(r.from)} → ${r.to ? `${formatTime(r.to)} · ${formatSpan((Date.parse(r.to) - Date.parse(r.from)) / 1000)}` : `${formatSpan((now.value - Date.parse(r.from)) / 1000)}째`}`
           : null
         const note = kind === 'stuck' && fault
           ? `${equipmentName(fault.id)} 고장 (${formatHm(fault.since)}부터) · ${fault.code ? DOWNTIME_NAME[fault.code] : '고장'}`
           : r.reason
-        return { key: r.process, label: PROCESS_NAME[r.process], kind, word, equipment: r.equipment ? equipmentName(r.equipment) : null, time, note }
+        const equipment = r.process === 'PRESS' && kind === 'ok' ? `${lineName(p.lineId)} 프레스 1~4단` : r.equipment ? equipmentName(r.equipment) : null
+        return { key: r.process, label: PROCESS_NAME[r.process], kind, word, equipment, time, note }
       }),
     }
   })

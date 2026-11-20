@@ -26,7 +26,7 @@ export function useUtilization(init: { tab?: string; line?: string } = {}) {
   // ── 화면 상태 ──
   const period = ref<Period>('day')
   const date = ref(today)
-  const tab = ref<UtilTab>((['line', 'inbound', 'paint', 'out'] as const).find((t) => t === init.tab) ?? 'line')
+  const tab = ref<UtilTab>((['line', 'paint', 'out'] as const).find((t) => t === init.tab) ?? 'line')
   const line = ref<LineId | null>(LINES.find((l) => l === init.line) ?? null)
   const sort = ref<'line' | 'low'>('line')
   watch(tab, () => { line.value = null })

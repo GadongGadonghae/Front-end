@@ -19,6 +19,7 @@ const { date, quantity } = t
 const TABS = [
   { key: 'target', label: '생산 목표', to: '/settings/target' },
   { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
+  { key: 'users', label: '사용자 관리', to: '/settings/users' },
 ]
 const COLS: TableColumn[] = [
   { key: 'date', label: '날짜' },
@@ -26,6 +27,7 @@ const COLS: TableColumn[] = [
   { key: 'plan', label: '라인 계획', align: 'right' },
   { key: 'done', label: '실적', align: 'right' },
   { key: 'rate', label: '달성률', align: 'right' },
+  { key: 'by', label: '수정자' },
   { key: 'act', label: '', align: 'right', width: '6em' },
 ]
 </script>
@@ -76,6 +78,7 @@ const COLS: TableColumn[] = [
           <template #cell-rate="{ row }">
             <span class="n">{{ row.rate != null ? `${formatNumber(row.rate, 1)}%` : '-' }}</span><span v-if="row.today && row.rate != null" class="live"> 진행 중</span>
           </template>
+          <template #cell-by="{ row }"><span class="by">{{ row.by ?? '-' }}</span></template>
           <template #cell-act="{ row }">
             <span v-if="row.past" class="locked">잠김</span>
             <span v-else-if="row.editing" class="locked">입력 중</span>

@@ -34,7 +34,7 @@ const TYPES: EquipmentType[] = [
 ]
 const CODES: DowntimeCodeDef[] = [
   { code: 'PL_SHIFT', name: '교대', state: 'S' }, { code: 'PL_PM', name: '예방보전', state: 'S' }, { code: 'PL_CHANGE', name: '모델 교체', state: 'S' },
-  { code: 'PL_SETUP', name: '코일·나이프 교체', state: 'S' }, { code: 'UP_SHORTAGE', name: '재공부족', state: 'I' }, { code: 'UP_DELAY', name: '작업지연', state: 'I' },
+  { code: 'PL_SETUP', name: '코일·나이프 교체', state: 'S' }, { code: 'UP_SHORTAGE', name: '재공부족', state: 'I' }, { code: 'UP_BLOCKED', name: '후공정 정지 대기', state: 'I' }, { code: 'UP_DELAY', name: '작업지연', state: 'I' },
   { code: 'UP_BREAKDOWN', name: '장비고장', state: 'D' }, { code: 'UP_ALARM', name: '알람(관리값 이탈)', state: 'D' }, { code: 'UP_SAFETY', name: '안전문제', state: 'D' },
   { code: 'UP_LABOR', name: '노사협의', state: 'D' }, { code: 'UP_ETC', name: '기타', state: 'D' },
 ]
@@ -493,7 +493,7 @@ export function createApiSource(): DataSource {
       async getHistory(q) {
         const p = await api.U08({
           from: q.from, to: q.to,
-          lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.join(','), reasonCode: q.code, inProgress: q.ongoing,
+          lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
           minMinutes: q.minMinutes ?? 1, page: q.page, size: 50,
         })
         return { ...p, items: p.items.map(eventOf) }
@@ -563,10 +563,29 @@ export function createApiSource(): DataSource {
         }
       },
       getReplanPdf: async () => null,
+      // 사용자 관리 C-02 (11/20)
+      async getUsers() {
+        const list = await api.C02({ page: 0, size: 100 })
+        return list.map((u) => ({ loginId: u.loginId, name: u.userName, role: u.role, email: u.email ?? null, memo: u.memo ?? null, lastLoginAt: u.lastLoginAt ? `${u.lastLoginAt.slice(0, 19)}+09:00` : null }))
+      },
       async getTargets(from, to) {
-        const plans = await api.G02({ from, to })
+        // 목표 = 라인 계획 합(G-02), 실적 = 그날 출고 양품(G-01 unit=day, 오늘까지), 수정자 = 그날 마지막으로 저장한 사람 (11/20)
+        const today = dateOf(Date.now())
+        const [plans, actual] = await Promise.all([
+          api.G02({ from, to }),
+          from <= today ? api.G01({ from, to: to < today ? to : today, unit: 'day' }).catch(() => []) : Promise.resolve([]),
+        ])
         const dates = [...new Set(plans.map((p) => p.date))].sort().reverse()
-        return dates.map((d) => ({ date: d, quantity: plans.filter((p) => p.date === d).reduce((a, p) => a + p.planQty, 0), done: null, updatedBy: null }))
+        return dates.map((d) => {
+          const day = plans.filter((p) => p.date === d)
+          const last = [...day].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0]
+          const rows = actual.filter((a) => a.period === d)
+          return {
+            date: d, quantity: day.reduce((a, p) => a + p.planQty, 0),
+            done: d <= today ? rows.reduce((a, r) => a + r.actualQty, 0) : null,
+            updatedBy: last?.updatedBy ?? null,
+          }
+        })
       },
       async getControlLimits(equipmentId) {
         const type = typeById.get(equipmentId) ?? 'press'
@@ -653,6 +672,11 @@ export function createApiSource(): DataSource {
       },
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
+      async createUser(u) {
+        try {
+          return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }
+        } catch (e) { return fail(e) }
+      },
       async saveTarget(date, quantity) {
         // 공장 목표 → 라인별 계획(G-03)으로 나눠 저장 (D-87: 라인 계획 = 목표 ÷ 6)
         // 몫을 모든 라인에, 나머지는 앞 라인부터 1개씩 → 합이 입력값과 같다 (1000 → 167·167·167·167·166·166)

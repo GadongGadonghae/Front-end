@@ -67,7 +67,6 @@ const { draft } = memo
 const save = (id: string) => memo.submit(() => h.saveMemo(id, draft.value))
 
 const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?event=${r.id}`)
-const noState = computed(() => !states.value.D && !states.value.I && !states.value.S)
 </script>
 
 <template>
@@ -109,7 +108,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
         :rows="h.alarmRows.value"
         :row-key="(r) => r.id"
         :row-tone="tone"
-        :empty="noState ? '상태를 하나 이상 고르세요' : '데이터 없음'"
+        empty="데이터 없음"
       >
         <template #cell-start="{ row }"><span class="t">{{ row.start }}</span></template>
         <template #cell-end="{ row }">

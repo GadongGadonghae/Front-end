@@ -10,6 +10,7 @@ import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
 import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
+import type { NewUser, UserRow } from '@/types/user'
 
 export type Unsubscribe = () => void
 
@@ -80,6 +81,8 @@ export interface Queries {
   getReplanPdf(id: string): Promise<Blob | null>
   /** G-02 (라인별 계획 합) 날짜별 목표·실적 */
   getTargets(from: string, to: string): Promise<TargetRow[]>
+  /** C-02 사용자 목록 (최대 100명) */
+  getUsers(): Promise<UserRow[]>
   /** 백엔드 M-10 설비별 관리값 기준치 */
   getControlLimits(equipmentId: string): Promise<ControlLimit[]>
   /** G-01·M-07·U-11 생산 요약 */
@@ -102,6 +105,8 @@ export interface Commands {
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
+  /** C-03 사용자 등록. 같은 아이디가 있으면 실패 */
+  createUser(user: NewUser): Promise<SaveResult<{ loginId: string }>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */
   setPaintRoute(lineId: string, paintId: string, reason: string): Promise<SaveResult<{ lineId: string; currentPaintId: string; changedAt: string }>>
   /** 백엔드 M-11 기준치 수정 (항목마다 1건씩, 바뀐 것만). 하한 > 상한이면 실패 */

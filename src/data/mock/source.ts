@@ -27,6 +27,11 @@ const RISK_MS = 5000 // risk 5초 [제안]
 const LINE_DONE_PER_SEC = 1 / 17
 /** 데모 계정 이름. 조치 메모 담당자도 이 이름 (실제는 서버가 로그인 사용자로 기록, D-84) */
 const DEMO_USER = '김현수'
+/** 데모 사용자 목록 (사용자 관리 화면) */
+const demoUsers: import('@/types/user').UserRow[] = [
+  { loginId: 'abc', name: DEMO_USER, role: 'MANAGER', email: null, memo: '데모 관리자', lastLoginAt: null },
+  { loginId: 'op01', name: '박서연', role: 'OPERATOR', email: null, memo: 'A·B라인', lastLoginAt: null },
+]
 const PAGE_SIZE = 50
 
 const iso = (ms: number) => new Date(ms).toISOString()
@@ -439,6 +444,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),
+      getUsers: async () => demoUsers.map((u) => ({ ...u })),
       getControlLimits: async (equipmentId) => MASTER.controlLimits.filter((l) => l.equipmentId === equipmentId).map((l) => ({ ...l })),
       getProductionSummary: async (q) => productionSummary(q),
       getProducts: async (q) => productList(q),
@@ -458,6 +464,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         return past
       },
       createReplanReport: async (eventId) => reports.create(eventId),
+      async createUser(u) {
+        if (demoUsers.some((x) => x.loginId === u.loginId)) return { ok: false, error: '이미 있는 아이디입니다' }
+        demoUsers.push({ loginId: u.loginId, name: u.name, role: u.role, email: u.email || null, memo: u.memo || null, lastLoginAt: null })
+        return { ok: true, value: { loginId: u.loginId } }
+      },
       async saveTarget(date, quantity) {
         if (date < today()) return { ok: false, error: '지난 날짜의 목표는 바꿀 수 없습니다' }
         if (!Number.isInteger(quantity) || quantity <= 0) return { ok: false, error: '목표 수량은 1 이상의 정수로 입력하세요' }

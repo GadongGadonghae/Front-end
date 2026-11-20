@@ -23,7 +23,8 @@ const { period, date, tab, sort } = u
 
 const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일' }, { value: 'week', label: '주' }, { value: 'month', label: '월' }]
 const TABS: { value: UtilTab; label: string }[] = [
-  { value: 'line', label: '생산 라인 6' }, { value: 'inbound', label: '코일입고' }, { value: 'paint', label: '도장 2대' }, { value: 'out', label: '출고 비전 1대' },
+  // 코일입고는 공정 시간(CT)이 없어 가동률을 셀 수 없어서 뺌 (11/20)
+  { value: 'line', label: '생산 라인 6' }, { value: 'paint', label: '도장 2대' }, { value: 'out', label: '출고 비전 1대' },
 ]
 const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as const, label: 'OEE 낮은 순' }]
 </script>
