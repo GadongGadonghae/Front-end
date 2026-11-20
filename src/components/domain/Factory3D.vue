@@ -1,11 +1,14 @@
-<!-- SCR-005 3D 공장 (대시보드 배치도의 3D 보기). 설비 상태 색 · 이상 "!" · 도장 경로 · 제품 물류(데모)
-     3D / 탑뷰 전환, 라인을 고르면 그 라인 흐름만 밝히고 오른쪽에 라인 카드. 설비를 누르면 팝업
-     값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
+<!-- SCR-005 3D 공장 (대시보드 배치도의 3D 보기, D-118). 설비 상태 색 · 이상 표시 · 도장 경로 · 제품 상자(데모)
+     3D ↔ 탑뷰: 같은 원근 카메라가 부드럽게 날아간다. 탑뷰에 도착하면 장면이 흐려지고 설비 위에 설비 카드
+     설비를 누르면 카메라가 그 설비로 다가가고(화면 가운데) 왼쪽에 설비 팝업. 닫으면(× · Esc · 팝업 밖) 누르기 전 자리로
+     라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽에 라인 상세. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
-import { STATE_NAME, PROCESS_NAME, DOWNTIME_NAME } from '@/lib/status'
-import { formatDuration, formatNumber, formatTime } from '@/lib/format'
+import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
+import LinePanel, { type LineFlowRow, type LineWipRow } from '@/components/domain/factory3d/LinePanel.vue'
+import { STATE_NAME, PROCESS_NAME, byProcess } from '@/lib/status'
+import { formatDuration } from '@/lib/format'
 import type { Equipment, Line, LineId, ProductionLineId } from '@/types/plant'
 import type { EquipmentLive, FlowPositions, LineSummary } from '@/types/live'
 import type { StateCode } from '@/types/state'
@@ -16,7 +19,7 @@ const props = defineProps<{
   lines: Line[]
   lineSummaries: LineSummary[]
   flow: FlowPositions | null
-  /** 지금 시각 (ms). 지연 시간 계산용 */
+  /** 지금 시각 (ms). 지속 시간 계산용 */
   now: number
 }>()
 const emit = defineEmits<{
@@ -27,83 +30,121 @@ const emit = defineEmits<{
 }>()
 
 const host = ref<HTMLDivElement | null>(null)
+const popEl = ref<HTMLElement | null>(null)
 const scene = shallowRef<FactoryScene | null>(null)
 const view = ref<ViewMode>('3d')
 const selLine = ref<ProductionLineId | null>(null)
 const popId = ref<string | null>(null)
-const popAt = ref({ x: 0, y: 0 })
-/** 확인한 이상: 설비 ID@시작 시각. 같은 상태가 이어지는 동안 "!"를 숨긴다 */
+/** 확인한 이상: 설비 ID@시작 시각. 같은 상태가 이어지는 동안 이상 표시를 숨긴다 */
 const acked = ref(new Set<string>())
 
 const liveById = computed(() => new Map(props.live.map((e) => [e.id, e])))
 const eqById = computed(() => new Map(props.equipment.map((e) => [e.id, e])))
 const ackKey = (e: EquipmentLive) => `${e.id}@${e.since}`
-/** "!" 대상: 고장 · 통신 끊김 · 원인 코드가 있는 대기 */
+/** 이상 표시 대상: 고장 · 통신 끊김 · 원인 코드가 있는 대기 */
 const isIssue = (e: EquipmentLive) => e.state === 'D' || e.state === 'DC' || (e.state === 'I' && e.code != null)
 const issues = computed(() => props.live.filter((e) => isIssue(e) && !acked.value.has(ackKey(e))))
+const secOf = (l: EquipmentLive) => Math.max(0, Math.floor((props.now - Date.parse(l.since)) / 1000))
 
 function colors(): SceneColors {
   const css = getComputedStyle(host.value!)
   const v = (n: string) => css.getPropertyValue(n).trim()
   const state: Record<StateCode, string> = { R: v('--c-run'), S: v('--c-stop-solid'), I: v('--c-idle'), D: v('--c-down'), DC: v('--c-dc') }
   return {
-    state, bg: v('--c-3d-bg'), floor: v('--c-3d-floor'), grid: v('--c-3d-grid'), yard: v('--c-3d-yard'), body: v('--c-3d-body'),
+    state, accent: v('--c-accent'), bg: v('--c-3d-bg'), floor: v('--c-3d-floor'), grid: v('--c-3d-grid'), yard: v('--c-3d-yard'), body: v('--c-3d-body'),
     frame: v('--c-3d-frame'), metal: v('--c-3d-metal'), dark: v('--c-3d-dark'), chrome: v('--c-3d-chrome'), glass: v('--c-3d-glass'), wood: v('--c-3d-wood'), carton: v('--c-3d-carton'), belt: v('--c-3d-belt'), route: v('--c-3d-route'), route2: v('--c-3d-route-2'),
     routeAlt: v('--c-3d-route-alt'), product: v('--c-3d-product'), cap: v('--c-3d-frame'),
   }
 }
 
+// ── 설비 팝업 (왼쪽) ──
 function pick(id: string) {
+  if (!eqById.value.has(id)) return
   popId.value = id
-  const at = scene.value?.screenOf(id)
-  const w = host.value?.clientWidth ?? 0
-  const h = host.value?.clientHeight ?? 0
-  if (at) popAt.value = { x: Math.min(Math.max(8, at.x + 18), w - 280), y: Math.min(Math.max(8, at.y - 40), h - 300) }
-  const line = eqById.value.get(id)?.area
-  if (line && line !== 'PT' && line !== 'VI') selectLine(line)
+  scene.value?.focus(id)
+  // 라인 상세가 열려 있으면 그 설비의 라인으로 따라간다
+  const a = eqById.value.get(id)!.area
+  if (selLine.value && a !== 'PT' && a !== 'VI' && a !== selLine.value) selectLine(a as ProductionLineId)
+}
+/** restore = 누르기 전 카메라 자리로 돌아간다 (보기 전환 버튼은 스스로 날아가므로 false) */
+function closePop(restore = true) {
+  if (!popId.value) return
+  popId.value = null
+  if (restore) scene.value?.unfocus()
 }
 function selectLine(L: ProductionLineId | null) {
   selLine.value = L
   scene.value?.select(L)
 }
+function setView(m: ViewMode) {
+  closePop(false)
+  scene.value?.setView(m)
+}
+
+// 팝업 밖을 누르면 닫는다. 3D 장면 안은 scene이 알려 준다 (설비 = 바꿔 열기, 빈 곳·라인 = 닫기)
+function onDocClick(ev: MouseEvent) {
+  const t = ev.target as Node | null
+  if (!popId.value || !t) return
+  if (popEl.value?.contains(t) || host.value?.contains(t)) return
+  if ((t as Element).closest?.('[data-keep-pop]')) return
+  closePop()
+}
+function onKey(ev: KeyboardEvent) {
+  if (ev.key !== 'Escape') return
+  if (popId.value) closePop()
+  else if (selLine.value) selectLine(null)
+}
 
 onMounted(() => {
   const s = createFactoryScene(host.value!, colors(), {
     onPick: pick,
-    onLine: (L) => selectLine(L),
+    onLine: (L) => {
+      // 팝업이 열려 있으면 먼저 닫기만 한다 (팝업 밖 누름)
+      if (popId.value) { closePop(); return }
+      selectLine(L)
+    },
     onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : emit('open-outbound')),
+    onEmpty: () => {
+      if (popId.value) closePop()
+      else if (selLine.value) selectLine(null)
+    },
   })
   s.onModeChange((m) => { view.value = m })
   scene.value = s
   push()
+  document.addEventListener('click', onDocClick, true)
+  document.addEventListener('keydown', onKey)
 })
-onBeforeUnmount(() => scene.value?.dispose())
+onBeforeUnmount(() => {
+  document.removeEventListener('click', onDocClick, true)
+  document.removeEventListener('keydown', onKey)
+  scene.value?.dispose()
+})
 
+/** 탑뷰 설비 카드 둘째 줄: 가동이 아니면 지속 시간 */
 function push() {
   const s = scene.value
   if (!s) return
-  s.setStates(props.live)
+  s.setStates(props.live.map((l) => ({ id: l.id, state: l.state, note: l.state === 'R' ? null : formatDuration(secOf(l)) })))
   s.setIssues(issues.value.map((e) => ({ equipmentId: e.id, state: e.state })))
   s.setRoutes(Object.fromEntries(props.lines.filter((l) => l.kind === 'production').map((l) => [l.id, l.currentPaintId])))
   s.setFlow(props.flow)
 }
-watch(() => [props.live, props.lines, props.flow, issues.value], push)
+watch(() => [props.live, props.lines, props.flow, issues.value, props.now], push)
 
-// ── 팝업 ──
 const pop = computed(() => {
   const id = popId.value
   if (!id) return null
   const e = eqById.value.get(id)
   const l = liveById.value.get(id)
   if (!e || !l) return null
-  const sec = Math.max(0, Math.floor((props.now - Date.parse(l.since)) / 1000))
   const line = e.area === 'PT' ? '도장 (공용)' : e.area === 'VI' ? '출고 (공용)' : `${e.area}라인`
-  return { e, l, line, sec, abnormal: isIssue(l), issue: isIssue(l) && !acked.value.has(ackKey(l)) }
+  return { e, l, line, sec: secOf(l), abnormal: isIssue(l), issue: isIssue(l) && !acked.value.has(ackKey(l)) }
 })
 function ack() {
   const l = pop.value?.l
   if (l) acked.value = new Set(acked.value).add(ackKey(l))
-  popId.value = null
+  closePop()
 }
 function goLine() {
   const a = pop.value?.e.area
@@ -111,76 +152,77 @@ function goLine() {
   else if (a) emit('open-line', a)
 }
 
-// ── 라인 카드 ──
-const card = computed(() => {
+// ── 라인 상세 (오른쪽) ──
+const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
+const NG: [keyof LineSummary['ngByProcess'], string][] = [['SLITTING', '슬리팅'], ['PRESS', '프레스'], ['WELDING', '용접'], ['PAINTING', '도장']]
+const panel = computed(() => {
   const L = selLine.value
   if (!L) return null
   const sum = props.lineSummaries.find((x) => x.lineId === L) ?? null
-  const ids = props.equipment.filter((e) => e.area === L).map((e) => e.id)
-  const cnt: Record<StateCode, number> = { R: 0, I: 0, S: 0, D: 0, DC: 0 }
-  for (const id of ids) { const s = liveById.value.get(id)?.state; if (s) cnt[s] += 1 }
-  const piles = (k: string) => props.flow?.products.filter((p) => 'pile' in p.location && p.location.pile === `${L}:${k}`).length ?? null
-  const paint = props.lines.find((l) => l.id === L)
+  const eqs = props.equipment.filter((e) => e.area === L).sort((a, b) => byProcess(a.process, b.process) || a.order - b.order)
+  const pile = (k: string) => props.flow?.products.filter((p) => 'pile' in p.location && p.location.pile === `${L}:${k}`).length ?? null
+  const row = (e: Equipment): LineFlowRow => {
+    const l = liveById.value.get(e.id)
+    const state = l?.state ?? 'S'
+    return {
+      kind: 'eq', id: e.id, no: e.id.split('-')[1] ?? e.id,
+      name: e.process === 'PRESS' ? `${PROCESS_NAME.PRESS} ${e.shortName}` : PROCESS_NAME[e.process],
+      state, note: l && state !== 'R' ? `${STATE_NAME[state]} ${formatDuration(secOf(l))}` : null,
+    }
+  }
+  const wip = (key: string, label: string): LineWipRow => ({ kind: 'wip', key, label, qty: pile(key) })
+  const flow: (LineFlowRow | LineWipRow)[] = []
+  for (const e of eqs) {
+    flow.push(row(e))
+    if (e.process === 'SLITTING') flow.push(wip('SL-PR', '재공'))
+    if (e.process === 'PRESS' && e === eqs.filter((x) => x.process === 'PRESS').at(-1)) flow.push(wip('PR-WD', '재공'))
+    if (e.process === 'WELDING') flow.push(wip('WD-PT', '재공'))
+  }
+  const line = props.lines.find((l) => l.id === L)
   return {
-    L, sum, cnt,
-    route: paint?.currentPaintId ?? null,
-    switched: !!paint && paint.currentPaintId !== paint.defaultPaintId,
-    wip: [['슬리팅→프레스', piles('SL-PR')], ['프레스→용접', piles('PR-WD')], ['용접→도장', piles('WD-PT')]] as const,
+    line: L, sum, flow,
+    paint: paintName(line?.currentPaintId ?? null),
+    switched: !!line && line.currentPaintId !== line.defaultPaintId,
+    abnormal: flow.filter((r) => r.kind === 'eq' && r.state !== 'R' && r.state !== 'S').length,
+    ng: NG.map(([k, label]) => ({ label, value: sum?.ngByProcess[k] ?? null })),
   }
 })
-const STATES: StateCode[] = ['R', 'I', 'S', 'D', 'DC']
-const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
 </script>
 
 <template>
   <div class="f3d">
     <div ref="host" class="stage" />
 
-    <div class="views" role="group" aria-label="3D 보기">
-      <button type="button" :aria-pressed="view === '3d'" @click="scene?.setView('3d')">3D</button>
-      <button type="button" :aria-pressed="view === 'top'" @click="scene?.setView('top')">탑뷰</button>
+    <div class="views" role="group" aria-label="3D 보기" data-keep-pop>
+      <button type="button" :aria-pressed="view === '3d'" @click="setView('3d')">3D</button>
+      <button type="button" :aria-pressed="view === 'top'" @click="setView('top')">탑뷰</button>
     </div>
-    <p class="hint">왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전 · 제품 점은 데모 값</p>
+    <p class="hint">라인 바닥을 누르면 라인 상세 · 설비를 누르면 가까이 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전 · 제품 상자는 데모 값</p>
 
-    <section v-if="pop" :class="['pop', { compact: !pop.abnormal }]" :data-state="pop.l.state" :style="{ left: `${popAt.x}px`, top: `${popAt.y}px` }" aria-label="설비 상태">
-      <header>
-        <span>{{ pop.l.state }} · {{ STATE_NAME[pop.l.state] }}</span>
-        <button type="button" class="x" aria-label="닫기" @click="popId = null">×</button>
-      </header>
-      <dl>
-        <dt>라인</dt><dd>{{ pop.line }}</dd>
-        <dt>공정</dt><dd>{{ PROCESS_NAME[pop.e.process] }}</dd>
-        <dt>설비 ID</dt><dd>{{ pop.e.id }}</dd>
-        <dt>발생 시점</dt><dd>{{ formatTime(pop.l.since) }}</dd>
-        <dt>지연 시간</dt><dd class="num">{{ formatDuration(pop.sec) }}</dd>
-        <dt>원인 코드</dt><dd>{{ pop.l.code ? `${pop.l.code} · ${DOWNTIME_NAME[pop.l.code]}` : '-' }}</dd>
-        <dt>내용</dt><dd>{{ pop.l.detail ?? '-' }}</dd>
-      </dl>
-      <!-- 이상 없는 설비(가동·계획 정지 등)는 할 일이 없어 버튼을 두지 않는다 -->
-      <footer v-if="pop.abnormal">
-        <button v-if="pop.issue" type="button" @click="ack">확인</button>
-        <button type="button" @click="goLine">라인 가기</button>
-        <button type="button" @click="emit('open-action', pop.e.id)">조치 가기</button>
-      </footer>
-    </section>
+    <div v-if="pop" ref="popEl" class="dock left">
+      <EquipPanel
+        :e="pop.e"
+        :l="pop.l"
+        :sec="pop.sec"
+        :line-name="pop.line"
+        :abnormal="pop.abnormal"
+        :issue="pop.issue"
+        @close="closePop()"
+        @ack="ack"
+        @go-line="goLine"
+        @go-action="emit('open-action', pop.e.id)"
+      />
+    </div>
 
-    <aside v-if="card" class="card" aria-label="라인 카드">
-      <h3>
-        <span>{{ card.L }}라인</span>
-        <button type="button" class="x" aria-label="닫기" @click="selectLine(null)">×</button>
-      </h3>
-      <p class="mini">슬리팅 1 · 프레스 4 · 용접 1 → {{ paintName(card.route) }}<template v-if="card.switched"> (경로 전환)</template></p>
-      <div class="kp">
-        <div><small>생산</small><b class="num">{{ formatNumber(card.sum?.done) }}</b></div>
-        <div><small>달성률</small><b class="num">{{ formatNumber(card.sum?.rate, 1) }}<template v-if="card.sum?.rate != null">%</template></b></div>
-        <div><small>OEE</small><b class="num">{{ formatNumber(card.sum?.oee, 1) }}<template v-if="card.sum?.oee != null">%</template></b></div>
-      </div>
-      <div class="rs">
-        <span v-for="k in STATES" :key="k" :data-state="k" :class="{ zero: !card.cnt[k] }">{{ k }} {{ card.cnt[k] }}</span>
-      </div>
-      <button type="button" class="go-line" @click="emit('open-line', card.L)">라인 상세 보기</button>
-      <p class="mini">재공 (데모) · <template v-for="([n, q], i) in card.wip" :key="n">{{ i ? ' · ' : '' }}{{ n }} {{ formatNumber(q) }}</template></p>
-    </aside>
+    <div v-if="panel" class="dock right" data-keep-pop>
+      <LinePanel
+        v-bind="panel"
+        :focus-id="popId"
+        @close="selectLine(null)"
+        @pick="pick"
+        @open-line="emit('open-line', panel.line)"
+      />
+    </div>
   </div>
 </template>
 
@@ -200,26 +242,41 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   inset: 0;
 }
 
+/* 탑뷰에 도착하면 장면(캔버스)만 흐리게. 설비 카드·외곽선은 겹친 층이라 선명하다 */
+.stage :deep(canvas) {
+  transition: filter var(--dur-3d-blur) var(--ease-out);
+}
+
+.stage.topui :deep(canvas) {
+  filter: blur(var(--f3d-blur)) saturate(0.6);
+}
+
 .views {
   position: absolute;
+  z-index: 4;
   top: var(--sp-3);
   left: var(--sp-3);
   display: flex;
   overflow: hidden;
-  border: 1px solid var(--c-line-strong);
+  border: var(--line-w) solid var(--c-line-strong);
   border-radius: var(--r-2);
   background: var(--c-surface);
 }
 
 .views button {
-  padding: var(--sp-1) var(--sp-3);
+  min-width: 56px;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-3);
   border: 0;
   background: none;
   color: var(--c-ink-2);
   font: inherit;
   font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
   cursor: pointer;
 }
+
+.views button:hover { background: var(--c-surface-sunk); }
 
 .views button[aria-pressed="true"] {
   background: var(--c-ink);
@@ -230,150 +287,43 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   position: absolute;
   bottom: var(--sp-3);
   left: var(--sp-3);
+  max-width: calc(100% - var(--sp-6));
   margin: 0;
-  color: var(--c-ink-3);
+  padding: 2px var(--sp-2);
+  overflow: hidden;
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink-2);
   font-size: var(--fs-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   pointer-events: none;
 }
 
-.x {
-  border: 0;
-  background: none;
-  color: inherit;
-  font-size: var(--fs-lg);
-  line-height: 1;
-  cursor: pointer;
-}
-
-/* 팝업: 머리 색 = 상태 색. 버튼이 없는 정상 설비는 내용 폭만큼 */
-.pop.compact {
-  width: max-content;
-  min-width: 180px;
-  max-width: 268px;
-}
-
-.pop {
+/* 붙는 자리: 설비 팝업 = 왼쪽 (보기 버튼 아래), 라인 상세 = 오른쪽 전체 높이 */
+.dock {
   position: absolute;
-  z-index: 3;
-  width: 268px;
-  overflow: hidden;
-  border: 2px solid var(--st);
-  border-radius: var(--r-3);
-  background: var(--c-surface);
-  font-size: var(--fs-sm);
+  z-index: 5;
+  width: var(--f3d-dock-w);
 }
 
-.pop header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--sp-1) var(--sp-3);
-  background: var(--st);
-  color: var(--st-ink);
-  font-weight: 600;
+.dock.left {
+  top: calc(var(--sp-3) + var(--control-h-sm) + var(--sp-2));
+  left: var(--sp-3);
+  max-height: calc(100% - var(--control-h-sm) - var(--sp-3) * 2 - var(--sp-2));
+  overflow-y: auto;
 }
 
-.pop dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--sp-1) var(--sp-3);
-  margin: 0;
-  padding: var(--sp-3);
-}
-
-.pop dt { color: var(--c-ink-3); }
-.pop dd { margin: 0; color: var(--c-ink); }
-
-.pop footer {
-  display: flex;
-  gap: var(--sp-2);
-  padding: 0 var(--sp-3) var(--sp-3);
-}
-
-.pop footer button,
-.card .x {
-  flex: 1;
-  padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--c-line-strong);
-  border-radius: var(--r-2);
-  background: var(--c-surface);
-  color: var(--c-ink);
-  font: inherit;
-  cursor: pointer;
-}
-
-.card .x { flex: 0; border: 0; }
-
-.f3d :deep([data-state="R"]) { --st: var(--c-run); --st-ink: var(--c-run-ink); }
-.f3d :deep([data-state="S"]) { --st: var(--c-stop-solid); --st-ink: var(--c-inverse-ink); }
-.f3d :deep([data-state="I"]) { --st: var(--c-idle); --st-ink: var(--c-idle-ink); }
-.f3d :deep([data-state="D"]) { --st: var(--c-down); --st-ink: var(--c-down-ink); }
-.f3d :deep([data-state="DC"]) { --st: var(--c-dc); --st-ink: var(--c-dc-ink); }
-
-/* 라인 카드: 오른쪽 위 */
-.card {
-  position: absolute;
-  z-index: 2;
+.dock.right {
   top: var(--sp-3);
   right: var(--sp-3);
-  width: 260px;
-  padding: var(--sp-3);
-  border: 1px solid var(--c-line-strong);
-  border-radius: var(--r-3);
-  background: var(--c-surface);
-  font-size: var(--fs-sm);
-}
-
-.card h3 {
+  bottom: var(--sp-3);
   display: flex;
-  justify-content: space-between;
-  margin: 0;
-  font-size: var(--fs-lg);
+  flex-direction: column;
+  justify-content: flex-start;
 }
 
-.mini { margin: var(--sp-1) 0 0; color: var(--c-ink-2); }
-
-.kp {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--sp-2);
-  margin-top: var(--sp-3);
-}
-
-.kp small { display: block; color: var(--c-ink-3); }
-.kp b { font-size: var(--fs-lg); }
-
-.rs {
-  display: flex;
-  gap: var(--sp-1);
-  margin-top: var(--sp-3);
-}
-
-.rs span {
-  flex: 1;
-  padding: 2px 0;
-  border-radius: var(--r-1);
-  background: var(--st);
-  color: var(--st-ink);
-  font-weight: 600;
-  text-align: center;
-}
-
-.rs span.zero { opacity: 0.35; }
-
-.go-line {
-  width: 100%;
-  margin-top: var(--sp-3);
-  padding: var(--sp-1) var(--sp-2);
-  border: 1px solid var(--c-line-strong);
-  border-radius: var(--r-2);
-  background: var(--c-surface);
-  color: var(--c-accent);
-  font: inherit;
-  cursor: pointer;
-}
-
-/* 장면 위 이름표 (scene.ts가 만든 DOM이라 :deep) */
+/* ── 장면 위 이름표 (scene.ts가 만든 DOM이라 :deep) ── */
 .stage :deep(.f3d-layer) {
   position: absolute;
   inset: 0;
@@ -387,69 +337,203 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   left: 0;
   white-space: nowrap;
   font-size: var(--fs-sm);
+  line-height: var(--lh-tight);
 }
 
-.stage :deep(.f3d-zone) { color: var(--c-ink-3); }
+.stage :deep(.f3d-svg) {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
 
-.stage :deep(.f3d-go) {
+.stage :deep(.f3d-svg polygon) {
+  fill: none;
+  stroke: var(--c-accent);
+  stroke-linejoin: round;
+}
+
+.stage :deep(.f3d-svg .sel) { stroke-width: 3px; }
+
+.stage :deep(.f3d-svg .hov) {
+  fill: var(--c-accent-tint);
+  stroke-width: 2px;
+}
+
+.stage :deep(.f3d-ico) {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* 공정 머리글: 먹색 표지판 (장면 위에서 가장 잘 읽히게) */
+.stage :deep(.f3d-zone) {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px var(--sp-2);
+  border: 0;
+  border-radius: var(--r-1);
+  background: var(--c-ink);
+  color: var(--c-inverse-ink);
+  font: inherit;
+  font-weight: var(--fw-strong);
+}
+
+/* 눌러서 상세 화면으로 가는 구역: 흰 표지판 + 파랑 글자 + 화살표 */
+.stage :deep(.f3d-zone.go) {
+  padding-right: var(--sp-1);
+  box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
+  background: var(--c-surface);
   color: var(--c-accent);
-  text-decoration: underline;
   pointer-events: auto;
   cursor: pointer;
 }
 
+.stage :deep(.f3d-zone.go:hover) { background: var(--c-surface-sunk); }
+
+/* 라인 이름: 라인 바닥 왼쪽 끝. 단추가 아니라 이름표 (바닥을 눌러 고른다) */
 .stage :deep(.f3d-line) {
-  padding: 2px var(--sp-2);
-  border: 1px solid var(--c-line-strong);
+  padding: 3px var(--sp-2);
   border-radius: var(--r-1);
+  box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
   background: var(--c-surface);
   color: var(--c-ink);
-  font-weight: 600;
-  pointer-events: auto;
-  cursor: pointer;
+  font-size: var(--fs-md);
+  font-weight: var(--fw-strong);
+}
+
+.stage :deep(.f3d-line.hov) {
+  box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-accent);
+  color: var(--c-accent);
 }
 
 .stage :deep(.f3d-line.on) {
-  border-color: var(--c-accent);
-  color: var(--c-accent);
+  box-shadow: none;
+  background: var(--c-ink);
+  color: var(--c-inverse-ink);
 }
 
+/* 재공 수 (상자 아이콘 + 수) · 코일 재고 */
 .stage :deep(.f3d-cnt) {
-  padding: 0 var(--sp-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
   border-radius: var(--r-1);
+  box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
   background: var(--c-surface);
   color: var(--c-ink);
+  font-weight: var(--fw-strong);
 }
 
 .stage :deep(.f3d-pid) {
-  color: var(--c-ink-2);
-  font-size: 11px;
-}
-
-.stage :deep(.f3d-chip) {
-  display: inline-block;
-  padding: 0 var(--sp-1);
+  padding: 1px var(--sp-1);
   border-radius: var(--r-1);
-  background: var(--st);
-  color: var(--st-ink);
-  font-size: 11px;
-  font-weight: 600;
+  background: var(--c-surface);
+  color: var(--c-ink-2);
 }
 
+/* 상태 글자 칸 (상태 색 면은 state.css의 .st-*) */
+.stage :deep(.f3d-key) {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 3px;
+  border-radius: 3px;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-code);
+  line-height: 1;
+}
+
+/* 3D 보기의 이상 표시: 흰 알약 + 상태 테두리 + 상태 글자 칸 + 명칭 */
 .stage :deep(.f3d-bang) {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--c-surface);
-  border-radius: 50%;
-  background: var(--st);
-  color: var(--st-ink);
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 2px var(--sp-2) 2px 3px;
+  border: var(--indicator-w) solid var(--st);
+  border-radius: var(--r-2);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font: inherit;
+  font-weight: var(--fw-strong);
   pointer-events: auto;
   cursor: pointer;
 }
 
+.stage :deep(.f3d-bang:hover) { background: var(--c-surface-sunk); }
+
+/* 탑뷰 설비 카드: 흐린 장면 위 흰 카드. 이상이면 상태 테두리 + 옅은 바탕 + 지속 시간 */
+.stage :deep(.f3d-card) {
+  display: grid;
+  grid-template-columns: auto auto;
+  place-items: center start;
+  gap: 2px var(--sp-1);
+  padding: 3px 5px;
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  pointer-events: auto;
+  cursor: pointer;
+  animation: f3d-card-in var(--dur-enter) var(--ease-out);
+}
+
+@keyframes f3d-card-in {
+  from { opacity: 0; transform: translateY(var(--sp-1)); }
+}
+
+.stage :deep(.f3d-card:hover) { background: var(--c-surface-sunk); }
+
+.stage :deep(.f3d-card b) { font-weight: var(--fw-strong); }
+
+.stage :deep(.f3d-card small) {
+  grid-column: 1 / -1;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
+}
+
+.stage :deep(.f3d-card[data-state="D"]) { border: var(--indicator-w) solid var(--c-down); background: var(--c-down-tint); }
+.stage :deep(.f3d-card[data-state="I"]) { border: var(--indicator-w) solid var(--c-idle-edge); background: var(--c-idle-tint); }
+.stage :deep(.f3d-card[data-state="DC"]) { border: var(--indicator-w) solid var(--c-dc); background: var(--c-dc-tint); }
+
+/* 카드 크기 세 단계: 설비 사이가 좁으면 줄인다 (scene.ts가 data-u를 정함) */
+.stage :deep(.f3d-layer[data-u="mid"] .f3d-card small),
+.stage :deep(.f3d-layer[data-u="min"] .f3d-card small),
+.stage :deep(.f3d-layer[data-u="min"] .f3d-card b) { display: none; }
+
+.stage :deep(.f3d-layer[data-u="mid"] .f3d-card) {
+  gap: 2px;
+  padding: 2px 3px;
+  font-size: var(--fs-3d-dense);
+}
+
+.stage :deep(.f3d-layer[data-u="mid"] .f3d-key),
+.stage :deep(.f3d-layer[data-u="min"] .f3d-key) {
+  min-width: 16px;
+  height: 16px;
+  font-size: var(--fs-3d-dense);
+}
+
+.stage :deep(.f3d-layer[data-u="min"] .f3d-card) { padding: 2px; }
+
+/* 화면 밖 고장 단추 */
 .stage :deep(.f3d-edge) {
   position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
   padding: var(--sp-1) var(--sp-2);
   border: 0;
   border-radius: var(--r-2);
@@ -457,7 +541,14 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   color: var(--c-down-ink);
   font: inherit;
   font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
   pointer-events: auto;
   cursor: pointer;
 }
+
+.f3d :deep([data-state="R"]) { --st: var(--c-run); }
+.f3d :deep([data-state="S"]) { --st: var(--c-line-ink); }
+.f3d :deep([data-state="I"]) { --st: var(--c-idle-edge); }
+.f3d :deep([data-state="D"]) { --st: var(--c-down); }
+.f3d :deep([data-state="DC"]) { --st: var(--c-dc); }
 </style>
