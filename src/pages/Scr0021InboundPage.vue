@@ -20,6 +20,9 @@ const LINES = ['A', 'B', 'C', 'D', 'E', 'F']
 const { data, figures } = useInbound()
 const now = useNow()
 
+/** 라인별 선 색 (11/20: 고른 라인끼리 구분되게) */
+const LINE_COLOR: Record<string, string> = { A: '#e8590c', B: '#2f9e44', C: '#7048e8', D: '#c2255c', E: '#0c8599', F: '#a07a00' }
+
 /** 라인별 선 켜기/끄기 [가정]. 처음엔 합계만 */
 const shown = ref<Record<string, boolean>>(Object.fromEntries(LINES.map((l) => [l, false])))
 
@@ -27,7 +30,7 @@ const chart = computed(() => {
   const trend = data.value?.stockTrend ?? []
   const from = new Date(new Date(now.value).setHours(0, 0, 0, 0)).getTime()
   const total: [number, number][] = trend.map((p) => [Date.parse(p.t), p.total])
-  const lines = LINES.filter((l) => shown.value[l]).map((l) => ({ key: l, kind: 'thin' as const, points: trend.map((p): [number, number] => [Date.parse(p.t), p.byLine[l] ?? 0]) }))
+  const lines = LINES.filter((l) => shown.value[l]).map((l) => ({ key: l, kind: 'thin' as const, color: LINE_COLOR[l], points: trend.map((p): [number, number] => [Date.parse(p.t), p.byLine[l] ?? 0]) }))
   const y = niceTicks(0, Math.max(10, ...total.map((p) => p[1])) * 1.1, 4)
   return { x: [from, now.value] as [number, number], xTicks: timeTicks(from, now.value, 180), y, series: [{ key: 'total', points: total }, ...lines], empty: !trend.length }
 })
@@ -53,9 +56,12 @@ const chart = computed(() => {
 
       <BasePanel title="슬리팅 앞 재고 추이" meta="00시~지금 · 롤">
         <template #tools>
-          <ChartLegend :items="[{ label: '6개 라인 합', kind: 'main' }, { label: '고른 라인', kind: 'thin' }]" />
-          <div class="toggles" role="group" aria-label="라인별 선 켜기">
-            <BaseCheck v-for="l in LINES" :key="l" v-model="shown[l]" :label="l" />
+          <ChartLegend :items="[{ label: '6개 라인 합', kind: 'main' }]" />
+          <div class="toggles" role="group" aria-label="라인별 선 켜기 (라인마다 색이 달라요)">
+            <span v-for="l in LINES" :key="l" class="tg">
+              <i class="sw" :style="{ background: LINE_COLOR[l] }" aria-hidden="true"></i>
+              <BaseCheck v-model="shown[l]" :label="l" />
+            </span>
           </div>
         </template>
         <ChartLine
@@ -86,6 +92,18 @@ const chart = computed(() => {
 
 .toggles {
   display: flex;
-  gap: var(--sp-1);
+  gap: var(--sp-2);
+}
+
+.tg {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sw {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
 }
 </style>

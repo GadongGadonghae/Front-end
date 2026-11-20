@@ -142,7 +142,7 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
     </div>
     <p class="hint">왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전 · 제품 점은 데모 값</p>
 
-    <section v-if="pop" class="pop" :data-state="pop.l.state" :style="{ left: `${popAt.x}px`, top: `${popAt.y}px` }" aria-label="설비 상태">
+    <section v-if="pop" :class="['pop', { compact: !pop.abnormal }]" :data-state="pop.l.state" :style="{ left: `${popAt.x}px`, top: `${popAt.y}px` }" aria-label="설비 상태">
       <header>
         <span>{{ pop.l.state }} · {{ STATE_NAME[pop.l.state] }}</span>
         <button type="button" class="x" aria-label="닫기" @click="popId = null">×</button>
@@ -245,7 +245,13 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
   cursor: pointer;
 }
 
-/* 팝업: 머리 색 = 상태 색 */
+/* 팝업: 머리 색 = 상태 색. 버튼이 없는 정상 설비는 내용 폭만큼 */
+.pop.compact {
+  width: max-content;
+  min-width: 180px;
+  max-width: 268px;
+}
+
 .pop {
   position: absolute;
   z-index: 3;

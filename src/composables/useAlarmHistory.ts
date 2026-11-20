@@ -1,5 +1,5 @@
 // 알람·비가동 이력 (SCR-006, API-070·071·042): 탭 [알람·비가동] / [예지보전 위험] (D-65)
-// 필터 순서 기간 → 라인 → 공정 → 상태 → 코드 → 진행 중만, 기본 오늘·전체·D·I (D-64, D-84). 기간 최대 31일, 50건씩 (D-66)
+// 필터 순서 기간 → 라인 → 공정 → 상태 → 코드 → 진행 중만, 기본 오늘·전체·상태 고르지 않음=모두 (D-64, D-84, 11/20). 기간 최대 31일, 50건씩 (D-66)
 // 필터·페이지가 바뀌면 다시 부른다. 진행 중 건의 지속시간은 화면 시계로 늘리고, 알람이 생기거나 풀리면 다시 부른다 (API 명세 4.6)
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { source } from '@/data'
@@ -84,7 +84,9 @@ export function useAlarmHistory() {
   const to = ref(today)
   const lineId = ref('')
   const process = ref('')
-  const states = ref<Record<StopState, boolean>>({ D: true, I: true, S: false })
+  // 처음엔 아무것도 안 고름 = 모든 상태 (11/20: 예전엔 고장·대기가 미리 골라져 있었음)
+  const states = ref<Record<StopState, boolean>>({ D: false, I: false, S: false })
+  const anyState = computed(() => states.value.D || states.value.I || states.value.S)
   const code = ref<'' | DowntimeCode>('')
   const ongoing = ref(false)
   /** 아직 손볼 건만 (왼쪽 열에서 고름) */
@@ -123,7 +125,7 @@ export function useAlarmHistory() {
   /** 코드는 고른 상태의 것만 */
   const codeOptions = computed(() => [
     { value: '' as const, label: '전체' },
-    ...(master.value?.downtimeCodes ?? []).filter((d) => states.value[d.state as StopState]).map((d) => ({ value: d.code, label: d.name })),
+    ...(master.value?.downtimeCodes ?? []).filter((d) => !anyState.value || states.value[d.state as StopState]).map((d) => ({ value: d.code, label: d.name })),
   ])
   watch(codeOptions, (opts) => { if (!opts.some((o) => o.value === code.value)) code.value = '' })
 

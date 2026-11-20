@@ -5,7 +5,7 @@ export type StatusCode = 'R' | 'S' | 'I' | 'D' | 'DC'
 export type ProcessCode = 'COIL' | 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING' | 'INSPECTION'
 export type ReasonCode =
   | 'PL_SHIFT' | 'PL_PM' | 'PL_CHANGE' | 'PL_SETUP'
-  | 'UP_BREAKDOWN' | 'UP_ALARM' | 'UP_DELAY' | 'UP_SHORTAGE' | 'UP_LABOR' | 'UP_SAFETY' | 'UP_ETC'
+  | 'UP_BREAKDOWN' | 'UP_ALARM' | 'UP_DELAY' | 'UP_SHORTAGE' | 'UP_BLOCKED' | 'UP_LABOR' | 'UP_SAFETY' | 'UP_ETC'
 
 /** 목록 (v3.2 합의: { items, total, page, size }, page는 1부터) */
 export interface Page<T> {
@@ -282,6 +282,9 @@ export interface ProductionPlanDto {
   date: string
   lineId: string
   planQty: number
+  /** 마지막으로 저장한 시각·사람 이름 (11/20 추가) */
+  updatedAt?: string | null
+  updatedBy?: string | null
 }
 
 // ── 제품 추적 (P) ──
@@ -368,6 +371,16 @@ export interface ReassignmentDetailDto {
 }
 
 // ── 관리·공통 (C) ──
+
+/** C-02 (lastLoginAt은 시간대 없는 KST) */
+export interface UserDto {
+  loginId: string
+  userName: string
+  role: string
+  email: string | null
+  memo: string | null
+  lastLoginAt: string | null
+}
 
 /** C-01 */
 export interface LoginDto {

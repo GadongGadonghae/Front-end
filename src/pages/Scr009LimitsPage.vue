@@ -17,6 +17,7 @@ const { type, equipmentId } = c
 const TABS = [
   { key: 'target', label: '생산 목표', to: '/settings/target' },
   { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
+  { key: 'users', label: '사용자 관리', to: '/settings/users' },
 ]
 </script>
 

@@ -1,6 +1,6 @@
 <!-- SCR-002-2~5 공정 상세 (슬리팅·프레스·용접·도장). 공통 틀 하나에 공정별로 다른 칸만 바꾼다 (화면정의서 SCR-002, D-89)
      제목 줄: 이동 경로 + 공정 탭 + 오른쪽 요약 숫자. 본문 왼쪽: 설비 카드 → 관리값 그래프 (슬리팅은 속도, 도장은 라인별 입고 추가)
-     오른쪽 열: 비가동 이력·조치 메모 → 공정 검사 → 미세정지 -->
+     오른쪽 열: 비가동 이력·조치 메모 → 불량률 (도장은 비가동 이력 → 오늘 요약). 미세정지는 뺌 (11/20 검토) -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -28,7 +28,7 @@ import { useInspections, useMicrostops } from '@/composables/useInspections'
 import { useNow } from '@/composables/useNow'
 import { SEGMENT_PROCESS } from '@/lib/routes'
 import { PROCESS_NAME, lineName as lineNameOf } from '@/lib/status'
-import { formatDuration, formatNumber } from '@/lib/format'
+import { formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
 import { metricLabel } from '@/lib/metrics'
@@ -89,19 +89,27 @@ const latest = computed(() => (series.value?.items ?? []).filter((i) => !SPEED_I
 
 // 도장: 라인별 입고 (SCR-002-5 3번)
 const received = computed<BarRow[]>(() => (today.value?.receivedByLine ?? []).map((r) => ({ key: r.lineId, label: r.lineId, value: r.qty })))
-const receivedTotal = computed(() => received.value.reduce((a, r) => a + (r.value ?? 0), 0))
 const receivedOf = (lineId: string) => received.value.find((r) => r.key === lineId)?.value ?? 0
 const receivedMax = computed(() => Math.max(0, ...received.value.map((r) => r.value ?? 0)))
 const paintRoute = usePaintRoute()
+/** 도장 상세: 고른 도장 설비로 오는 라인만 (도장 경로는 모니터링만, 바꾸지 않음) */
+const routeRows = computed(() => paintRoute.rows.value.filter((r) => r.current === selectedId.value))
+const routeTotal = computed(() => routeRows.value.reduce((a, r) => a + receivedOf(r.lineId), 0))
+const painterName = (id: string) => paintRoute.painters.value.find((p) => p.value === id)?.label ?? id
 
-const tabs = paint ? [] : (['slit', 'press', 'weld'] as const).map((seg) => ({ key: seg, label: PROCESS_NAME[SEGMENT_PROCESS[seg]], to: `/lines/${lineId}/${seg}` }))
+// 공정 탭: 슬리팅·프레스·용접 + 이 라인 제품이 가는 도장 설비 (11/20)
+const linePaint = computed(() => (paint ? null : paintRoute.rows.value.find((r) => r.lineId === lineId)?.current ?? null))
+const tabs = computed(() => (paint ? [] : [
+  ...(['slit', 'press', 'weld'] as const).map((seg) => ({ key: seg, label: PROCESS_NAME[SEGMENT_PROCESS[seg]], to: `/lines/${lineId}/${seg}` })),
+  ...(linePaint.value ? [{ key: 'paint', label: `${PROCESS_NAME.PAINTING} (${painterName(linePaint.value)})`, to: `/lines/PT/paint?eq=${linePaint.value}` }] : []),
+]))
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
 </script>
 
 <template>
   <PageLayout>
     <template #head>
-      <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: lineName, to: `/lines/${lineId}` }, { label: processName }]" />
+      <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: lineName, to: `/lines/${lineId}` }, { label: paint ? '도장 상세' : processName }]" />
       <BaseTabs v-if="tabs.length" :items="tabs" :active="route.params.process as string" label="공정" />
     </template>
     <template #head-right>
@@ -110,9 +118,11 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <div class="hl">설비 {{ head.total }}대 상태</div>
           <StatusCounts :counts="head.counts" layout="row" :label="`설비 ${head.total}대 상태`" />
         </div>
-        <BaseFigure :label="process === 'SLITTING' ? '오늘 생산 · 양품 (환산)' : '오늘 생산 · 양품'" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
-        <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
-        <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
+        <template v-if="!paint">
+          <BaseFigure :label="process === 'SLITTING' ? '오늘 생산 · 양품 (환산)' : '오늘 생산 · 양품'" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
+          <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
+          <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
+        </template>
       </BaseFigureRow>
     </template>
 
@@ -188,33 +198,33 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <BaseEmpty v-else />
         </BasePanel>
 
-        <!-- 라인별 입고 + 도장 경로 (백엔드 C-04·M-09, P1): 라인마다 보낼 도장 설비를 바로 바꾼다 -->
-        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고 · 도장 경로" :meta="`오늘 입고 합계 ${formatNumber(receivedTotal)} · 경로를 바꾸면 그 라인 제품이 고른 도장 설비로 감`">
-          <ul class="route">
-            <li v-for="r in paintRoute.rows.value" :key="r.lineId">
+        <!-- 라인별 입고 · 도장 경로: 고른 도장 설비로 오는 라인만. 모니터링 화면이라 경로는 보기만 (11/20, 바꾸기 뺌) -->
+        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고 · 도장 경로" :meta="`${selected?.name ?? '-'}로 오는 라인 · 오늘 입고 ${formatNumber(routeTotal)}`">
+          <ul v-if="routeRows.length" class="route">
+            <li v-for="r in routeRows" :key="r.lineId">
               <span class="rname">{{ r.name }}</span>
               <span class="rbar"><i :style="{ width: `${receivedMax ? ((receivedOf(r.lineId) / receivedMax) * 100) : 0}%` }"></i></span>
               <b class="rval">{{ formatNumber(receivedOf(r.lineId)) }}</b>
-              <BaseSegmented
-                :model-value="r.current"
-                :label="`${r.name} 도장 경로`"
-                size="sm"
-                :options="paintRoute.painters.value"
-                @update:model-value="(v) => paintRoute.change(r.lineId, v)"
-              />
-              <span class="rnote">{{ r.changed ? `기본 ${r.defaultName}에서 바꿈` : '기본 경로' }}</span>
+              <span class="rto">→ {{ painterName(r.current) }}</span>
+              <span class="rnote">{{ r.changed ? `기본 ${r.defaultName}에서 바뀜` : '기본 경로' }}</span>
             </li>
           </ul>
-          <p v-if="paintRoute.error.value" class="rmsg err" role="alert">{{ paintRoute.error.value }}</p>
-          <p v-else-if="paintRoute.message.value" class="rmsg" role="status">{{ paintRoute.message.value }}</p>
+          <BaseEmpty v-else text="이 도장 설비로 오는 라인이 없습니다" />
         </BasePanel>
       </div>
 
-      <div class="right">
+      <div :class="['right', { paint }]">
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
           <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
         </BasePanel>
-        <BasePanel title="공정 검사" :meta="`${INSPECT_META[process]} · 오늘`">
+        <BasePanel v-if="paint" title="오늘 요약" meta="도장 공정">
+          <div class="sum-figs">
+            <BaseFigure label="오늘 생산 · 양품" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
+            <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
+            <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
+          </div>
+        </BasePanel>
+        <BasePanel v-else title="불량률" :meta="`${INSPECT_META[process]} · 오늘`">
           <InspectionPanel
             :inspected="inspections.data.value?.inspected ?? null"
             :ng="inspections.data.value?.ng ?? null"
@@ -223,17 +233,6 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
             :show-where="process === 'PAINTING'"
             @open-product="openProduct"
           />
-        </BasePanel>
-        <!-- 미세정지 [차순위]: 제목과 숫자를 한 줄로 (높이를 검사·이력에 준다) -->
-        <BasePanel class="micro">
-          <div class="micro-row">
-            <div>
-              <h2>미세정지</h2>
-              <span class="meta">오늘 · {{ selected?.name ?? '-' }} · 차순위</span>
-            </div>
-            <BaseFigure label="횟수" :value="microstops?.count" unit="회" size="sm" />
-            <BaseFigure label="손실 시간" :value="null" :text="formatDuration(microstops?.lossSec)" size="sm" />
-          </div>
         </BasePanel>
       </div>
     </div>
@@ -306,7 +305,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
 .right {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--sp-4);
   min-height: 0;
 }
@@ -372,29 +371,20 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
   font-weight: var(--fw-strong);
 }
 
-.micro {
-  padding-block: var(--sp-4);
+/* 도장: 비가동 이력 + 오늘 요약 (요약은 내용만큼) */
+.right.paint {
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
-.micro-row {
+.sum-figs {
   display: flex;
-  align-items: center;
-  gap: var(--sp-6);
+  flex-wrap: wrap;
+  gap: var(--sp-4) var(--sp-6);
 }
 
-.micro-row > div:first-child {
-  margin-right: auto;
-}
-
-.micro h2 {
-  font-size: var(--fs-md);
+.rto {
+  color: var(--c-ink);
   font-weight: var(--fw-strong);
-}
-
-.micro .meta {
-  display: block;
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
 }
 
 .route {

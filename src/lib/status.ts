@@ -12,6 +12,7 @@ export const DOWNTIME_NAME: Record<DowntimeCode, string> = {
   PL_CHANGE: '모델 교체',
   PL_SETUP: '코일·나이프 교체',
   UP_SHORTAGE: '재공부족',
+  UP_BLOCKED: '후공정 정지 대기',
   UP_DELAY: '작업지연',
   UP_BREAKDOWN: '장비고장',
   UP_ALARM: '알람(관리값 이탈)',

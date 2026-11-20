@@ -66,6 +66,7 @@ export function useTargets() {
     plan: r.quantity != null ? Math.round(r.quantity / LINES) : null,
     done: r.done,
     rate: r.quantity && r.done != null ? Math.round((r.done / r.quantity) * 1000) / 10 : null,
+    by: r.updatedBy,
     editing: r.date === date.value,
   })))
 

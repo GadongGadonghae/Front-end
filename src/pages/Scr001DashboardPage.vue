@@ -62,7 +62,7 @@ const ngRows = computed<BarRow[]>(() =>
         <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
       </BasePanel>
 
-      <BasePanel class="go" title="품질" meta="오늘 · 출고 불량률" @click="router.push('/outbound')">
+      <BasePanel class="go" title="품질" meta="오늘 · 불량률" @click="router.push('/outbound')">
         <div class="lead">
           <BaseFigure :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
           <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>

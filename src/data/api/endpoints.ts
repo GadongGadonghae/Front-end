@@ -3,7 +3,7 @@
 import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
-  LineDto, LineStatusSummaryDto, LoginDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
+  LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
   ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
@@ -100,6 +100,10 @@ export const api = {
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */
   C01: (body: { loginId: string; password: string }) => http.post<LoginDto>('/auth/login', body),
+  /** C-02 사용자 목록 (page는 0부터) */
+  C02: (q: { page: number; size: number }) => http.get<UserDto[]>('/users', q),
+  /** C-03 사용자 등록 */
+  C03: (body: { loginId: string; password: string; userName: string; role: string; email?: string; memo?: string }) => http.post<{ loginId: string }>('/users', body),
   /** C-04 라인 목록 */
   C04: () => http.get<LineDto[]>('/lines'),
   /** C-05 설비 목록 */

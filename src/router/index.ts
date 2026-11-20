@@ -34,6 +34,7 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'reports/replan/:id?', component: () => import('@/pages/Scr007ReplanPage.vue'), meta: { screen: 'SCR-007', title: '계획수정 보고서', menu: 'AI 리포트' } },
   { path: 'settings/target', component: () => import('@/pages/Scr008TargetPage.vue'), meta: { screen: 'SCR-008', title: '생산 목표 설정', menu: '설정' } },
   { path: 'settings/limits', component: () => import('@/pages/Scr009LimitsPage.vue'), meta: { screen: 'SCR-009', title: '관리값 기준 설정', menu: '설정' } },
+  { path: 'settings/users', component: () => import('@/pages/Scr012UsersPage.vue'), meta: { screen: 'SCR-012', title: '사용자 관리', menu: '설정' } },
   { path: 'reports', redirect: '/reports/daily' },
   { path: 'settings', redirect: '/settings/target' },
 ]
