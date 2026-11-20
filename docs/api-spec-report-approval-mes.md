@@ -89,7 +89,7 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 - 서버가 전송자와 전송 시각을 기록하고 `SENT`로 바꿈. 응답: 7장 보고서 객체
 
 ### M-01 MES 수신함 (임시 MES)
-- `GET /api/mes/reports?factoryId=&page=1&size=50` — 권한 **`CAMPUS`만** (결정)
+- `GET /api/mes/reports?campusId=&factoryId=&page=1&size=50` — 권한 **`CAMPUS`만** (결정)
 - **`SENT`만** 최근 전송 순. 응답: `{ "items": [ <보고서 요약> ], "total": 1, "page": 1, "size": 50 }`
 - 열람 상세는 R-12 사용(`CAMPUS`는 `SENT`만 조회 가능). (MES 화면에는 캠퍼스·공장 구분 표시가 있으므로 `campusId`·`factoryId`를 보고서에 저장, 11장. 현재 우리 시스템은 **차체 캠퍼스 공장 1** 한 곳)
 
