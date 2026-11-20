@@ -4,7 +4,7 @@
 import type { DataSource, Unsubscribe } from '@/data/contracts'
 import type { ControlLimit, DowntimeCodeDef, Equipment, EquipmentType, EquipmentTypeCode, Line, LineId, MasterData, Process, ProcessId, ProductionLineId } from '@/types/plant'
 import type { EquipmentLive, FlowPositions, PlantSnapshot, PlantSummary } from '@/types/live'
-import type { AlarmEvent, HistoryEvent, StateEvent } from '@/types/events'
+import type { AlarmEvent, HistoryEvent, HistoryQuery, StateEvent } from '@/types/events'
 import type { TelemetryTick } from '@/types/process'
 import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { OeeReport } from '@/types/analysis'
@@ -13,6 +13,7 @@ import type { Product, ProductDetail } from '@/types/production'
 import type { ReplanReport } from '@/types/report'
 import { api } from '@/data/api/endpoints'
 import { ApiError, token } from '@/data/api/http'
+import { isTodo, summarize } from '@/data/historyTodo'
 
 const SNAPSHOT_MS = 1000
 const SUMMARY_MS = 10_000
@@ -210,6 +211,21 @@ function worstOf(lists: Seg[][], until: number): Seg[] {
   return out
 }
 
+/** 이력을 모든 페이지에 걸쳐 불러온다 (알람 이력 요약 · 손볼 건 거르기용, 백엔드에 해당 API 없음).
+ *  아래 allEvents와 같은 기준: 1분 미만 포함(main 11/20), 100건씩 최대 20쪽 */
+async function historyAll(q: Omit<HistoryQuery, 'page' | 'todo'>): Promise<HistoryEvent[]> {
+  const out: HistoryEvent[] = []
+  for (let page = 1; page <= 20; page++) {
+    const p = await api.U08({
+      from: q.from, to: q.to,
+      lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.join(','), reasonCode: q.code, inProgress: q.ongoing,
+      minMinutes: q.minMinutes ?? 0, page, size: 100,
+    })
+    out.push(...p.items.map(eventOf))
+    if (out.length >= p.total || !p.items.length) break
+  }
+  return out
+}
 const fail = (e: unknown) => ({ ok: false as const, error: e instanceof ApiError ? e.message : String(e) })
 
 /** 하루 시간대별 누적 양품 (G-01 unit=hour를 라인 합으로) + 계획선 (G-02 합을 24시간에 고르게) */
@@ -491,6 +507,11 @@ export function createApiSource(): DataSource {
         return { date: q.date, until, rows }
       },
       async getHistory(q) {
+        // 손볼 건 거르기는 백엔드 조건이 없다 → 다 불러 거른 뒤 50건씩 나눈다
+        if (q.todo) {
+          const all = (await historyAll(q)).filter(isTodo[q.todo])
+          return { items: all.slice((q.page - 1) * 50, q.page * 50), total: all.length, page: q.page, size: 50 }
+        }
         const p = await api.U08({
           from: q.from, to: q.to,
           lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
@@ -498,6 +519,7 @@ export function createApiSource(): DataSource {
         })
         return { ...p, items: p.items.map(eventOf) }
       },
+      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S'] }), Date.now()),
       getRiskHistory: async (q) => ({ items: [], total: 0, page: q.page, size: 50 }),
       // 일일 생산 리포트 (11/19): 전용 API 없이 있는 API를 모아서 만든다
       //  목표 G-02 · 실적·불량 M-07(라인별, 공정별은 라인 6개 합) · OEE U-01 · 라인 OEE U-04 · 비가동 U-07 · 재공 M-13 + 코일 M-16(오늘만)

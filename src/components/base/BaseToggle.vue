@@ -1,4 +1,5 @@
-<!-- 켜고 끄는 스위치 (role=switch): 이름 + 작은 레일. 켜짐 = 먹색 레일 · 흰 손잡이 오른쪽, 꺼짐 = 옅은 레일 · 손잡이 왼쪽 -->
+<!-- 켜고 끄는 스위치 (role=switch): 이름 + 작은 레일. 켜짐 = 먹색 레일 · 흰 손잡이 오른쪽, 꺼짐 = 옅은 레일 · 손잡이 왼쪽
+     켜고 꺼도 폭이 변하지 않게 글자 굵기는 그대로 둔다 (생산 조회 현재 상황 스위치가 흔들리던 문제) -->
 <script setup lang="ts">
 defineProps<{ label: string }>()
 const model = defineModel<boolean>({ required: true })
@@ -34,7 +35,6 @@ const model = defineModel<boolean>({ required: true })
 .tg.on {
   border-color: var(--c-ink);
   color: var(--c-ink);
-  font-weight: var(--fw-strong);
 }
 
 .rail {

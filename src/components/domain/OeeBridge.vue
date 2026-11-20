@@ -85,13 +85,14 @@ dd.lost {
   font-weight: var(--fw-regular);
 }
 
+/* 범례 칸: 막대 조각 모양 (정사각형이면 빈 체크박스처럼 보여서) */
 .sw {
-  width: var(--sp-3);
-  height: var(--sp-3);
+  width: var(--sp-4);
+  height: var(--sp-2);
   border-radius: var(--r-1);
 }
 
-.sw.a { background: var(--c-loss-a); box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong); }
+.sw.a { background: var(--c-loss-a); }
 .sw.p { background: var(--c-loss-p); }
 .sw.q { background: var(--c-loss-q); }
 

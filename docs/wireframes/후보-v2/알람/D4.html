@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 D4 · 메모 넓게</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<link rel="stylesheet" href="dk.css">
+<style>
+  /* D4: 왼쪽 열을 좁게(숫자만), 표는 열을 합쳐(설비+라인, 코드+상세) 조치 메모 열이 넓음 — 메모 전문이 보임.
+     메모를 펼치면 왼쪽에 그 건의 사정(상세 · 지속 · 발송), 오른쪽에 3줄 입력칸 */
+  .page.dk { grid-template-columns: 240px minmax(0, 1fr); }
+  .stat { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; align-items: center; }
+  .stat + .stat { margin-top: 16px; }
+  .stat .v { grid-column: 2; font-size: 28px; font-weight: 600; line-height: 1.1; }
+  .stat .v small { margin-left: 6px; color: var(--ink-3); font-size: 13px; font-weight: 400; }
+  .stat .l { font-weight: 600; }
+  .stat.muted { color: var(--ink-3); }
+  .stat.muted .v { font-size: 20px; }
+  .sub2 { display: block; color: var(--ink-3); font-size: 12px; }
+  .tbl td .memo { max-width: none; }
+  .tbl td .memo .txt { white-space: normal; }
+  .ctx-ed { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; padding-top: 4px; }
+  .ctx-ed .memo-ed { max-width: none; margin: 0; padding: 0; }
+  .ctx { font-size: 13px; }
+  .ctx .dl { grid-template-columns: 4em 1fr; gap: 6px 10px; }
+  .side .cr { grid-template-columns: minmax(0, 1fr) 3.5em; padding-left: 8px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script src="dk.js"></script>
+<script>
+  const { rows, COLS, table, pager, filters, key, dur, hms, sent, codeCell, editor, CODES } = AL
+  COLS.eq2 = ['설비', (r) => `<span class="eq"><b>${r.eq}</b></span><span class="sub2">${r.line === '도장' ? '도장' : r.line + '라인'}</span>`]
+  COLS.code2 = ['상태 · 코드 · 상세', (r) => `${codeCell(r)}<span class="sub2" style="margin-left:28px">${r.detail}</span>`]
+  const ed = (r, n) => editor(r, n).replace('<div class="memo-ed">', `<div class="ctx-ed"><div class="ctx"><dl class="dl"><dt>상세</dt><dd>${r.detail}</dd><dt>지속</dt><dd>${dur(r.len)}${r.ongoing ? ' · 진행 중' : ''}</dd><dt>발송</dt><dd>${sent(r)}</dd></dl></div><div class="memo-ed">`).replace('</div></td></tr>', '</div></div></td></tr>')
+  const stat = (s, label) => { const l = rows.filter((r) => r.s === s); return `<div class="stat ${s === 'S' ? 'muted' : ''}">${key(s)}<span class="l">${label}</span><span class="v">${l.length}건<small>${AL.hrm(l.reduce((a, r) => a + r.len, 0))}</small></span></div>` }
+  DK.mount('시안 D4 · 메모 넓게', (S) => {
+    const list = DK.filtered(S)
+    return `<main class="page dk">
+      <aside class="panel scroll side"><header><h2>오늘</h2></header>
+        <div>${stat('D', '고장')}${stat('I', '대기')}${stat('S', '정지')}</div>
+        <div class="block"><h3>알람 3종<span class="aux">고장 · 메일·슬랙 발송</span></h3>${CODES.filter((c) => c.s === 'D').map((c) => `<button class="cr ${S.f === 'code:' + c.c ? 'on' : ''} ${c.n ? '' : 'zero'}" data-f="code:${c.c}"><span>${c.c}</span><span class="n">${c.n ? c.n + '건' : '-'}</span></button>`).join('')}</div>
+        <div class="block"><h3>아직 손볼 건</h3>${DK.todo(S)}</div>
+      </aside>
+      <section class="panel scroll main">${filters()}
+        <div class="tblhead"><h2>이력</h2><span class="meta">${list.length}건</span>${DK.chip(S)}</div>
+        ${table(list, { cols: ['start', 'end', 'eq2', 'code2', 'dur', 'sent', 'memo', 'who', 'report'], sel: S.sel, memo: S.memo, ed })}${pager(list.length)}</section>
+    </main>`
+  })
+</script>
+</body>
+</html>

@@ -97,7 +97,11 @@ function viewFault() {
   border-bottom: var(--line-w) solid var(--c-line-strong);
   background: var(--c-surface);
   font-size: var(--fs-figure);
+
+  /* 메뉴 글자는 줄바꿈하지 않는다 (1280 폭에서 "대시보/드"로 쪼개지던 것) */
+  white-space: nowrap;
 }
+
 
 .brand {
   display: flex;
@@ -184,5 +188,25 @@ nav a.on {
   min-height: 0;
   padding: var(--sp-4) var(--page-gutter) var(--page-gutter);
   overflow: auto;
+}
+
+/* 좁은 창 (1280~1600): 간격과 글자를 한 단계 줄여 한 줄에 들어가게 */
+@media (width < 1600px) {
+  .top {
+    gap: var(--sp-4);
+    font-size: var(--fs-md);
+  }
+
+  .brand {
+    font-size: var(--fs-figure);
+  }
+
+  nav a {
+    padding: 0 var(--sp-3);
+  }
+
+  .right {
+    gap: var(--sp-3);
+  }
 }
 </style>

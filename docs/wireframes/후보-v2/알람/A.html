@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 A · 진행 중 먼저</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<style>
+  /* A: 위 = 지금 진행 중인 건을 카드로 (조치 메모 · 보고서를 바로), 아래 = 끝난 건 이력 표 */
+  .page { grid-template-rows: auto minmax(0, 1fr); }
+  .now-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .card { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border-radius: 8px; background: var(--sunk); }
+  .card.D { background: rgb(198 40 40 / 8%); box-shadow: inset 0 0 0 1.5px var(--down); }
+  .card.I { background: rgb(241 194 27 / 14%); }
+  .card .top { display: flex; align-items: center; gap: 8px; }
+  .card .top .nm { font-size: 18px; font-weight: 600; }
+  .card .top .el { margin-left: auto; text-align: right; }
+  .card .top .el b { display: block; font-size: 22px; font-weight: 600; line-height: 1.1; }
+  .card .top .el small { color: var(--ink-3); font-size: 12px; }
+  .card .why { color: var(--ink-2); }
+  .card .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); font-size: 13px; }
+  .card .foot .btns { margin-left: auto; display: flex; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script>
+  const { rows, shown, key, STATE, hms, dur, sent, table, pager, filters } = AL
+  const live = rows.filter((r) => r.ongoing)
+  const card = (r) => `<article class="card ${r.s}">
+    <div class="top">${key(r.s)}<span class="nm">${r.name}</span><span class="el"><b>${dur(r.len)}</b><small>${hms(r.from)}부터</small></span></div>
+    <div><b>${STATE[r.s]} · ${r.code}</b><div class="why">${r.detail}</div></div>
+    <div class="foot">${r.s === 'D' ? sent(r) : '<span class="none">발송 없음 (고장만 보냄)</span>'}<span class="btns"><button class="btn">조치 메모 쓰기</button>${r.report ? '<button class="btn primary">보고서 만들기</button>' : ''}</span></div>
+  </article>`
+  AL.mount('시안 A · 진행 중 먼저', () => `<main class="page">
+    <section class="panel"><header><h2>지금 진행 중</h2><span class="meta">${live.length}건 · 끝나면 아래 표로 내려감 · 정지(S)도 진행 중이면 보임</span></header>
+      <div class="now-row">${live.map(card).join('')}</div></section>
+    <section class="panel scroll"><header><h2>오늘 끝난 건</h2><span class="meta">고장 · 대기 ${shown.filter((r) => !r.ongoing).length}건</span></header>
+      <div style="margin-bottom:12px">${filters()}</div>
+      ${table(shown.filter((r) => !r.ongoing))}${pager(shown.filter((r) => !r.ongoing).length)}</section>
+  </main>`)
+</script>
+</body>
+</html>

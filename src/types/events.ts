@@ -40,10 +40,9 @@ export interface AlarmEvent {
   event: StateEvent
 }
 
-/** DT-014 알림 발송 결과. 메일·슬랙은 고장(D)만 보낸다 (FN-005, D-63) */
+/** DT-014 알림 발송 결과. 고장(D)만 메일로 보낸다 (FN-005, D-63). 슬랙은 쓰지 않음 (D-110) */
 export interface NotifyResult {
   email: boolean
-  slack: boolean
 }
 
 /** API-070 이력 표 한 건: 상태 이력 + 발송 결과 (D가 아니면 null) */
@@ -62,8 +61,23 @@ export interface HistoryQuery {
   ongoing?: boolean
   /** 이 길이(분) 이상만 (백엔드 minMinutes, 기본 1) */
   minMinutes?: number
+  /** 아직 손볼 건만 (D-109). 백엔드 조건 없음 → 화면 쪽에서 거른다 */
+  todo?: HistoryTodo
   page: number
 }
+
+/** 왼쪽 열 "아직 손볼 건" (D-111): 진행 중 고장 · 메일 발송 실패 */
+export type HistoryTodo = 'ongoingFault' | 'notifyFail'
+
+/** SCR-006 왼쪽 요약 열 (D-109): 고른 기간 · 라인 · 공정의 비가동 건을 코드별로 센 것과 손볼 건 수.
+ *  백엔드 API 없음 (요청 필요) → 지금은 이력을 모두 불러 센다 */
+export interface HistorySummary {
+  byCode: { code: DowntimeCode; state: StopState; count: number; sec: number }[]
+  todo: Record<HistoryTodo, number>
+}
+
+/** 요약 조회 조건: 상태 · 코드 · 진행 중 · 손볼 건은 요약 안에서 나누므로 받지 않는다. minMinutes는 표와 같은 값을 준다 */
+export type HistorySummaryQuery = Pick<HistoryQuery, 'from' | 'to' | 'lineId' | 'process' | 'minMinutes'>
 
 /** API-071 예지보전 위험 탭 조회 조건 */
 export interface RiskQuery {

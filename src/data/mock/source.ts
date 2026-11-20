@@ -437,6 +437,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       },
       getStateTimeline: async (q) => analysis.timeline(q),
       getHistory: async (q) => history.list(q),
+      getHistorySummary: async (q) => history.summary(q),
       getRiskHistory: async (q) => history.risks(q),
       getDailyReport: async (date) => reports.daily(date),
       getReplanReports: async (from, to) => reports.list(from, to),

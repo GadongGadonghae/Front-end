@@ -11,5 +11,5 @@ export function compareColor(diff: number, span: number, min = 30, max = 100): s
   return `color-mix(in srgb, ${diff >= 0 ? 'var(--c-accent)' : 'var(--c-ink)'} ${pct}%, transparent)`
 }
 
-/** 가동률 비교 막대: ±15%p면 칸 절반을 다 채운다 (시안 G) */
-export const OEE_SPAN = 15
+/** 가동률 비교 막대: ±10%p면 칸 절반을 다 채운다 (시안 G는 15. 라인 차이가 대개 ±1~3이라 막대가 몇 px뿐이어서 줄임, D-113 · Q-38 ④) */
+export const OEE_SPAN = 10

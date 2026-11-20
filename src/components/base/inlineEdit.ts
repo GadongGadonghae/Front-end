@@ -15,7 +15,7 @@ export function useInlineEdit(scope: string) {
     editing.value = id
     draft.value = text
     error.value = ''
-    nextTick(() => el(id, 'form')?.querySelector('input')?.focus())
+    nextTick(() => el(id, 'form')?.querySelector<HTMLElement>('input, textarea')?.focus())
   }
   function close() {
     const id = editing.value

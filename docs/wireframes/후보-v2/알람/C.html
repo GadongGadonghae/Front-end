@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 C · 시간 띠 + 표</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<style>
+  /* C: 위 = 오늘 건이 있었던 설비만 줄로, 00~24시 띠 위에 건마다 칸 (가동률 띠와 같은 그림, 가동은 칠하지 않음).
+     칸을 누르면 아래 표의 그 행이 골라짐. 같은 때 여러 설비가 멈춘 것이 세로로 겹쳐 보임 */
+  .page { grid-template-rows: auto minmax(0, 1fr); }
+  .tl { display: grid; grid-template-columns: 170px minmax(0, 1fr) 90px; gap: 6px 14px; align-items: center; font-size: 13px; }
+  .tl .h { color: var(--ink-3); }
+  .tl .nm b { font-weight: 600; }
+  .tl .nm small { margin-left: 6px; color: var(--ink-3); }
+  .tl .sum { text-align: right; color: var(--ink-2); }
+  .tl .track { height: 18px; background-color: var(--sunk); }
+  .tl .track i[data-id] { cursor: pointer; }
+  .tl .track i.sel { outline: 2px solid var(--ink); outline-offset: 1px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script>
+  const { shown, hms, dur, table, pager, filters } = AL
+  const DAY = 86400
+  const pct = (s) => `${(s / DAY) * 100}%`
+  const PROC = ['슬리팅', '프레스 1단', '프레스 2단', '프레스 3단', '프레스 4단', '용접']
+  const ord = (r) => (r.line === '도장' ? 900 : r.line.charCodeAt(0) * 10) + PROC.indexOf(r.eq) // 라인 순 → 공정 순, 도장은 끝
+  const eqs = [...new Map(shown.map((r) => [r.name, r])).values()].sort((a, b) => ord(a) - ord(b))
+  const lane = (name, sel) => {
+    const list = shown.filter((r) => r.name === name)
+    const segs = list.map((r) => `<i data-id="${r.id}" class="seg-${r.s} ${r.ongoing ? 'ongoing' : ''} ${r.id === sel ? 'sel' : ''}" style="left:${pct(r.from)};width:${pct(Math.max(r.len, 300))}" title="${r.code} · ${hms(r.from)}~${r.ongoing ? '진행 중' : hms(r.to)} (${dur(r.len)})"></i>`).join('')
+    return `<span class="nm"><b>${list[0].eq}</b><small>${list[0].line === '도장' ? '' : list[0].line + '라인'}</small></span>
+      <div class="track"><i class="future" style="left:${pct(AL.NOW)};right:0"></i>${segs}<span class="now" style="left:${pct(AL.NOW)}"></span></div>
+      <span class="sum">${list.length}건 · ${dur(list.reduce((a, r) => a + r.len, 0)).replace(/ \d+초/, '')}</span>`
+  }
+  const axis = `<span></span><div class="axis">${[0, 3, 6, 9, 12, 18, 21, 24].map((h) => `<span style="left:${(h / 24) * 100}%">${String(h).padStart(2, '0')}시</span>`).join('')}<span style="left:${pct(AL.NOW)};color:var(--ink);font-weight:600">지금 14:20</span></div><span></span>`
+  AL.mount('시안 C · 시간 띠 + 표', (S) => `<main class="page">
+    <section class="panel"><header><h2>오늘 언제 멈췄나</h2><span class="meta">건이 있었던 설비 ${eqs.length}대 · 칸을 누르면 아래 행을 고름</span>
+      <span class="tools legend"><span><i class="sw seg-D"></i>고장</span><span><i class="sw seg-I"></i>대기</span><span><i class="sw" style="outline:2px solid var(--ink);outline-offset:1px;background:var(--track)"></i>진행 중</span></span></header>
+      <div class="tl">${eqs.map((e) => lane(e.name, S.sel)).join('')}${axis}</div></section>
+    <section class="panel scroll"><div style="margin-bottom:12px">${filters()}</div>${table(shown, { sel: S.sel })}${pager(shown.length)}</section>
+  </main>`)
+</script>
+</body>
+</html>
