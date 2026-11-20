@@ -89,7 +89,8 @@ export function createHistory(ctx: Ctx) {
         return !!e
           && (!q.lineId || e.area === q.lineId)
           && (!q.process || e.process === q.process)
-          && q.states.includes(ev.state)
+          // 상태를 고르지 않으면 전부 (PR #6, 11/20)
+          && (!q.states.length || q.states.includes(ev.state))
           && (!q.code || ev.code === q.code)
           && (!q.ongoing || ev.end == null)
           && (!q.todo || isTodo[q.todo](ev))

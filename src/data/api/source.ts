@@ -218,7 +218,7 @@ async function historyAll(q: Omit<HistoryQuery, 'page' | 'todo'>): Promise<Histo
   for (let page = 1; page <= 20; page++) {
     const p = await api.U08({
       from: q.from, to: q.to,
-      lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.join(','), reasonCode: q.code, inProgress: q.ongoing,
+      lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
       minMinutes: q.minMinutes ?? 0, page, size: 100,
     })
     out.push(...p.items.map(eventOf))

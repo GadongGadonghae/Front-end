@@ -222,7 +222,7 @@ export function useAlarmHistory() {
     return {
       states: (['D', 'I', 'S'] as StopState[]).map((st) => {
         const cs = of(st)
-        return { state: st, label: STATE_LABEL[st], count: cs.reduce((a, c) => a + c.count, 0), hidden: !states.value[st] }
+        return { state: st, label: STATE_LABEL[st], count: cs.reduce((a, c) => a + c.count, 0), hidden: anyState.value && !states.value[st] }
       }),
       alarms: [...ALARM_CODES, ...otherAlarms].map((c) => ({ code: c, name: DOWNTIME_NAME[c], count: s.byCode.find((x) => x.code === c)?.count ?? 0 })),
       todo: TODO_KEYS.map((k) => ({ key: k, label: TODO_LABEL[k], count: s.todo[k] })),
@@ -232,7 +232,8 @@ export function useAlarmHistory() {
   /** 왼쪽 알람 코드: 누르면 그 코드만 (고장을 켠다), 다시 누르면 풀림 */
   function pickAlarm(c: DowntimeCode) {
     if (code.value === c) { code.value = ''; return }
-    states.value = { ...states.value, D: true }
+    // 상태를 골라 둔 상태에서 고장이 빠져 있으면 고장을 켠다 (아무것도 안 고름 = 전부면 그대로)
+    if (anyState.value && !states.value.D) states.value = { ...states.value, D: true }
     code.value = c
   }
   function pickTodo(k: HistoryTodo) {
