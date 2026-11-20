@@ -15,6 +15,7 @@ import { createTelemetry } from '@/data/mock/telemetry'
 import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
 import { createAnalysis } from '@/data/mock/analysis'
 import { createHistory } from '@/data/mock/history'
+import { asStateEvent } from '@/data/historyTodo'
 import { createReports } from '@/data/mock/reports'
 import { createPdm } from '@/data/mock/pdm'
 import { createFlow } from '@/data/mock/flow'
@@ -164,7 +165,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const reports = createReports({
     now, lineDone, live, inboundStock: () => inbound.stock,
     counts: products.counts, oee: analysis.oee, oeeOf: analysis.oeeOf, targetOf, linePlanOf,
-    findEvent: history.find,
+    findEvent: (id) => asStateEvent(history.find(id)),
     pastDEvents: (from, to) => history.all({ from, to, states: ['D'] }),
     setTodayReport: (eventId, reportId) => { const ev = events.find((e) => e.id === eventId); if (ev) ev.reportId = reportId },
     user: DEMO_USER,
@@ -459,7 +460,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         const text = memo.trim()
         const patch = text ? { memo: text, memoBy: DEMO_USER, memoAt: iso(now()) } : { memo: null, memoBy: null, memoAt: null }
         const ev = events.find((e) => e.id === eventId)
-        if (ev) return { ...Object.assign(ev, patch) }
+        if (ev) return { ...Object.assign(ev, patch), notify: null }
         const past = history.saveMemo(eventId, patch)
         if (!past) throw new Error(`상태 이력 없음: ${eventId}`)
         return past

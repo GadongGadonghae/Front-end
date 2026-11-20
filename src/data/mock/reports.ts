@@ -1,6 +1,7 @@
 // 데모 리포트 (API-080 일일 생산 리포트, API-081~083 계획수정 보고서).
 // 일일 리포트는 생산 조회·가동률과 같은 수(제품 목록·비가동 구간)에서 셈한다. 보고서 계산은 FN-009 규칙 그대로. 값은 데모용 (CLAUDE.md)
 import type { DailyReport, ReplanAllocation, ReplanReport, ReplanSummary } from '@/types/report'
+import type { asStateEvent } from '@/data/historyTodo'
 import type { EquipmentLive } from '@/types/live'
 import type { HistoryEvent } from '@/types/events'
 import type { OeeQuery, OeeReport } from '@/types/analysis'
@@ -21,7 +22,7 @@ interface Ctx {
   oeeOf: (key: string, date: string) => number | null
   targetOf: (date: string) => number | null
   linePlanOf: (date: string) => number | null
-  findEvent: (id: string) => HistoryEvent | null
+  findEvent: (id: string) => ReturnType<typeof asStateEvent>
   pastDEvents: (from: string, to: string) => HistoryEvent[]
   setTodayReport: (eventId: string, reportId: string) => void
   user: string
@@ -112,7 +113,7 @@ export function createReports(ctx: Ctx) {
   }
 
   /** 고장 건과 기준 시각으로 보고서를 계산한다 */
-  function compute(ev: HistoryEvent, base: number, id: string, createdAt: number, createdBy: string): ReplanReport {
+  function compute(ev: NonNullable<ReturnType<typeof asStateEvent>>, base: number, id: string, createdAt: number, createdBy: string): ReplanReport {
     const e = MASTER.equipment.find((x) => x.id === ev.equipmentId)!
     const date = localDate(base)
     const isToday = date === today()

@@ -6,7 +6,7 @@ import type { Equipment } from '@/types/plant'
 import type { Paged } from '@/types/production'
 import { MASTER } from '@/data/mock/master'
 import { isTodo, summarize } from '@/data/historyTodo'
-import { PAST_DETAIL, PAST_MEMOS, MAIL_FAIL_TODAY } from '@/data/mock/scenario'
+import { CURRENT_DC, PAST_DC_TODAY, PAST_DETAIL, PAST_MEMOS, MAIL_FAIL_TODAY } from '@/data/mock/scenario'
 import { between, dayStart, daysOf, hash, localDate, noise, rng } from '@/data/mock/rand'
 
 type Stop = { state: StopState; code: DowntimeCode; from: number; to: number }
@@ -76,6 +76,31 @@ export function createHistory(ctx: Ctx) {
     }))
   }
 
+  /** 통신 끊김(DC) 기록 (D-117, 데모). 백엔드는 아직 비가동 이력으로 남기지 않는다 → 백엔드 요청 중.
+   *  오늘 = 장면(CURRENT_DC 진행 중 + PAST_DC_TODAY), 지난 날 = 하루 0~2건. 코드 없음, 메일 없음 */
+  const DC_DETAIL = '상태 신호 10초 넘게 없음'
+  const dcEvent = (id: string, equipmentId: string, start: number, end: number | null): HistoryEvent => ({
+    id, equipmentId, state: 'DC', code: null, detail: DC_DETAIL, start: iso(start), end: end == null ? null : iso(end),
+    memo: null, memoBy: null, memoAt: null, reportId: null, alarmLevel: null, notify: null, ...memoEdits.get(id),
+  })
+  function dcDay(date: string): HistoryEvent[] {
+    const key = date.replaceAll('-', '')
+    if (date === today()) {
+      const n = ctx.now()
+      return [
+        ...CURRENT_DC.map((d, i) => dcEvent(`DC-${key}-${d.equipmentId}-${i + 1}`, d.equipmentId, n - d.agoSec * 1000, null)),
+        ...PAST_DC_TODAY.map((d, i) => dcEvent(`DC-${key}-${d.equipmentId}-p${i + 1}`, d.equipmentId, n - d.agoSec * 1000, n - (d.agoSec - d.durSec) * 1000)),
+      ]
+    }
+    const r = rng(hash('dc-day', date))
+    const pool = MASTER.equipment.filter((e) => e.process !== 'COIL')
+    return Array.from({ length: between(r, 0, 2) }, (_, i) => {
+      const e = pool[Math.floor(r() * pool.length)]
+      const from = dayStart(date) + Math.floor(r() * 80_000) * 1000
+      return dcEvent(`DC-${key}-${e.id}-${i + 1}`, e.id, from, from + between(r, 20, 300) * 1000)
+    })
+  }
+
   const todayEvents = (): HistoryEvent[] =>
     ctx.events().map((ev) => ({ ...ev, alarmLevel: ev.code === 'UP_ALARM' ? 'CRITICAL' as const : null, notify: notifyOf(ev.id, ev.state, MAIL_FAIL_TODAY.includes(ev.equipmentId)) }))
 
@@ -83,7 +108,7 @@ export function createHistory(ctx: Ctx) {
 
   function all(q: Omit<HistoryQuery, 'page'>): HistoryEvent[] {
     return days(q.from, q.to)
-      .flatMap((d) => (d === today() ? todayEvents() : pastDay(d)))
+      .flatMap((d) => [...(d === today() ? todayEvents() : pastDay(d)), ...dcDay(d)])
       .filter((ev) => {
         const e = eqOf(ev.equipmentId)
         return !!e
@@ -101,10 +126,12 @@ export function createHistory(ctx: Ctx) {
   }
   const list = (q: HistoryQuery): Paged<HistoryEvent> => page(all(q), q.page)
   /** 왼쪽 요약 열 (D-109): 상태 셋을 모두 넣어 센다 */
-  const summary = (q: HistorySummaryQuery): HistorySummary => summarize(all({ ...q, states: ['D', 'I', 'S'] }), ctx.now())
+  const summary = (q: HistorySummaryQuery): HistorySummary => summarize(all({ ...q, states: ['D', 'I', 'S', 'DC'] }), ctx.now())
 
-  /** 이력 한 건 (오늘 건 EV-n, 지난 날 건 EV-YYYYMMDD-설비-n) */
+  /** 이력 한 건 (오늘 건 EV-n, 지난 날 건 EV-YYYYMMDD-설비-n, 통신 끊김 DC-YYYYMMDD-설비-n) */
   function find(id: string): HistoryEvent | null {
+    const dc = /^DC-(\d{4})(\d{2})(\d{2})-/.exec(id)
+    if (dc) return dcDay(`${dc[1]}-${dc[2]}-${dc[3]}`).find((ev) => ev.id === id) ?? null
     const m = /^EV-(\d{4})(\d{2})(\d{2})-/.exec(id)
     if (!m) return todayEvents().find((ev) => ev.id === id) ?? null
     return pastDay(`${m[1]}-${m[2]}-${m[3]}`).find((ev) => ev.id === id) ?? null
@@ -134,8 +161,8 @@ export function createHistory(ctx: Ctx) {
   }
 
   /** 지난 날 이력의 메모 저장. 찾으면 저장한 건을 돌려준다 */
-  function saveMemo(id: string, memo: Pick<StateEvent, 'memo' | 'memoBy' | 'memoAt'>): StateEvent | null {
-    if (!/^EV-\d{8}-/.test(id)) return null
+  function saveMemo(id: string, memo: Pick<StateEvent, 'memo' | 'memoBy' | 'memoAt'>): HistoryEvent | null {
+    if (!/^(EV|DC)-\d{8}-/.test(id)) return null
     const found = find(id)
     if (!found) return null
     memoEdits.set(id, memo)

@@ -42,7 +42,7 @@ const troubleRows = computed(() => (rp.troubles.value ?? []).map((e) => {
     id: e.id,
     name: equipmentName(e.equipmentId),
     time: formatTime(e.start),
-    text: [e.detail, DOWNTIME_NAME[e.code], e.end ? `${formatTime(e.end)} 복구` : '현재 조치 중'].filter(Boolean).join(' · '),
+    text: [e.detail, e.code ? DOWNTIME_NAME[e.code] : '통신 끊김', e.end ? `${formatTime(e.end)} 복구` : '현재 조치 중'].filter(Boolean).join(' · '),
     ongoing: e.end === null,
     made,
   }

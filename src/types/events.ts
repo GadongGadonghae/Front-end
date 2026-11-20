@@ -45,8 +45,13 @@ export interface NotifyResult {
   email: boolean
 }
 
-/** API-070 이력 표 한 건: 상태 이력 + 발송 결과 (D가 아니면 null) */
-export interface HistoryEvent extends StateEvent {
+/** 이력에 나오는 상태: 비가동(S·I·D) + 통신 끊김(DC, D-117). DC는 가동률에서 R로 세지만 알람 이력에는 남긴다 */
+export type HistoryState = StopState | 'DC'
+
+/** API-070 이력 표 한 건: 상태 이력 + 발송 결과 (D가 아니면 null). 통신 끊김(DC)은 비가동 코드가 없어 code = null */
+export interface HistoryEvent extends Omit<StateEvent, 'state' | 'code'> {
+  state: HistoryState
+  code: DowntimeCode | null
   notify: NotifyResult | null
 }
 
@@ -56,7 +61,8 @@ export interface HistoryQuery {
   to: string
   lineId?: string
   process?: string
-  states: StopState[]
+  /** 비면 전부. 알람 이력은 D·DC만 쓴다 (D-117) */
+  states: HistoryState[]
   code?: DowntimeCode
   ongoing?: boolean
   /** 이 길이(분) 이상만 (백엔드 minMinutes, 기본 1) */
@@ -73,6 +79,8 @@ export type HistoryTodo = 'ongoingFault' | 'notifyFail'
  *  백엔드 API 없음 (요청 필요) → 지금은 이력을 모두 불러 센다 */
 export interface HistorySummary {
   byCode: { code: DowntimeCode; state: StopState; count: number; sec: number }[]
+  /** 통신 끊김(DC) 건수·시간 (코드가 없어 따로, D-117) */
+  comms: { count: number; sec: number }
   todo: Record<HistoryTodo, number>
 }
 

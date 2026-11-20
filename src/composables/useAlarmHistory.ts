@@ -1,10 +1,10 @@
-// 알람·비가동 이력 (SCR-006, API-070·071·042): 탭 [알람·비가동] / [예지보전 위험] (D-65)
-// 필터 순서 기간 → 라인 → 공정 → 상태 → 코드 → 진행 중만, 기본 오늘·전체·상태 고르지 않음=모두 (D-64, D-84, 11/20). 기간 최대 31일, 50건씩 (D-66)
+// 알람 이력 (SCR-006, API-070·042, D-117): 고장(D)과 통신 끊김(DC)만. 대기·정지는 가동률·공정 상세 비가동 이력에서 본다
+// 필터 순서 기간 → 라인 → 공정 → 종류(전체·고장·통신 끊김 중 하나) → 코드 → 진행 중만, 기본 오늘·전체 (D-84, D-117). 기간 최대 31일, 50건씩 (D-66)
 // 필터·페이지가 바뀌면 다시 부른다. 진행 중 건의 지속시간은 화면 시계로 늘리고, 알람이 생기거나 풀리면 다시 부른다 (API 명세 4.6)
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { source } from '@/data'
-import type { HistoryEvent, HistoryQuery, HistorySummaryQuery, HistoryTodo, RiskEvent, RiskQuery } from '@/types/events'
-import type { DowntimeCode, StopState } from '@/types/state'
+import type { HistoryEvent, HistoryQuery, HistoryState, HistorySummaryQuery, HistoryTodo, RiskEvent, RiskQuery } from '@/types/events'
+import type { DowntimeCode } from '@/types/state'
 import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
@@ -19,12 +19,15 @@ const ALARM_CODES: DowntimeCode[] = ['UP_BREAKDOWN', 'UP_ALARM', 'UP_SAFETY']
 const TODO_LABEL: Record<HistoryTodo, string> = { ongoingFault: '진행 중 고장', notifyFail: '메일 발송 실패' }
 /** 아직 손볼 건 (D-111): 지금 손볼 것만 */
 const TODO_KEYS: HistoryTodo[] = ['ongoingFault', 'notifyFail']
-const STATE_LABEL: Record<StopState, string> = { D: '고장', I: '대기', S: '정지' }
+/** 알람 이력의 종류 (D-117): 전체 = 고장 + 통신 끊김 */
+export type AlarmKind = 'all' | 'D' | 'DC'
+type AlarmState = 'D' | 'DC'
+const KIND_LABEL: Record<AlarmState, string> = { D: '고장', DC: '통신 끊김' }
 
-/** 왼쪽 요약 열 (D-109) */
+/** 왼쪽 요약 열 (D-109, D-117) */
 export interface AlarmSummaryView {
-  /** hidden = 상태 필터에서 빠져 표에 안 나옴 (요약은 셋 다 센다) */
-  states: { state: StopState; label: string; count: number; hidden: boolean }[]
+  /** hidden = 종류 고르기에서 빠져 표에 안 나옴 (요약은 둘 다 센다) */
+  states: { state: AlarmState; label: string; count: number; hidden: boolean }[]
   alarms: { code: DowntimeCode; name: string; count: number }[]
   todo: { key: HistoryTodo; label: string; count: number }[]
 }
@@ -41,7 +44,7 @@ const AREAS = [
 /** 표 한 줄 (알람·비가동) */
 export interface AlarmRow {
   id: string
-  state: StopState
+  state: HistoryState
   ongoing: boolean
   start: string
   end: string
@@ -84,9 +87,8 @@ export function useAlarmHistory() {
   const to = ref(today)
   const lineId = ref('')
   const process = ref('')
-  // 처음엔 아무것도 안 고름 = 모든 상태 (11/20: 예전엔 고장·대기가 미리 골라져 있었음)
-  const states = ref<Record<StopState, boolean>>({ D: false, I: false, S: false })
-  const anyState = computed(() => states.value.D || states.value.I || states.value.S)
+  /** 종류: 하나만 고른다 (D-117). 전체 = 고장 + 통신 끊김 */
+  const kind = ref<AlarmKind>('all')
   const code = ref<'' | DowntimeCode>('')
   const ongoing = ref(false)
   /** 아직 손볼 건만 (왼쪽 열에서 고름) */
@@ -122,15 +124,17 @@ export function useAlarmHistory() {
     ...[...new Set(scoped.value.map((e) => e.process))].sort(byProcess).map((p) => ({ value: p, label: PROCESS_NAME[p] })),
   ])
   watch(lineId, () => { if (!processOptions.value.some((o) => o.value === process.value)) process.value = '' })
-  /** 코드는 고른 상태의 것만 */
+  /** 코드: 고장(D) 코드만 (통신 끊김은 코드가 없다) */
   const codeOptions = computed(() => [
     { value: '' as const, label: '전체' },
-    ...(master.value?.downtimeCodes ?? []).filter((d) => !anyState.value || states.value[d.state as StopState]).map((d) => ({ value: d.code, label: d.name })),
+    ...(master.value?.downtimeCodes ?? []).filter((d) => d.state === 'D').map((d) => ({ value: d.code, label: d.name })),
   ])
+  // 통신 끊김만 볼 때는 코드 거르기를 푼다
+  watch(kind, (k) => { if (k === 'DC') code.value = '' })
   watch(codeOptions, (opts) => { if (!opts.some((o) => o.value === code.value)) code.value = '' })
 
   // ── 조회 ──
-  const pickedStates = computed(() => (['D', 'I', 'S'] as StopState[]).filter((s) => states.value[s]))
+  const pickedStates = computed<HistoryState[]>(() => (kind.value === 'all' ? ['D', 'DC'] : [kind.value]))
   const alarmQuery = computed<HistoryQuery>(() => ({
     from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined,
     states: pickedStates.value, code: code.value || undefined, ongoing: ongoing.value || undefined, todo: todo.value || undefined, page: page.value,
@@ -174,7 +178,7 @@ export function useAlarmHistory() {
   }
   const sameDay = (a: string, b: string) => toDateStr(Date.parse(a)) === toDateStr(Date.parse(b))
 
-  /** 진행 중 고장 → 진행 중 대기 → 나머지 발생 최근순 (D-111). 진행 중 건은 늘 가장 최근이라 첫 페이지 안에서 다시 줄 세운다 */
+  /** 진행 중 고장 → 진행 중 통신 끊김 → 나머지 발생 최근순 (D-111). 진행 중 건은 늘 가장 최근이라 첫 페이지 안에서 다시 줄 세운다 */
   const rank = (e: HistoryEvent) => (e.end != null ? 2 : e.state === 'D' ? 0 : 1)
   const ordered = computed(() => [...(alarms.data.value?.items ?? [])].sort((a, b) => rank(a) - rank(b)))
   const alarmRows = computed<AlarmRow[]>(() => ordered.value.map((e) => ({
@@ -186,7 +190,7 @@ export function useAlarmHistory() {
     end: e.end ? (multiDay.value || !sameDay(e.start, e.end) ? when(e.end) : formatTime(e.end)) : '',
     line: areaLabel(e.equipmentId),
     equipment: eqLabel(e.equipmentId),
-    code: DOWNTIME_NAME[e.code],
+    code: e.code ? DOWNTIME_NAME[e.code] : '통신 끊김',
     level: e.alarmLevel ? ALARM_LEVEL_NAME[e.alarmLevel] : null,
     critical: e.alarmLevel === 'CRITICAL',
     detail: e.detail ?? '-',
@@ -217,32 +221,42 @@ export function useAlarmHistory() {
   const summaryView = computed<AlarmSummaryView | null>(() => {
     const s = summary.data.value
     if (!s) return null
-    const of = (st: StopState) => s.byCode.filter((c) => c.state === st)
-    const otherAlarms = of('D').filter((c) => !ALARM_CODES.includes(c.code)).map((c) => c.code)
+    const faults = s.byCode.filter((c) => c.state === 'D')
+    const otherAlarms = faults.filter((c) => !ALARM_CODES.includes(c.code)).map((c) => c.code)
+    const count: Record<AlarmState, number> = { D: faults.reduce((a, c) => a + c.count, 0), DC: s.comms.count }
     return {
-      states: (['D', 'I', 'S'] as StopState[]).map((st) => {
-        const cs = of(st)
-        return { state: st, label: STATE_LABEL[st], count: cs.reduce((a, c) => a + c.count, 0), hidden: anyState.value && !states.value[st] }
-      }),
+      states: (['D', 'DC'] as AlarmState[]).map((st) => ({ state: st, label: KIND_LABEL[st], count: count[st], hidden: kind.value !== 'all' && kind.value !== st })),
       alarms: [...ALARM_CODES, ...otherAlarms].map((c) => ({ code: c, name: DOWNTIME_NAME[c], count: s.byCode.find((x) => x.code === c)?.count ?? 0 })),
       todo: TODO_KEYS.map((k) => ({ key: k, label: TODO_LABEL[k], count: s.todo[k] })),
     }
   })
 
-  /** 왼쪽 알람 코드: 누르면 그 코드만 (고장을 켠다), 다시 누르면 풀림 */
+  /** 왼쪽 알람 코드: 누르면 그 코드만, 다시 누르면 풀림. 통신 끊김만 보고 있었다면 전체로 */
   function pickAlarm(c: DowntimeCode) {
     if (code.value === c) { code.value = ''; return }
-    // 상태를 골라 둔 상태에서 고장이 빠져 있으면 고장을 켠다 (아무것도 안 고름 = 전부면 그대로)
-    if (anyState.value && !states.value.D) states.value = { ...states.value, D: true }
+    if (kind.value === 'DC') kind.value = 'all'
     code.value = c
   }
   function pickTodo(k: HistoryTodo) {
     todo.value = todo.value === k ? '' : k
   }
-  /** 요약에서 "표에 없음"인 상태를 표에도 보이게 */
-  function showState(st: StopState) {
-    states.value = { ...states.value, [st]: true }
+  /** 요약에서 "표에 없음"인 종류를 누르면 전체로 */
+  function showState() {
+    kind.value = 'all'
   }
+  /** 위쪽 종류 버튼: 건수를 같이 (요약과 같은 수) */
+  const kindOptions = computed(() => {
+    const st = summaryView.value?.states
+    const n = (k: AlarmState) => st?.find((x) => x.state === k)?.count
+    const label = (name: string, v?: number) => (v == null ? name : `${name} ${v}`)
+    const d = n('D')
+    const dc = n('DC')
+    return [
+      { value: 'all' as const, label: label('전체', d == null || dc == null ? undefined : d + dc) },
+      { value: 'D' as const, label: label('고장', d) },
+      { value: 'DC' as const, label: label('통신 끊김', dc) },
+    ]
+  })
 
   /** 조치 메모 저장. 빈 글이면 지운다. 담당자는 로그인 사용자 (D-84) */
   async function saveMemo(eventId: string, memo: string) {
@@ -252,8 +266,8 @@ export function useAlarmHistory() {
   }
 
   return {
-    tab, from, to, lineId, process, states, code, ongoing, todo, page, today, focusEquipment, equipmentById,
-    lineOptions, processOptions, codeOptions,
+    tab, from, to, lineId, process, kind, code, ongoing, todo, page, today, focusEquipment, equipmentById,
+    lineOptions, processOptions, codeOptions, kindOptions,
     alarmRows, riskRows, total, size, loading, saveMemo,
     summaryView, pickAlarm, pickTodo, showState, todoLabel: (k: HistoryTodo) => TODO_LABEL[k], codeLabel: (c: DowntimeCode) => DOWNTIME_NAME[c],
   }

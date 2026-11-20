@@ -81,11 +81,16 @@ const liveOf = (s: EquipmentStatusDto): EquipmentLive => ({ id: s.equipmentId, s
 const limitOf = (t: ThresholdDto, type: EquipmentTypeCode): ControlLimit => ({
   id: t.id, equipmentId: t.equipmentId, type, item: t.metric, unit: t.unit ?? '', lower: t.low, upper: t.high, updatedAt: t.updatedAt ?? null, updatedBy: t.updatedBy ?? null,
 })
-const eventOf = (e: DowntimeEventDto): HistoryEvent => ({
+const stateEventOf = (e: DowntimeEventDto): StateEvent => ({
   id: String(e.eventId), equipmentId: e.equipmentId, state: e.status, code: e.reasonCode, detail: e.detail,
   start: e.startAt, end: e.endAt, memo: e.memo || null, memoBy: e.actionUserName, memoAt: e.actionAt,
-  reportId: null, alarmLevel: null, notify: null,
+  reportId: null, alarmLevel: null,
 })
+const eventOf = (e: DowntimeEventDto): HistoryEvent => ({ ...stateEventOf(e), notify: null })
+/** U-08 상태 조건: 통신 끊김(DC)은 백엔드가 아직 비가동 이력으로 주지 않는다 (D-117, 백엔드 요청 중) → S·I·D만 보낸다 */
+const stopStatus = (states: HistoryQuery['states']) => states.filter((s) => s !== 'DC').join(',') || undefined
+/** DC만 고른 조회: 백엔드에 아직 없어 빈 결과 */
+const onlyComms = (states: HistoryQuery['states']) => states.length > 0 && states.every((s) => s === 'DC')
 // ── 제품 추적 (P-01·P-02 → 생산 조회 화면) ──
 const STEPS: ProcessId[] = ['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION']
 const productResult = (f: ProductDto['finalResult']): Product['result'] => (f === 'OK' ? 'ok' : f === 'NG' ? 'ng' : 'wip')
@@ -218,10 +223,11 @@ function worstOf(lists: Seg[][], until: number): Seg[] {
  *  아래 allEvents와 같은 기준: 1분 미만 포함(main 11/20), 100건씩 최대 20쪽 */
 async function historyAll(q: Omit<HistoryQuery, 'page' | 'todo'>): Promise<HistoryEvent[]> {
   const out: HistoryEvent[] = []
+  if (onlyComms(q.states)) return out
   for (let page = 1; page <= 20; page++) {
     const p = await api.U08({
       from: q.from, to: q.to,
-      lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
+      lineId: q.lineId, process: q.process as ProcessId | undefined, status: stopStatus(q.states), reasonCode: q.code, inProgress: q.ongoing,
       minMinutes: q.minMinutes ?? 0, page, size: 100,
     })
     out.push(...p.items.map(eventOf))
@@ -331,7 +337,7 @@ export function createApiSource(): DataSource {
   async function todayEvents(q: { equipmentId?: string; lineId?: string; process?: ProcessId } = {}): Promise<StateEvent[]> {
     // 알람 이력 탭과 같은 기준: 1분 미만도 포함 (11/20). 최근순 100건
     const p = await api.U08({ ...todayRange(), ...q, minMinutes: 0, page: 1, size: 100 }) // 백엔드 size 최대 100
-    return p.items.map(eventOf)
+    return p.items.map(stateEventOf)
   }
 
   // 알람 발생·해제: 진행 중인 건만 (1분 미만도) 5초마다 받아 지난번과 비교한다. 구독이 여럿이어도 조회는 하나 (W-01·W-02로 바꿀 자리)
@@ -342,7 +348,7 @@ export function createApiSource(): DataSource {
     let first = true
     return poll(ALARM_MS, async () => {
       const p = await api.U08({ ...todayRange(), inProgress: true, minMinutes: 0, page: 1, size: 100 })
-      const now = new Map(p.items.map(eventOf).map((e) => [e.id, e]))
+      const now = new Map(p.items.map(stateEventOf).map((e) => [e.id, e]))
       const emit = (a: AlarmEvent) => alarmListeners.forEach((cb) => cb(a))
       if (!first) {
         for (const [id, e] of now) if (!prev.has(id)) emit({ kind: 'raised', event: e })
@@ -526,9 +532,10 @@ export function createApiSource(): DataSource {
           const all = (await historyAll(q)).filter(isTodo[q.todo])
           return { items: all.slice((q.page - 1) * 50, q.page * 50), total: all.length, page: q.page, size: 50 }
         }
+        if (onlyComms(q.states)) return { items: [], total: 0, page: q.page, size: 50 }
         const p = await api.U08({
           from: q.from, to: q.to,
-          lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
+          lineId: q.lineId, process: q.process as ProcessId | undefined, status: stopStatus(q.states), reasonCode: q.code, inProgress: q.ongoing,
           minMinutes: q.minMinutes ?? 1, page: q.page, size: 50,
         })
         return { ...p, items: p.items.map(eventOf) }

@@ -22,6 +22,12 @@ export const CURRENT_STATES: ScenarioState[] = [
 /** 지금 통신이 끊긴 설비 (DC). 상태 신호가 10초 넘게 안 와서 백엔드가 DC로 판정한 것 (데모). 사유·비가동 이력은 없다 */
 export const CURRENT_DC = [{ equipmentId: 'F-PR3', agoSec: 2 * 60 + 40 }]
 
+/** 오늘 이미 끝난 통신 끊김 (데모, D-117 알람 이력에 보이려고): 지금보다 agoSec 전에 시작, durSec 동안 */
+export const PAST_DC_TODAY = [
+  { equipmentId: 'C-WD', agoSec: 3 * 3600 + 12 * 60, durSec: 95 },
+  { equipmentId: 'E-SL', agoSec: 6 * 3600 + 20 * 60, durSec: 40 },
+]
+
 /** R 설비가 지금 상태로 이어진 시간 (모두 같게 둠) */
 export const RUN_AGO_SEC = 4 * 3600 + 2 * 60 + 15
 
