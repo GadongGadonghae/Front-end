@@ -195,6 +195,16 @@ const topGroups = computed(() => [
 </template>
 
 <style scoped>
+/* 이 화면 글씨 크기 4단계
+   24 --fs-page 화면 제목
+   20 --fs-lg   패널 제목 · 고른 설비 이름
+   16 --fs-row  주인공 값: 설비 이름 · 위험도 % · 등급별 대수 · 센서 이름 · 센서 값
+   13 --fs-sm   나머지 보조 글: 설명 · 항목 이름 · 등급 글자 · 단위 · 기준 · 축 · 범례 · 이력 */
+.layout :deep(.meta),
+.layout :deep(.empty) {
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
@@ -244,12 +254,12 @@ const topGroups = computed(() => [
 
 .counts dt {
   color: var(--c-ink-2);
-  font-size: var(--fs-figure);
+  font-size: var(--fs-row);
 }
 
 .counts dd {
   margin: 0;
-  font-size: var(--fs-figure);
+  font-size: var(--fs-row);
   font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
 }
@@ -301,12 +311,13 @@ const topGroups = computed(() => [
   align-items: center;
   gap: var(--sp-2);
   min-width: 0;
+  font-size: var(--fs-row);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
 
 .pc {
-  font-size: var(--fs-md);
+  font-size: var(--fs-row);
   font-variant-numeric: tabular-nums;
 }
 

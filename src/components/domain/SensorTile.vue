@@ -93,7 +93,7 @@ defineEmits<{ select: [key: string] }>()
 }
 
 .v {
-  font-size: var(--fs-figure);
+  font-size: var(--fs-row);
   font-weight: var(--fw-strong);
 }
 
