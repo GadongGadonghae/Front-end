@@ -16,6 +16,12 @@ export function linePath(id: LineId): string {
   return `/lines/${id}`
 }
 
+/** 대시보드 라인 탭: 전체라인 + A~F + 도장 */
+export const LINE_IDS: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'PT']
+export function lineTabs(name: (id: LineId) => string) {
+  return [{ key: 'ALL', label: '전체라인', to: '/lines' }, ...LINE_IDS.map((id) => ({ key: id, label: name(id), to: linePath(id) }))]
+}
+
 /** 라인 안 공정 상세 경로 (이벤트: 라인 흐름의 공정 이름 클릭, SCR-010) */
 export function processPath(lineId: LineId, process: ProcessId): string {
   if (process === 'PAINTING') return '/lines/PT/paint'

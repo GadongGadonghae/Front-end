@@ -20,12 +20,11 @@ import AlertList from '@/components/domain/AlertList.vue'
 import { useLineDetail } from '@/composables/useLineDetail'
 import { useTodayAlerts } from '@/composables/useTodayAlerts'
 import { useMaster } from '@/composables/useMaster'
-import { equipmentPath, processPath } from '@/lib/routes'
+import { equipmentPath, lineTabs, processPath } from '@/lib/routes'
 import { formatNumber } from '@/lib/format'
 import type { LineId, ProcessId } from '@/types/plant'
 import type { AlertRowView } from '@/types/view'
 
-const LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'PT']
 const lineLabel = (id: LineId) => lineName(id)
 
 const route = useRoute()
@@ -38,11 +37,7 @@ const { flow, now, oeeRows } = useLineDetail(lineId)
 const { rows: alerts, ongoingCount } = useTodayAlerts({ area: lineId })
 const { equipmentById } = useMaster()
 
-// 전체 라인 비교 화면은 나중에 만든다 (칸만 둔다)
-const tabs = [
-  { key: 'ALL', label: '전체라인', to: '/lines', disabled: true },
-  ...LINES.map((id) => ({ key: id, label: lineLabel(id), to: `/lines/${id}` })),
-]
+const tabs = lineTabs(lineLabel)
 
 // 진행 중인 고장 (맨 위 알림 띠)
 const fault = computed(() => alerts.value.find((r) => r.kind === 'D' && r.ongoing) ?? null)
