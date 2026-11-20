@@ -338,6 +338,8 @@ export interface ReassignmentSummaryDto {
   code: ReasonCode | null
   /** line · paint · vision · order (order = 추가 주문 배정, 고장 건 없음 → downtimeId 0, equipmentId null) (11/20 추가) */
   kind: 'line' | 'paint' | 'vision' | 'order' | null
+  /** 공장장 승인(결재) 여부 (R-04 · 추가 주문은 R-06 승인·적용, 11/20) */
+  approved?: boolean
 }
 
 /** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */

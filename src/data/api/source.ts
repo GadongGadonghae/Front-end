@@ -601,6 +601,19 @@ export function createApiSource(): DataSource {
           stateEventId: r.kind === 'order' ? undefined : String(r.downtimeId),
         }))
       },
+      // 그날 승인·적용된 추가 주문 배정: R-01 목록에서 order·승인 건만 골라 R-02로 라인별 추가 수량을 더한다 (하루 몇 건뿐)
+      async getOrderAdditions(date) {
+        const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
+        const out: Partial<Record<LineId, number>> = {}
+        const done = p.items.filter((r) => r.kind === 'order' && r.approved)
+        for (const d of await Promise.all(done.map((r) => api.R02(r.reportId)))) {
+          for (const x of d.details) {
+            const l = x.targetLineId as LineId
+            if (x.addQty > 0) out[l] = (out[l] ?? 0) + x.addQty
+          }
+        }
+        return out
+      },
       async getReplanReport(id) {
         try {
           return replanOf(await api.R02(Number(id)))

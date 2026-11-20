@@ -444,6 +444,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getDailyReport: async (date) => reports.daily(date),
       getReplanReports: async (from, to) => reports.list(from, to),
       getReplanReport: async (id) => reports.get(id),
+      getOrderAdditions: async (date) => reports.orderAdditions(date),
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),

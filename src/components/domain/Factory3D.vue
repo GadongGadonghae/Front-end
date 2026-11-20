@@ -18,6 +18,8 @@ const props = defineProps<{
   flow: FlowPositions | null
   /** 지금 시각 (ms). 지연 시간 계산용 */
   now: number
+  /** 오늘 승인·적용된 추가 주문 배정 수량 (라인별, 배정 칸 "+N 추가 배정"). 배정량은 lineSummaries.plan */
+  additions?: Partial<Record<LineId, number>>
 }>()
 const emit = defineEmits<{
   'open-line': [id: LineId]
@@ -86,8 +88,10 @@ function push() {
   s.setIssues(issues.value.map((e) => ({ equipmentId: e.id, state: e.state })))
   s.setRoutes(Object.fromEntries(props.lines.filter((l) => l.kind === 'production').map((l) => [l.id, l.currentPaintId])))
   s.setFlow(props.flow)
+  s.setAllocation(Object.fromEntries(props.lineSummaries.filter((x) => x.lineId !== 'PT')
+    .map((x) => [x.lineId, { done: x.done, plan: x.plan, added: props.additions?.[x.lineId] ?? 0 }])))
 }
-watch(() => [props.live, props.lines, props.flow, issues.value], push)
+watch(() => [props.live, props.lines, props.flow, issues.value, props.lineSummaries, props.additions], push)
 
 // ── 팝업 ──
 const pop = computed(() => {
@@ -412,6 +416,65 @@ const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
 .stage :deep(.f3d-line.on) {
   border-color: var(--c-accent);
   color: var(--c-accent);
+}
+
+/* 배정 칸 (코일 입고 왼쪽): 라인별 생산 / 배정 + 진행 막대. 추가 배정 받은 라인은 강조색 테두리 */
+.stage :deep(.f3d-alloc-head small) {
+  display: block;
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.stage :deep(.f3d-alloc) {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: calc(var(--sp-8) * 3);
+  padding: 2px var(--sp-2) var(--sp-1);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stage :deep(.f3d-alloc.more) {
+  border: var(--line-w-strong) solid var(--c-accent);
+}
+
+.stage :deep(.f3d-alloc .top) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.stage :deep(.f3d-alloc .n) {
+  color: var(--c-ink-3);
+}
+
+.stage :deep(.f3d-alloc .n b) {
+  color: var(--c-ink);
+}
+
+.stage :deep(.f3d-alloc .bar) {
+  display: block;
+  height: var(--sp-1);
+  border-radius: 2px;
+  background: var(--c-track);
+}
+
+.stage :deep(.f3d-alloc .bar i) {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--c-ink-3);
+}
+
+.stage :deep(.f3d-alloc .add) {
+  color: var(--c-accent);
+  font-weight: var(--fw-strong);
 }
 
 .stage :deep(.f3d-cnt) {

@@ -308,5 +308,15 @@ export function createReports(ctx: Ctx) {
     }
   }
 
-  return { daily, list, get, create, approve, createOrder, applyOrder, reportOf, seedToday }
+  /** 그날 승인·적용된 추가 주문 배정의 라인별 추가 수량 (데모: 이 화면에서 적용한 것만) */
+  function orderAdditions(date: string) {
+    const out: Partial<Record<LineId, number>> = {}
+    for (const r of made.values()) {
+      if (r.kind !== 'order' || !r.approved || localDate(Date.parse(r.createdAt)) !== date) continue
+      for (const a of r.allocations) if (a.add > 0) out[a.target as LineId] = (out[a.target as LineId] ?? 0) + a.add
+    }
+    return out
+  }
+
+  return { daily, list, get, create, approve, createOrder, applyOrder, orderAdditions, reportOf, seedToday }
 }

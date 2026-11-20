@@ -5,6 +5,13 @@ import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useProductFlow } from '@/composables/useProductFlow'
 import { useNow } from '@/composables/useNow'
+import { usePoll } from '@/composables/usePoll'
+import { source } from '@/data'
+import { toDateStr } from '@/lib/format'
+import type { LineId } from '@/types/plant'
+
+/** 추가 주문 배정 반영은 사람이 승인할 때만 바뀌어서 10초마다면 충분 */
+const ADDITIONS_MS = 10_000
 
 export function useFactory3d() {
   const { master } = useMaster()
@@ -12,11 +19,14 @@ export function useFactory3d() {
   const summary = useLiveSummary()
   const flow = useProductFlow()
   const now = useNow()
+  // 오늘 승인·적용된 추가 주문 배정 (R-06) → 배정 칸 "+N 추가 배정"
+  const { data: additions } = usePoll(
+    () => source.q.getOrderAdditions(toDateStr(Date.now())).catch((): Partial<Record<LineId, number>> => ({})), ADDITIONS_MS)
   const view = computed(() => {
     const m = master.value
     const s = snapshot.value
     if (!m || !s) return null
-    return { equipment: m.equipment, lines: m.lines, live: s.equipment, lineSummaries: summary.value?.lines ?? [] }
+    return { equipment: m.equipment, lines: m.lines, live: s.equipment, lineSummaries: summary.value?.lines ?? [], additions: additions.value ?? {} }
   })
   return { view, flow, now }
 }
