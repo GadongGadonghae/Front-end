@@ -18,6 +18,17 @@ const LABEL: Record<string, string> = {
   // 공통
   current: '전류',
   voltage: '전압',
+  // 설비 상태 센서 (예지보전 SCR-004, 지금은 프론트 더미 · data/dummy/sensors.ts)
+  motorTemp: '모터 온도',
+  vibration: '진동',
+  hydraulicTemp: '유압 온도',
+  hydraulicPressure: '유압 압력',
+  motorCurrent: '모터 전류',
+  tipTemp: '팁 온도',
+  coolantTemp: '냉각수 온도',
+  coolantFlow: '냉각수 유량',
+  pumpCurrent: '펌프 전류',
+  fanVibration: '배기팬 진동',
   // 실설비 슬리터 인버터 (D-43, 백엔드 항목 아님)
   commandHz: '지령 주파수',
   outputHz: '출력 주파수',

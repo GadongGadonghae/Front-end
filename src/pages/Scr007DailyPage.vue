@@ -123,7 +123,7 @@ const doc = computed(() => {
     return {
       key: e.id,
       target: equipmentName(e.equipmentId),
-      cause: [DOWNTIME_NAME[e.code], e.detail].filter(Boolean).join(' · '),
+      cause: [e.code ? DOWNTIME_NAME[e.code] : '통신 끊김', e.detail].filter(Boolean).join(' · '),
       time: `${formatTime(e.start).slice(0, 5)}~${e.end ? formatTime(e.end).slice(0, 5) : '진행 중'} (${formatDuration(secOf(e))})`,
       report: rp ? (/^\d+$/.test(rp.id) ? `AI-RPT-${toDateStr(Date.parse(rp.createdAt)).replaceAll('-', '')}-${rp.id.padStart(3, '0')}` : rp.id) : '-',
     }

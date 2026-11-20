@@ -141,6 +141,8 @@ export interface CycleDto {
   equipmentId: string
   cycles: number
   avgCtMs: number | null
+  /** 그날 이 설비에서 공정 판정 NG(폐기)된 수. 프레스는 NG가 난 단 (11/20) */
+  ng?: number
 }
 
 /** M-13 */
@@ -326,20 +328,26 @@ export interface ProcessNgDto {
 /** R-01 */
 export interface ReassignmentSummaryDto {
   reportId: number
-  downtimeId: number
-  sourceLineId: string
-  equipmentId: string
+  /** 목표 변경 보고서는 null (11/20) */
+  downtimeId: number | null
+  sourceLineId: string | null
+  equipmentId: string | null
   stopMin: number
   lossQty: number
   createdAt: string
-  /** 고장 사유 코드 (11/19 추가) */
-  code: ReasonCode
+  /** 고장 사유 코드 (11/19 추가). 목표 변경 보고서는 'TARGET', 추가 주문 배정은 null */
+  code: ReasonCode | null
+  /** line · paint · vision · target · order (target·order는 고장 건 없음 → downtimeId null) (11/20 추가) */
+  kind: 'line' | 'paint' | 'vision' | 'target' | 'order' | null
+  /** 공장장 승인(결재) 여부 (R-04 · 추가 주문은 R-06 승인·적용, 11/20) */
+  approved?: boolean
 }
 
 /** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */
 export interface ReassignmentDetailDto {
   reportId: number
-  downtimeId: number
+  /** 목표 변경 보고서(kind target)는 null */
+  downtimeId: number | null
   sourceLineId: string | null
   /** 부족 수량 */
   lossQty: number
@@ -347,13 +355,13 @@ export interface ReassignmentDetailDto {
   details: { targetLineId: string; spareCapacity: number; addQty: number; remainingPlan: number | null; share: number }[]
   /** 표시용 문서번호 AI-RPT-yyyyMMdd-NNN */
   documentNo: string
-  equipmentId: string
+  equipmentId: string | null
   code: ReasonCode
   detail: string | null
   startedAt: string
   createdAt: string
   createdBy: string | null
-  kind: 'line' | 'paint' | 'vision' | null
+  kind: 'line' | 'paint' | 'vision' | 'target' | 'order' | null
   baseAt: string | null
   remainingSec: number | null
   ctSec: number | null
@@ -361,13 +369,73 @@ export interface ReassignmentDetailDto {
   stoppedDone: number | null
   targetQty: number | null
   unmetQty: number | null
+  /** 공장장 승인(결재) (11/20, R-04) */
+  approved?: boolean
+  approvedBy?: string | null
+  approvedAt?: string | null
   /** AI 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
   ai: {
     title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null
     /** AI 추가 요청과 그 해석 (제외·정지 라인, 우선 기준 BALANCED·DUE_DATE·SAFETY) */
     additionalRequest: string | null
     requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[] } | null
+    /** 원인 추적 (11/20 추가). 예전 보고서는 없음 */
+    causeTrace?: CauseTraceDto | null
+    /** 추가 주문 배정 조건과 라인 가동 비교 (kind = order, 11/20 추가) */
+    order?: OrderInfoDto | null
   } | null
+}
+
+/** R-06 추가 주문 배정 승인·적용 결과 */
+export interface ApplyResponseDto {
+  reportId: number
+  appliedAt: string
+  /** 가동 명령을 보낸 새 라인 */
+  startedLines: string[]
+  /** 끝낸 계획정지 번호 */
+  endedStops: number[]
+  /** 바꾼 오늘 라인 목표 */
+  targets: { lineId: string; before: number; after: number }[]
+  /** 라인 가동 명령(MQTT)이 브로커에 닿았는지 */
+  lineCommandSent: boolean
+  notes: string[]
+}
+
+/** R-02 ai.order: 추가 주문 해석 조건 · 지금 라인만(current) / 새 라인까지(withNew) 비교 */
+export interface OrderInfoDto {
+  request: string | null
+  addQty: number
+  /** HH:mm (24:00 = 오늘 안) */
+  dueAt: string
+  setupMinutes: number
+  runningLines: string[]
+  newLines: string[]
+  /** 새 라인을 요청에서 정하지 않아 계산으로 고름 */
+  recommended: boolean
+  idleLines: string[]
+  excludedLines: string[]
+  /** "AI · 모델" 또는 "규칙" */
+  parsedBy: string
+  notes: string[]
+  current: { lines: string[]; capacity: number; unmet: number }
+  withNew: { lines: string[]; capacity: number; unmet: number }
+}
+
+/** R-02 ai.causeTrace: 근거(E1…) · 원인 후보와 근거 강도(규칙 점수) · 근거 번호를 단 문장과 검증 결과 */
+export interface CauseTraceDto {
+  windowFrom: string
+  windowTo: string
+  evidence: { id: string; type: 'FAULT' | 'ALARM' | 'TREND' | 'QUALITY' | 'STATE' | 'HISTORY'; title: string; detail: string; at: string; source: string }[]
+  causes: {
+    id: string; label: string; item: string | null; score: number; grade: 'HIGH' | 'MEDIUM' | 'LOW'
+    parts: { label: string; points: number; max: number; note: string }[]
+    evidence: string[]
+  }[]
+  sentences: { text: string; kind: 'fact' | 'inference' | 'action'; evidence: string[]; verified: boolean; issue: string | null }[]
+  verifiedCount: number
+  model: string
+  mock: boolean
+  fallbackReason: string | null
 }
 
 // ── 관리·공통 (C) ──
@@ -387,6 +455,8 @@ export interface LoginDto {
   accessToken: string
   userName: string
   role: string
+  /** 라인 담당자의 담당 라인 (v0.3.15) */
+  lines?: string[]
 }
 
 /** C-04 */
@@ -420,4 +490,23 @@ export interface AlarmEventDto {
 export interface ProductionEventDto {
   last: { lineId: string; paintId: string; result: 'OK' | 'NG' }
   today: { total: number; processNg: number; inspected: number; ngVision: number; ok: number; yieldRate: number }
+}
+
+/** R-10 ~ R-14 보고서 결재·전송 (11/20). 목록에서는 content = null */
+export interface FlowReportDto {
+  reportId: number
+  kind: 'DAILY' | 'REPLAN'
+  targetKey: string
+  title: string
+  status: 'WRITTEN' | 'APPROVED' | 'SENT'
+  campusId: string
+  factoryId: number
+  replanReportId: number | null
+  writtenBy: { userId: number; userName: string | null } | null
+  writtenAt: string | null
+  approvedBy: { userId: number; userName: string | null } | null
+  approvedAt: string | null
+  sentBy: { userId: number; userName: string | null } | null
+  sentAt: string | null
+  content: unknown
 }

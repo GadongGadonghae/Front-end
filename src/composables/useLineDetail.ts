@@ -9,6 +9,7 @@ import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
+import { useTodayAlarms } from '@/composables/useTodayAlarms'
 import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState } from '@/lib/status'
 import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
 
@@ -27,6 +28,9 @@ export function useLineDetail(lineId: LineId) {
   const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
   // 라인 OEE 3요소 (가동률 화면과 같은 API-050, 오늘·이 라인)
   const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(Date.now()), lineId }), PROCESS_POLL_MS)
+  // 오늘 알람 이력 (11/20): 알람 이력 탭과 같은 기준 = 이 라인 설비의 고장(D) + 통신 끊김(DC)
+  const { rows: alarms } = useTodayAlarms(lineId)
+
   const oeeRows = computed<BarRowView[]>(() => {
     const o = oeeReport.value?.oee
     const row = (key: string, label: string, v: number | null | undefined): BarRowView => ({ key, label, value: v ?? null, display: v == null ? '-' : formatNumber(v, 1) })
@@ -47,6 +51,8 @@ export function useLineDetail(lineId: LineId) {
     const info: FlowCellView['info'] = []
     if (row) {
       info.push({ label: e.process === 'PRESS' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
+      // 그 설비에서 공정 판정 NG(폐기)된 수 (11/20). 있으면 빨간 글씨
+      info.push({ label: '불량', value: formatNumber(row.ng ?? 0), alert: (row.ng ?? 0) > 0 })
       if (row.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초` })
     }
     return {
@@ -103,5 +109,5 @@ export function useLineDetail(lineId: LineId) {
     }
   })
 
-  return { flow, now: now_, oeeRows }
+  return { flow, now: now_, oeeRows, alarms }
 }

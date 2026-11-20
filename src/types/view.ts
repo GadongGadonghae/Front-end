@@ -54,7 +54,8 @@ export interface FlowCellView extends EquipCellView {
   reason: { code: string; detail: string | null } | null
   /** 예: 가장 느린 단 */
   note: string | null
-  info: { label: string; value: string }[]
+  /** alert: 빨간 글씨 (불량이 있을 때, 11/20) */
+  info: { label: string; value: string; alert?: boolean }[]
 }
 
 /** 라인 흐름 (SCR-010 3번) */

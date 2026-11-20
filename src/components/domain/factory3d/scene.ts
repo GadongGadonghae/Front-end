@@ -258,6 +258,12 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   ;[0, 1].forEach((p) => pileAt(`PT${p + 1}:PT-VI`, 64, PAINT_Z[p]))
   const coilLab = tag('', 'f3d-cnt', [-64, 9, -30], '3d')
 
+  // ── 배정 칸 (11/20): 물량이 시작되는 코일 입고 왼쪽 바닥에, 라인 줄마다 현재 생산 / 배정(오늘 목표) ──
+  // 승인·적용된 추가 주문 배정이 있으면 "+N 추가 배정"을 붙이고 강조색 테두리
+  tag('배정<small>생산 / 배정</small>', 'f3d-zone f3d-alloc-head', [-94, 7, -42])   // 11/20: 코일 입고·설비를 가리지 않게 왼쪽으로 (-78 → -94)
+  const allocTags = LINES.map((_L, i) => tag('', 'f3d-alloc', [-94, 1, lineZ(i)]))
+  const num = (n: number | null | undefined) => (n == null ? '-' : n.toLocaleString('ko-KR'))
+
   // ── 도장 경로 ──
   let routes: Record<ProductionLineId, number> = { A: 0, B: 0, C: 0, D: 1, E: 1, F: 1 }
   const defP = (i: number) => (i < 3 ? 0 : 1)
@@ -642,6 +648,19 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (LINES.some((L) => next[L] !== routes[L])) { routes = next; drawRoutes() }
     },
     select(L: ProductionLineId | null) { sel = L; applyDim() },
+    /** 배정 칸: 라인별 현재 생산 · 배정(오늘 목표) · 오늘 추가 배정 */
+    setAllocation(rows: Partial<Record<ProductionLineId, { done: number | null; plan: number | null; added: number }>>) {
+      LINES.forEach((L, i) => {
+        const r = rows[L]
+        const el = allocTags[i].el
+        const pct = r?.done != null && r.plan ? Math.min(100, Math.round((r.done / r.plan) * 100)) : 0
+        el.innerHTML = `<span class="top"><b>${L}</b><span class="n"><b>${num(r?.done)}</b> / ${num(r?.plan)}</span></span>`
+          + `<span class="bar"><i style="width:${pct}%"></i></span>`
+          + (r?.added ? `<span class="add">+${num(r.added)} 추가 배정</span>` : '')
+        el.classList.toggle('more', !!r?.added)
+        el.setAttribute('aria-label', `${L}라인 현재 생산 ${num(r?.done)}, 배정 ${num(r?.plan)}${r?.added ? `, 오늘 추가 배정 ${num(r.added)}` : ''}`)
+      })
+    },
     setView,
     onModeChange(cb: (m: ViewMode) => void) { onMode = cb },
     flyTo,

@@ -4,8 +4,8 @@ import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
-  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
-  UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
+  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
+  UtilizationByEquipmentDto, FlowReportDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
 
 type Unit = 'day' | 'week' | 'month'
@@ -96,6 +96,23 @@ export const api = {
   R02: (reportId: number) => http.get<ReassignmentDetailDto>(`/reassignments/${reportId}`),
   /** R-03 AI 계획수정 보고서 만들기 (고장 건으로, 누를 때마다 새 보고서). additionalRequest = AI 추가 요청 */
   R03: (downtimeId: number, additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { downtimeId, additionalRequest }),
+  /** R-03 basis=target: 고장 건 없이 오늘 생산 목표 기준 (11/20 목표 변동) */
+  R03T: (additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { basis: 'target', additionalRequest }),
+  /** R-04 보고서 승인(결재). 공장장만 (11/20) */
+  R04: (reportId: number) => http.post<ReassignmentDetailDto>(`/reassignments/${reportId}/approve`, {}),
+  /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로, 서버(AI)가 조건으로 해석 */
+  R05: (request: string) => http.post<ReassignmentDetailDto>('/reassignments/orders', { request }),
+  /** R-06 추가 주문 배정 승인·적용: 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 (한 번만) */
+  R06: (reportId: number) => http.post<ApplyResponseDto>(`/reassignments/${reportId}/apply`, {}),
+  // ── 보고서 결재·전송 (R-10 ~ R-14, 11/20 MES 명세 docs/api-spec-report-approval-mes.md) ──
+  /** R-10 작성 (생산관리팀장). DAILY는 화면이 계산한 내용을 content로 */
+  R10: (body: { kind: 'DAILY' | 'REPLAN'; targetKey: string; additionalRequest?: string; content?: unknown }) => http.post<FlowReportDto>('/reports', body),
+  /** R-11 목록 (content 없음). replanId = 계획수정 보고서 번호 */
+  R11: (q: { kind?: 'DAILY' | 'REPLAN'; status?: string; replanId?: number; page?: number; size?: number } = {}) => http.get<Page<FlowReportDto>>('/reports', { page: 1, size: 100, ...q }),
+  /** R-13 결재 (공장장). REPLAN이면 서버가 계획·도장 경로에 적용 */
+  R13: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/approve`, {}),
+  /** R-14 전송 (공장장, 결재 완료 후에만) → MES 수신함 */
+  R14: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/send`, {}),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

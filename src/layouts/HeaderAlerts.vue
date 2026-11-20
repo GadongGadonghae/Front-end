@@ -5,9 +5,10 @@ import { RouterLink } from 'vue-router'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
 import PdmMark from '@/components/domain/PdmMark.vue'
-import { useTodayAlerts } from '@/composables/useTodayAlerts'
+import { useTodayAlarms } from '@/composables/useTodayAlarms'
 
-const { rows, ongoingCount } = useTodayAlerts()
+// 알람 이력 탭과 같은 기준: 고장 + 통신 끊김 (대기·정지는 빼요, 11/20)
+const { rows, ongoingCount } = useTodayAlarms()
 const recent = computed(() => rows.value.slice(0, 5))
 
 const open = ref(false)

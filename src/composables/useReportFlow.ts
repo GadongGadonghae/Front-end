@@ -1,12 +1,17 @@
 // AI 리포트 결재·전송 (11/20 확정): 작성(생산 관리 팀장) → 결재 완료(공장장) → 전송 완료(공장장, 결재 완료 후에만)
 // 상태는 모두에게 보인다. 전송된 보고서는 임시 MES(/mes)에서 캠퍼스장이 열람한다
-// 백엔드에 보고서 상태 API가 없어서 브라우저 저장소(localStorage)에 둔다 → 같은 주소·같은 브라우저에서만 이어진다
+// 문서 내용(MES 열람·.doc용)은 브라우저 저장소(localStorage)에 두고, 상태는 서버에도 기록한다 (11/20 R-10·R-13·R-14)
+//   → 서버가 결재 때 계획·도장 경로에 적용하고, 전송된 보고서는 서버 MES 수신함(M-01)에도 들어간다. 데모 데이터는 저장소만
 import { computed, ref } from 'vue'
+import { source } from '@/data'
 import { useAuth } from '@/composables/useAuth'
 import type { DailyDocData } from '@/lib/dailyDoc'
 import type { ReplanDocData } from '@/lib/replanDoc'
 
 const KEY = 'sfaas.reportFlow.v1'
+
+/** 이 시스템이 도입된 곳: 차체 캠퍼스 공장 1 (서버가 생기면 서버 설정 고정값으로 내려받음) */
+export const OUR_PLANT = { campusId: 'BODY', factoryId: 1 } as const
 
 export type FlowStatus = 'WRITTEN' | 'APPROVED' | 'SENT'
 export const FLOW_NAME: Record<FlowStatus, string> = { WRITTEN: '작성', APPROVED: '결재 완료', SENT: '전송 완료' }
@@ -17,6 +22,9 @@ export interface ReportFlow {
   key: string
   kind: 'daily' | 'replan'
   title: string
+  /** 어느 캠퍼스·공장 보고서인지 (임시 MES 구분용). 옛 저장값에는 없을 수 있음 */
+  campusId?: string
+  factoryId?: number
   status: FlowStatus
   writtenBy: string
   writtenAt: string
@@ -37,6 +45,20 @@ function read(): Record<string, ReportFlow> {
 }
 
 const store = ref<Record<string, ReportFlow>>(read())
+/** 마지막 서버 기록 실패 문구 (화면에 보여 줌) */
+const lastError = ref('')
+
+/** 서버에도 기록. 실패하면 문구를 남기고 false (저장소는 바꾸지 않음) */
+async function server(action: 'write' | 'approve' | 'send', key: string, content?: unknown): Promise<boolean> {
+  lastError.value = ''
+  try {
+    await source.cmd.syncReportFlow(action, key, content)
+    return true
+  } catch (e) {
+    lastError.value = e instanceof Error ? e.message : '서버에 기록하지 못했습니다'
+    return false
+  }
+}
 
 function save() {
   try {
@@ -75,26 +97,29 @@ export function useReportFlow() {
   }
 
   /** 팀장: 작성 완료(결재 요청). 다시 누르면 내용을 새로 찍고 결재를 다시 받는다. 전송 뒤에는 못 바꾼다 */
-  function write(key: string, kind: ReportFlow['kind'], title: string, doc: DailyDocData | ReplanDocData) {
+  async function write(key: string, kind: ReportFlow['kind'], title: string, doc: DailyDocData | ReplanDocData) {
     if (!can('reportWrite') || store.value[key]?.status === 'SENT') return
+    if (!(await server('write', key, doc))) return
     put({
-      key, kind, title, status: 'WRITTEN', writtenBy: userName.value, writtenAt: now(),
+      key, kind, title, ...OUR_PLANT, status: 'WRITTEN', writtenBy: userName.value, writtenAt: now(),
       approvedBy: null, approvedAt: null, sentBy: null, sentAt: null,
       ...(kind === 'daily' ? { daily: doc as DailyDocData } : { replan: doc as ReplanDocData }),
     })
   }
 
   /** 공장장: 결재 */
-  function approve(key: string) {
+  async function approve(key: string) {
     const f = store.value[key]
     if (!f || f.status !== 'WRITTEN' || !can('reportApprove')) return
+    if (!(await server('approve', key))) return
     put({ ...f, status: 'APPROVED', approvedBy: userName.value, approvedAt: now() })
   }
 
   /** 공장장: 보고서 전송 (결재 완료 후에만) → MES */
-  function send(key: string) {
+  async function send(key: string) {
     const f = store.value[key]
     if (!f || f.status !== 'APPROVED' || !can('reportApprove')) return
+    if (!(await server('send', key))) return
     put({ ...f, status: 'SENT', sentBy: userName.value, sentAt: now() })
   }
 
@@ -107,7 +132,7 @@ export function useReportFlow() {
     save()
   }
 
-  return { flowOf, write, approve, send, sent, resetAll }
+  return { flowOf, write, approve, send, sent, resetAll, lastError }
 }
 
 const stamp = (who: string | null, at: string | null) => {

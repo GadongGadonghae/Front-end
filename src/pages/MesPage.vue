@@ -89,6 +89,8 @@ const pct = (done: number, plan: number) => `${((done / plan) * 100).toFixed(1)}
 const pickedKey = ref<string | null>(null)
 const picked = computed(() => flow.sent.value.find((f) => f.key === pickedKey.value) ?? flow.sent.value[0] ?? null)
 const KIND = { daily: '일일 생산 마감', replan: '생산계획 수정 검토' }
+// 공장별 란: 실제로 보고서를 보내는 곳은 우리 시스템(차체 캠퍼스 공장 1)뿐. 나머지 공장은 빈 란 (더미 공장 목록)
+const isOurs = (campus: string, factory: string) => campus === '차체 캠퍼스' && factory === '공장 1'
 
 async function download() {
   const f = picked.value
@@ -103,7 +105,7 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="mes">
+  <div :class="['mes', { home: view === 'home' }]">
     <header class="top">
       <b class="brand">차체 캠퍼스 MES</b>
       <span class="tag">임시 구현 · 시연용</span>
@@ -129,7 +131,7 @@ async function onLogout() {
         </button>
       </nav>
 
-      <main class="body">
+      <main :class="['body', { home: view === 'home' }]">
         <!-- 현황 대시보드 (전부 더미) -->
         <template v-if="view === 'home'">
           <p class="dummy-note">이 화면의 숫자와 목록은 모두 <b>더미 데이터</b>입니다. 열리는 메뉴는 [수신 보고서] 하나뿐입니다.</p>
@@ -219,7 +221,7 @@ async function onLogout() {
             </section>
           </div>
 
-          <section class="panel">
+          <section class="panel deliv">
             <h2>납입 일정 <small>고객사별 · 오늘</small></h2>
             <table>
               <thead><tr><th>시간</th><th>고객사</th><th>품목</th><th>수량</th><th>상태</th></tr></thead>
@@ -237,16 +239,22 @@ async function onLogout() {
         <div v-else class="reports">
           <section class="panel list">
             <h2>받은 공장 보고서 <small>{{ flow.sent.value.length }}건</small></h2>
-            <ul v-if="flow.sent.value.length">
-              <li v-for="f in flow.sent.value" :key="f.key">
-                <button type="button" :class="['item', { on: picked?.key === f.key }]" @click="pickedKey = f.key">
-                  <span class="from">공장 1 · {{ KIND[f.kind] }}</span>
-                  <b>{{ f.title }}</b>
-                  <span class="when">{{ flowLine(f).sent }} 전송</span>
-                </button>
-              </li>
-            </ul>
-            <p v-else class="empty">아직 전송된 보고서가 없습니다. 우리 시스템에서 공장장이 결재 후 [보고서 전송]을 누르면 여기에 들어옵니다.</p>
+            <template v-for="c in CAMPUSES" :key="c.name">
+              <section v-for="fa in c.factories" :key="c.name + fa.name" class="fgroup">
+                <h3>{{ c.name }} · {{ fa.name }} <small>{{ isOurs(c.name, fa.name) ? flow.sent.value.length : 0 }}건</small></h3>
+                <ul v-if="isOurs(c.name, fa.name) && flow.sent.value.length">
+                  <li v-for="f in flow.sent.value" :key="f.key">
+                    <button type="button" :class="['item', { on: picked?.key === f.key }]" @click="pickedKey = f.key">
+                      <span class="from">{{ KIND[f.kind] }}</span>
+                      <b>{{ f.title }}</b>
+                      <span class="when">{{ flowLine(f).sent }} 전송</span>
+                    </button>
+                  </li>
+                </ul>
+                <p v-else-if="isOurs(c.name, fa.name)" class="empty">아직 전송된 보고서가 없습니다. 우리 시스템에서 공장장이 결재 후 [보고서 전송]을 누르면 여기에 들어옵니다.</p>
+                <p v-else class="empty">받은 보고서 없음</p>
+              </section>
+            </template>
           </section>
 
           <section class="panel view">
@@ -384,6 +392,32 @@ async function onLogout() {
 .dummy-note {
   color: var(--c-ink-3);
   font-size: var(--fs-row);
+}
+
+/* 현황 대시보드: 화면 한 장에 딱 맞춘다 (F11 전체 화면 포함). 남는·모자란 높이는 가운데 두 패널이 받는다 */
+.mes.home {
+  height: 100vh;
+}
+
+.body.home {
+  grid-template-rows: auto auto minmax(min-content, 3fr) minmax(min-content, 2fr);
+  align-content: stretch;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 낮은 화면(노트북 1536×864 등): 간격·칸 여백을 줄여 스크롤 없이 */
+@media (height <= 960px) {
+  .body.home { gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-2); }
+
+  .body.home .kpi,
+  .body.home .panel { padding: var(--sp-3); }
+  .body.home .k-chart { min-height: 56px; }
+
+  .body.home h2 { margin-bottom: var(--sp-2); }
+
+  .body.home td,
+  .body.home th { padding-block: var(--sp-1); }
 }
 
 .kpis {
@@ -608,6 +642,7 @@ th {
 
 .bars {
   display: grid;
+  align-content: space-around;
   gap: var(--sp-2);
   margin: 0;
   padding: 0;
@@ -629,6 +664,18 @@ th {
   background: var(--c-proc-1);
 }
 
+.grid2 .panel,
+.body.home .deliv {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid2 table,
+.grid2 .bars,
+.body.home .deliv table {
+  flex: 1;
+}
+
 .reports {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -642,6 +689,23 @@ th {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.fgroup + .fgroup {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: var(--line-w) solid var(--c-line);
+}
+
+h3 {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-row);
+  font-weight: var(--fw-strong);
+}
+
+h3 small {
+  color: var(--c-ink-3);
+  font-weight: normal;
 }
 
 .item {

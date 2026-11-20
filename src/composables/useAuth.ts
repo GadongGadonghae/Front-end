@@ -1,10 +1,12 @@
 // 로그인 상태 (FN-016): 자동 로그아웃 없음, 브라우저를 닫아도 7일 유지 (D-75)
-// 데모에서는 브라우저 저장소에 둔다. 실제 API가 생기면 백엔드 세션(쿠키)으로 바꾼다
-// 계정별 권한 (11/20): 데모 계정 4종(공장장·생산 관리 팀장·라인 담당자·캠퍼스장)의 역할은 프론트 계정표(data/accounts)에서 정한다
+// 계정별 권한 (11/20): 공장장·생산 관리 팀장·라인 담당자·캠퍼스장. 권한 표는 lib/access.ts
+//   실서버: 로그인 응답(C-01)의 role·lines (백엔드 users.role·lines, DB v0.3.15)
+//   데모 데이터: 프론트 데모 계정표(data/accounts)의 4종 (plant·lead·lineA·campus, 비밀번호 1234)
 import { computed, ref } from 'vue'
 import { source } from '@/data'
 import { DEMO_ACCOUNTS, findAccount } from '@/data/accounts'
 import { ROLE_NAME, allowed, type Perm } from '@/lib/access'
+import { isRole } from '@/lib/permissions'
 import type { AppRole } from '@/types/user'
 
 const KEY = 'sfaas.session'
@@ -17,8 +19,8 @@ function read(): Session | null {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     const s = JSON.parse(raw) as Session
-    // 역할이 없는 옛 저장값은 다시 로그인
-    return s.expiresAt > Date.now() && s.role ? s : null
+    // 권한이 없거나 예전 이름(PLANT_HEAD 등)인 저장값은 다시 로그인
+    return s.expiresAt > Date.now() && isRole(s.role) ? { ...s, lines: s.lines ?? [] } : null
   } catch {
     return null
   }
@@ -38,21 +40,27 @@ const session = ref<Session | null>(read())
 export function useAuth() {
   const loggedIn = computed(() => session.value !== null)
   const userName = computed(() => session.value?.name ?? '')
-  const role = computed(() => session.value?.role ?? null)
+  const role = computed<AppRole | null>(() => session.value?.role ?? null)
   const roleName = computed(() => (session.value ? ROLE_NAME[session.value.role] : ''))
   const lines = computed(() => session.value?.lines ?? [])
+  const loginId = computed(() => session.value?.loginId ?? '')
 
-  /** 성공하면 true. 실패 문구는 화면이 정한다 (FN-016) */
+  /** 성공하면 true. 실패 문구는 화면이 정한다 (FN-016). 권한을 모르는 계정은 Error(문구에 '권한') */
   async function login(userId: string, password: string): Promise<boolean> {
-    const acc = findAccount(userId)
-    // 데모 데이터: 데모 계정 4종만 들어간다 (비밀번호 1234)
-    if (source.demo && (!acc || acc.password !== password)) return false
-    const res = await source.cmd.login(userId, password)
-    if (!res.ok) return false
-    // 실서버 계정이 데모 계정표에 없으면 보기 전용(캠퍼스장과 같은 권한, MES 제외)으로 둔다
-    session.value = acc
-      ? { loginId: acc.loginId, name: acc.name, role: acc.role, lines: acc.lines, expiresAt: Date.now() + KEEP_MS }
-      : { loginId: userId, name: res.name, role: 'CAMPUS', lines: [], expiresAt: Date.now() + KEEP_MS }
+    if (source.demo) {
+      // 데모 데이터: 데모 계정 4종만 들어간다 (비밀번호 1234)
+      const acc = findAccount(userId)
+      if (!acc || acc.password !== password) return false
+      const res = await source.cmd.login(userId, password)
+      if (!res.ok) return false
+      session.value = { loginId: acc.loginId, name: acc.name, role: acc.role, lines: acc.lines, expiresAt: Date.now() + KEEP_MS }
+    } else {
+      const res = await source.cmd.login(userId, password)
+      if (!res.ok) return false
+      // 모르는 권한(예전 ADMIN·PLANT_HEAD 등)은 기능을 잘못 열지 않게 로그인을 막아요
+      if (!isRole(res.role)) throw new Error(`이 계정의 권한(${res.role})을 알 수 없어요. 관리자에게 권한 변경(DB v0.3.15)을 요청하세요`)
+      session.value = { loginId: userId, name: res.name, role: res.role, lines: res.lines ?? [], expiresAt: Date.now() + KEEP_MS }
+    }
     write(session.value)
     return true
   }
@@ -66,7 +74,7 @@ export function useAuth() {
   /** 권한 확인. 조치 쓰기는 설비 ID를 넘기면 담당 라인까지 본다 */
   const can = (perm: Perm, equipmentId?: string) => allowed(role.value, lines.value, perm, equipmentId)
 
-  return { loggedIn, userName, role, roleName, lines, can, login, logout }
+  return { loggedIn, userName, role, roleName, lines, loginId, can, login, logout }
 }
 
 /** 라우터 가드용: 반응형 없이 지금 로그인했는지 */
@@ -75,6 +83,11 @@ export function isLoggedIn(): boolean {
 }
 
 /** 라우터 가드용: 지금 계정의 권한 */
+export function currentRole(): AppRole | null {
+  return session.value?.role ?? null
+}
+
+/** 라우터 가드용: 이 권한이 있는지 */
 export function hasPerm(perm: Perm): boolean {
   const s = session.value
   return !!s && allowed(s.role, s.lines, perm)
@@ -85,5 +98,5 @@ export const DEMO_LOGINS = DEMO_ACCOUNTS.map((a) => ({ ...a, roleName: ROLE_NAME
 
 /** 로그인 후 첫 화면: 캠퍼스장은 임시 MES, 나머지는 대시보드 */
 export function homePath(): string {
-  return session.value?.role === 'CAMPUS' && source.demo ? '/mes' : '/'
+  return session.value?.role === 'CAMPUS' ? '/mes' : '/'
 }

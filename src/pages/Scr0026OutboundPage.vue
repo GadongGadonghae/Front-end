@@ -2,6 +2,7 @@
      제목 줄 오른쪽: 오늘 검사 · 양품 · 불량 · 불량률. 본문 왼쪽: 비전 카드 + 라인별 출고 불량 → 불량 목록. 오른쪽 열: 비가동 이력 -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -13,7 +14,6 @@ import InspectionPanel from '@/components/domain/InspectionPanel.vue'
 import DowntimeHistory from '@/components/domain/DowntimeHistory.vue'
 import { useOutbound } from '@/composables/useEndpoints'
 import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
-import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const { card, inspections, byLine, equipmentId } = useOutbound()

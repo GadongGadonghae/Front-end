@@ -19,6 +19,8 @@ const userId = ref('')
 const password = ref('')
 const failed = ref(false)
 const unreachable = ref(false)
+/** 로그인은 됐지만 권한 코드를 모를 때 (예전 계정, DB v0.3.13 전) */
+const roleError = ref('')
 const busy = ref(false)
 
 const flow = useReportFlow()
@@ -39,14 +41,16 @@ async function submit() {
   busy.value = true
   failed.value = false
   unreachable.value = false
+  roleError.value = ''
   try {
     failed.value = !(await login(userId.value, password.value))
-  } catch {
-    unreachable.value = true
+  } catch (e) {
+    if (e instanceof Error && e.message.includes('권한')) roleError.value = e.message
+    else unreachable.value = true
   } finally {
     busy.value = false
   }
-  if (failed.value || unreachable.value) return
+  if (failed.value || unreachable.value || roleError.value) return
   // 로그인 후 원래 가려던 화면, 없으면 대시보드 (FN-016)
   const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : DEFAULT_PATH()
   router.replace(redirect)
@@ -61,6 +65,7 @@ async function submit() {
       <BaseInput v-model="password" label="비밀번호" type="password" autocomplete="current-password" :invalid="failed" />
       <p v-if="failed" class="error" role="alert">아이디 또는 비밀번호가 맞지 않습니다</p>
       <p v-else-if="unreachable" class="error" role="alert">서버에 연결할 수 없습니다</p>
+      <p v-else-if="roleError" class="error" role="alert">{{ roleError }}</p>
       <BaseButton variant="primary" type="submit" :disabled="busy">로그인</BaseButton>
       <div v-if="demo" class="demo">
         <p class="note">시연용 데모 계정 (비밀번호 1234) · 누르면 채워집니다</p>

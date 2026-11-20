@@ -12,7 +12,8 @@ export interface ProcessToday {
   /** 앞·뒤 재공 */
   wip: { before: number | null; after: number | null }
   /** 설비별 오늘 사이클·평균 CT. 가장 느린 단 표시 */
-  equipment: { id: string; cycles: number; avgCtMs: number | null; slowest?: boolean; wip?: { before: number | null; after: number | null } }[]
+  /** ng = 그날 이 설비에서 공정 불량(폐기)된 수 (11/20, M-15) */
+  equipment: { id: string; cycles: number; avgCtMs: number | null; ng?: number; slowest?: boolean; wip?: { before: number | null; after: number | null } }[]
   /** 도장: 라인별로 받은 수 */
   receivedByLine?: { lineId: LineId; qty: number }[]
   /** 슬리팅 실설비: 인버터 상태 (D-43) */
@@ -30,9 +31,14 @@ export interface InverterStatus {
 }
 
 /** API-040 관리값 추이 한 항목 */
+/** 값이 어디서 오는지: process = 공정 관리값(백엔드 수집) · inverter = 슬리팅 인버터 · sensor = 설비 상태 센서(온도·진동·전류, 지금은 프론트 더미) */
+export type MetricSource = 'process' | 'inverter' | 'sensor'
+
 export interface TelemetryItem {
   item: string
   unit: string
+  /** 없으면 process */
+  source?: MetricSource
   /** 미정이면 null → 기준선 없이 "기준 미정" */
   lower: number | null
   upper: number | null

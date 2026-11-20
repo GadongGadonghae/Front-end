@@ -33,8 +33,11 @@ const router = useRouter()
 const lineId = route.params.lineId as LineId
 const name = lineLabel(lineId)
 
-const { flow, now, oeeRows } = useLineDetail(lineId)
-const { rows: alerts, ongoingCount } = useTodayAlerts({ area: lineId })
+const { flow, now, oeeRows, alarms } = useLineDetail(lineId)
+const alarmOngoing = computed(() => alarms.value.filter((r) => r.ongoing).length)
+/** 오늘 알람 이력 → 알람 이력 탭 (이 라인으로 거름, 11/20) */
+const openAlarms = () => router.push({ path: '/alarms', query: { line: lineId } })
+const { rows: alerts } = useTodayAlerts({ area: lineId }) // 고장 띠·비가동 누적용 (대기·정지 포함)
 const { equipmentById } = useMaster()
 
 const tabs = lineTabs(lineLabel)
@@ -132,8 +135,9 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
       </BasePanel>
 
       <div class="side">
-        <BasePanel class="alerts" title="오늘 알람 이력" :meta="`${alerts.length}건 · 진행 중 ${ongoingCount}`" flush>
-          <AlertList :rows="alerts" @open="openAlert" @report="openReport" />
+        <BasePanel class="alerts" title="오늘 알람 이력" :meta="`고장·통신 끊김 ${alarms.length}건 · 진행 중 ${alarmOngoing}`" flush>
+          <template #tools><button class="to-alarms" type="button" @click="openAlarms">알람 이력 ›</button></template>
+          <AlertList :rows="alarms" @open="openAlert" @report="openReport" />
         </BasePanel>
         <BasePanel class="down" title="비가동 사유별 누적">
           <p class="total">오늘 비가동 합계 <b>{{ minutes(downtime.total) }}</b></p>
@@ -325,5 +329,17 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
 .bar i {
   display: block;
   height: 100%;
+}
+/* 오늘 알람 이력 → 알람 이력 탭 (11/20) */
+.to-alarms {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.to-alarms:hover {
+  text-decoration: underline;
 }
 </style>

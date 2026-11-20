@@ -14,12 +14,15 @@ import type { ReplanReport } from '@/types/report'
 import { api } from '@/data/api/endpoints'
 import { ApiError, token } from '@/data/api/http'
 import { isTodo, summarize } from '@/data/historyTodo'
+import { sensorRisks, sensorTickValues, withSensors } from '@/data/dummy/sensors'
 
 const SNAPSHOT_MS = 1000
 const SUMMARY_MS = 10_000
 /** 알람 발생·해제 확인 주기. 짧을수록 해제 직후 지속시간이 덜 넘어가요 (11/20 5초 → 2초) */
 const ALARM_MS = 2000
 const TELEMETRY_MS = 2000
+/** 예지보전 위험도 5초 (API 명세 3.1 risk) */
+const RISK_MS = 5000
 const LINES = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 // ── 기준정보 중 API에 없는 것 (명세 공통 규칙에서 옮김) ──
@@ -78,11 +81,15 @@ const liveOf = (s: EquipmentStatusDto): EquipmentLive => ({ id: s.equipmentId, s
 const limitOf = (t: ThresholdDto, type: EquipmentTypeCode): ControlLimit => ({
   id: t.id, equipmentId: t.equipmentId, type, item: t.metric, unit: t.unit ?? '', lower: t.low, upper: t.high, updatedAt: t.updatedAt ?? null, updatedBy: t.updatedBy ?? null,
 })
-const eventOf = (e: DowntimeEventDto): HistoryEvent => ({
+const stateEventOf = (e: DowntimeEventDto): StateEvent => ({
   id: String(e.eventId), equipmentId: e.equipmentId, state: e.status, code: e.reasonCode, detail: e.detail,
   start: e.startAt, end: e.endAt, memo: e.memo || null, memoBy: e.actionUserName, memoAt: e.actionAt,
-  reportId: null, alarmLevel: null, notify: null,
+  reportId: null, alarmLevel: null,
 })
+const eventOf = (e: DowntimeEventDto): HistoryEvent => ({ ...stateEventOf(e), notify: null })
+/** U-08 상태 조건: 쉼표로 여러 개 (예: D,DC). 통신 끊김(DC)은 고를 때만 와요 (11/20 백엔드: 상태 이력의 DC 구간, eventId 음수·메모 불가).
+ *  상태를 안 고르면 백엔드는 S·I·D만 줘서 가동률·비가동 숫자에 DC가 섞이지 않아요 */
+const stopStatus = (states: HistoryQuery['states']) => states.join(',') || undefined
 // ── 제품 추적 (P-01·P-02 → 생산 조회 화면) ──
 const STEPS: ProcessId[] = ['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION']
 const productResult = (f: ProductDto['finalResult']): Product['result'] => (f === 'OK' ? 'ok' : f === 'NG' ? 'ng' : 'wip')
@@ -139,16 +146,20 @@ function productDetailOf(d: ProductDetailDto): ProductDetail {
 
 /** R-02·R-03 → 계획수정 보고서 화면. 예전 보고서(계산 칸 없음)는 0·null로 채운다 */
 const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
-  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode,
-  createdBy: r.createdBy ?? '-', stateEventId: String(r.downtimeId), start: r.startedAt, detail: r.detail,
+  // 고장 건 없는 보고서: target(생산 목표 변경) = 'TARGET', order(추가 주문 배정) = '' (설비·고장 번호가 비어 있다)
+  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
+  createdBy: r.createdBy ?? '-', stateEventId: r.kind === 'target' ? 'TARGET' : r.kind === 'order' ? '' : String(r.downtimeId), start: r.startedAt ?? r.baseAt ?? r.createdAt, detail: r.detail,
   kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
   unmet: r.unmetQty ?? 0, target: r.targetQty ?? null, documentNo: r.documentNo,
+  approved: r.approved ?? false, approvedBy: r.approvedBy ?? null, approvedAt: r.approvedAt ?? null,
   ai: r.ai ? {
     title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
     fallbackReason: r.ai.fallbackReason ?? null, additionalRequest: r.ai.additionalRequest ?? null, interpretation: r.ai.requestInterpretation ?? null,
   } : null,
+  causeTrace: r.ai?.causeTrace ?? null,
+  order: r.ai?.order ?? null,
 })
 // ── 구역·비가동 공통 (11/20 화면 간 숫자 맞추기) ──
 // 화면의 구역은 생산 라인 A~F와 도장(PT)·출고(VI). 백엔드는 라인만 lineId로 받으므로 PT·VI는 공정 조건으로 바꾼다
@@ -218,7 +229,7 @@ async function historyAll(q: Omit<HistoryQuery, 'page' | 'todo'>): Promise<Histo
   for (let page = 1; page <= 20; page++) {
     const p = await api.U08({
       from: q.from, to: q.to,
-      lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.join(','), reasonCode: q.code, inProgress: q.ongoing,
+      lineId: q.lineId, process: q.process as ProcessId | undefined, status: stopStatus(q.states), reasonCode: q.code, inProgress: q.ongoing,
       minMinutes: q.minMinutes ?? 0, page, size: 100,
     })
     out.push(...p.items.map(eventOf))
@@ -273,6 +284,10 @@ export function createApiSource(): DataSource {
     return { lines: lineList, processes: PROCESSES, equipmentTypes: TYPES, equipment, downtimeCodes: CODES, controlLimits: limits.map((t) => limitOf(t, typeById.get(t.equipmentId) ?? 'press')) }
   }
 
+  /** 기준정보는 한 번만 받아 둔다 (예지보전 더미 위험도용) */
+  let masterCache: Promise<MasterData> | null = null
+  const masterOnce = () => (masterCache ??= master().catch((e) => { masterCache = null; throw e }))
+
   async function snapshot(): Promise<PlantSnapshot> {
     const [status, counts, coil] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M16()])
     return {
@@ -324,7 +339,7 @@ export function createApiSource(): DataSource {
   async function todayEvents(q: { equipmentId?: string; lineId?: string; process?: ProcessId } = {}): Promise<StateEvent[]> {
     // 알람 이력 탭과 같은 기준: 1분 미만도 포함 (11/20). 최근순 100건
     const p = await api.U08({ ...todayRange(), ...q, minMinutes: 0, page: 1, size: 100 }) // 백엔드 size 최대 100
-    return p.items.map(eventOf)
+    return p.items.map(stateEventOf)
   }
 
   // 알람 발생·해제: 진행 중인 건만 (1분 미만도) 5초마다 받아 지난번과 비교한다. 구독이 여럿이어도 조회는 하나 (W-01·W-02로 바꿀 자리)
@@ -335,7 +350,7 @@ export function createApiSource(): DataSource {
     let first = true
     return poll(ALARM_MS, async () => {
       const p = await api.U08({ ...todayRange(), inProgress: true, minMinutes: 0, page: 1, size: 100 })
-      const now = new Map(p.items.map(eventOf).map((e) => [e.id, e]))
+      const now = new Map(p.items.map(stateEventOf).map((e) => [e.id, e]))
       const emit = (a: AlarmEvent) => alarmListeners.forEach((cb) => cb(a))
       if (!first) {
         for (const [id, e] of now) if (!prev.has(id)) emit({ kind: 'raised', event: e })
@@ -372,7 +387,13 @@ export function createApiSource(): DataSource {
         }
       },
       onRiskChanged: () => () => {},
-      onRisk: (cb) => { cb([]); return () => {} },
+      // 백엔드에 위험도 API가 없다 → 설비 상태 센서 더미로만 위험도를 만든다 (data/dummy/sensors.ts)
+      onRisk(cb) {
+        return poll(RISK_MS, async () => {
+          const m = await masterOnce()
+          cb(sensorRisks(m.equipment, Date.now() / 1000))
+        })
+      },
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
         // after: 그 시각보다 뒤의 점만 (M-03, 11/19 백엔드 추가). 처음은 구독한 시각부터 (그 앞은 getTelemetry가 받음)
         let lastTs = isoLocal(Date.now())
@@ -381,7 +402,7 @@ export function createApiSource(): DataSource {
           const m = await api.M03(equipmentId, { from: today, to: today, after: lastTs })
           const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
           for (const v of values) if (Date.parse(v.t) > Date.parse(lastTs)) lastTs = v.t
-          if (values.length) cb({ equipmentId, values })
+          if (values.length) cb({ equipmentId, values: [...values, ...sensorTickValues(equipmentId, values.map((v) => v.t), Date.now() / 1000)] })
         })
       },
     },
@@ -409,7 +430,7 @@ export function createApiSource(): DataSource {
           wip: { before: wip.find((w) => w.nextProcess === process)?.wipQty ?? null, after: wip.find((w) => w.process === process)?.wipQty ?? null },
           // M-15. 그날 행이 없는 설비는 0
           equipment: eqs.map((e) => { const c = cycles.find((x) => x.equipmentId === e.equipmentId); const w = paintWip?.get(e.equipmentId)
-            return { id: e.equipmentId, cycles: c?.cycles ?? 0, avgCtMs: c?.avgCtMs ?? null, wip: w && { before: w.find((x) => x.nextProcess === 'PAINTING')?.wipQty ?? null, after: w.find((x) => x.process === 'PAINTING')?.wipQty ?? null } } }),
+            return { id: e.equipmentId, cycles: c?.cycles ?? 0, avgCtMs: c?.avgCtMs ?? null, ng: c?.ng ?? 0, wip: w && { before: w.find((x) => x.nextProcess === 'PAINTING')?.wipQty ?? null, after: w.find((x) => x.process === 'PAINTING')?.wipQty ?? null } } }),
         }
       },
       async getTelemetry(equipmentId, range) {
@@ -418,7 +439,8 @@ export function createApiSource(): DataSource {
         const m = await api.M03(equipmentId, { from: dateOf(from), to: dateOf(to), interval: range === '1h' ? 'raw' : '5s' })
         return {
           equipmentId, range,
-          items: m.metrics.map((x) => ({ item: x.metric, unit: x.unit, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })),
+          // 설비 상태 센서(온도·진동·전류)는 더미: 공정 관리값과 같은 시각에 붙인다
+          items: withSensors(equipmentId, m.metrics.map((x) => ({ item: x.metric, unit: x.unit, source: 'process' as const, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })), Date.now() / 1000),
         }
       },
       getStateEvents: async ({ equipmentId }) => todayEvents({ equipmentId }),
@@ -514,12 +536,12 @@ export function createApiSource(): DataSource {
         }
         const p = await api.U08({
           from: q.from, to: q.to,
-          lineId: q.lineId, process: q.process as ProcessId | undefined, status: q.states.length ? q.states.join(',') : undefined, reasonCode: q.code, inProgress: q.ongoing,
+          lineId: q.lineId, process: q.process as ProcessId | undefined, status: stopStatus(q.states), reasonCode: q.code, inProgress: q.ongoing,
           minMinutes: q.minMinutes ?? 1, page: q.page, size: 50,
         })
         return { ...p, items: p.items.map(eventOf) }
       },
-      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S'] }), Date.now()),
+      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S', 'DC'] }), Date.now()),
       getRiskHistory: async (q) => ({ items: [], total: 0, page: q.page, size: 50 }),
       // 일일 생산 리포트 (11/19): 전용 API 없이 있는 API를 모아서 만든다
       //  목표 G-02 · 실적·불량 M-07(라인별, 공정별은 라인 6개 합) · OEE U-01 · 라인 OEE U-04 · 비가동 U-07 · 재공 M-13 + 코일 M-16(오늘만)
@@ -574,7 +596,23 @@ export function createApiSource(): DataSource {
       // 계획수정 보고서: R-01 목록 · R-02 내용 (11/19)
       async getReplanReports(from, to) {
         const p = await api.R01({ from, to, page: 1, size: 100 })
-        return p.items.map((r) => ({ id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode, stateEventId: String(r.downtimeId) }))
+        return p.items.map((r) => ({
+          id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode, kind: r.kind ?? undefined,
+          stateEventId: r.kind === 'target' ? 'TARGET' : r.kind === 'order' ? undefined : String(r.downtimeId), approved: r.approved ?? false,
+        }))
+      },
+      // 그날 승인·적용된 추가 주문 배정: R-01 목록에서 order·승인 건만 골라 R-02로 라인별 추가 수량을 더한다 (하루 몇 건뿐)
+      async getOrderAdditions(date) {
+        const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
+        const out: Partial<Record<LineId, number>> = {}
+        const done = p.items.filter((r) => r.kind === 'order' && r.approved)
+        for (const d of await Promise.all(done.map((r) => api.R02(r.reportId)))) {
+          for (const x of d.details) {
+            const l = x.targetLineId as LineId
+            if (x.addQty > 0) out[l] = (out[l] ?? 0) + x.addQty
+          }
+        }
+        return out
       },
       async getReplanReport(id) {
         try {
@@ -605,7 +643,7 @@ export function createApiSource(): DataSource {
           return {
             date: d, quantity: day.reduce((a, p) => a + p.planQty, 0),
             done: d <= today ? rows.reduce((a, r) => a + r.actualQty, 0) : null,
-            updatedBy: last?.updatedBy ?? null,
+            updatedBy: last?.updatedBy ?? null, updatedAt: last?.updatedAt ?? null,
           }
         })
       },
@@ -671,7 +709,7 @@ export function createApiSource(): DataSource {
           throw e
         }
       },
-      getRisks: async () => [],
+      getRisks: async () => sensorRisks((await masterOnce()).equipment, Date.now() / 1000),
       getPdmEta: async () => null,
     },
     cmd: {
@@ -679,7 +717,7 @@ export function createApiSource(): DataSource {
         try {
           const r = await api.C01({ loginId: userId, password })
           token.set(r.accessToken)
-          return { ok: true, name: r.userName }
+          return { ok: true, name: r.userName, role: r.role, lines: r.lines ?? [] }
         } catch (e) {
           // 401(LOGIN_FAILED)만 아이디·비밀번호 오류. 서버가 꺼졌거나 다른 오류는 던져서 화면이 다른 문구를 보여 준다
           if (e instanceof ApiError && e.status === 401) return { ok: false }
@@ -694,6 +732,29 @@ export function createApiSource(): DataSource {
       },
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
+      approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
+      async syncReportFlow(action, key, content) {
+        const [kind, id] = key.split(':')
+        // 계획수정 보고서는 AI 보고서를 만들 때(R-03) 서버가 이미 '작성'으로 기록해요 → 일일 보고서만 작성(R-10)
+        if (action === 'write') {
+          if (kind === 'daily') await api.R10({ kind: 'DAILY', targetKey: id, content })
+          return
+        }
+        const list = await api.R11(kind === 'replan' ? { replanId: Number(id) } : { kind: 'DAILY' })
+        const row = kind === 'replan' ? list.items[0] : list.items.find((r) => r.targetKey === id)
+        if (!row) throw new Error('서버에 보고서 기록이 없어요. 작성부터 다시 해 주세요')
+        if (action === 'approve') {
+          if (row.status === 'WRITTEN') await api.R13(row.reportId)   // 계획수정이면 서버가 계획·도장 경로에 적용
+        } else if (row.status !== 'SENT') {
+          await api.R14(row.reportId)
+        }
+      },
+      createTargetReport: async (additionalRequest) => replanOf(await api.R03T(additionalRequest?.trim() || undefined)),
+      createOrderReport: async (request) => replanOf(await api.R05(request.trim())),
+      async applyOrderReport(id) {
+        const r = await api.R06(Number(id))
+        return { appliedAt: r.appliedAt, startedLines: r.startedLines, targets: r.targets, lineCommandSent: r.lineCommandSent, notes: r.notes }
+      },
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

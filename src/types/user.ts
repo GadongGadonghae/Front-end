@@ -1,7 +1,15 @@
 // 사용자 관리 (API 명세 C-02 목록 · C-03 등록, 11/20)
 
-/** 역할: ADMIN 관리자 · MANAGER 생산관리 · OPERATOR 작업자 */
-export type UserRole = 'ADMIN' | 'MANAGER' | 'OPERATOR'
+/** 역할(권한, 11/20): 공장장 · 생산관리팀장 · 라인 담당자 · 캠퍼스장. 백엔드 users.role과 같은 코드 (DB v0.3.15, MES 명세).
+ *  할 수 있는 일은 lib/access.ts */
+export type UserRole = AppRole
+
+export const ROLE_LABEL: Record<UserRole, string> = {
+  PLANT_HEAD: '공장장',
+  PROD_LEAD: '생산관리팀장',
+  LINE_WORKER: '라인 담당자',
+  CAMPUS: '캠퍼스장',
+}
 
 /** C-02 한 줄 */
 export interface UserRow {
@@ -22,6 +30,8 @@ export interface NewUser {
   role: UserRole
   email?: string
   memo?: string
+  /** 라인 담당자의 담당 라인 (예: ['A','B'], v0.3.15) */
+  lines?: string[]
 }
 
 /** 화면 권한용 계정 종류 (11/20 확정, 프론트 데모): 공장장 · 생산 관리 팀장 · 라인 담당자 · 캠퍼스장(보기 전용 + 임시 MES) */

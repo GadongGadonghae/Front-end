@@ -5,7 +5,7 @@ import type { LineId } from '@/types/plant'
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useMaster } from '@/composables/useMaster'
-import { useTodayAlerts } from '@/composables/useTodayAlerts'
+import { useTodayAlarms } from '@/composables/useTodayAlarms'
 import { lineName } from '@/lib/status'
 import { LINE_IDS } from '@/lib/routes'
 
@@ -28,8 +28,8 @@ export function useAllLines() {
   const snapshot = useLiveSnapshot()
   const summary = useLiveSummary()
   const { equipmentById } = useMaster()
-  // 공장 전체 알람 하나만 구독하고 설비의 구역(라인)으로 나눈다
-  const { rows: alerts } = useTodayAlerts()
+  // 공장 전체 알람(고장 + 통신 끊김, 알람 이력 탭과 같은 기준) 하나만 구독하고 설비의 구역(라인)으로 나눈다
+  const { rows: alerts } = useTodayAlarms()
   const alarmsByLine = computed(() => {
     const m = new Map<string, { total: number; ongoing: number }>()
     for (const r of alerts.value) {
