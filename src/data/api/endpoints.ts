@@ -4,7 +4,7 @@ import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
-  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
+  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
 
@@ -96,6 +96,10 @@ export const api = {
   R02: (reportId: number) => http.get<ReassignmentDetailDto>(`/reassignments/${reportId}`),
   /** R-03 AI 계획수정 보고서 만들기 (고장 건으로, 누를 때마다 새 보고서). additionalRequest = AI 추가 요청 */
   R03: (downtimeId: number, additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { downtimeId, additionalRequest }),
+  /** R-04 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로, 서버(AI)가 조건으로 해석 */
+  R04: (request: string) => http.post<ReassignmentDetailDto>('/reassignments/orders', { request }),
+  /** R-05 추가 주문 배정 승인·적용: 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 (한 번만) */
+  R05: (reportId: number) => http.post<ApplyResponseDto>(`/reassignments/${reportId}/apply`, {}),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

@@ -9,7 +9,7 @@ import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, Telem
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
-import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
+import type { DailyReport, ReplanApplyResult, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
 import type { NewUser, UserRow } from '@/types/user'
 
 export type Unsubscribe = () => void
@@ -105,6 +105,10 @@ export interface Commands {
   saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
   /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
+  /** R-04 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로 ("지금 A~D만 돌리는데 추가 주문 300개, 한 라인 더") */
+  createOrderReport(request: string): Promise<ReplanReport>
+  /** R-05 추가 주문 배정 승인·적용 (한 번만): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 */
+  applyOrderReport(reportId: string): Promise<ReplanApplyResult>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** C-03 사용자 등록. 같은 아이디가 있으면 실패 */

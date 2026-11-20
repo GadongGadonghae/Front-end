@@ -84,7 +84,9 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       const d = toDateStr(Date.parse(r.createdAt))
       let g = out.at(-1)
       if (!g || g.date !== d) out.push(g = { date: d, label: dateWithDay(d), items: [] })
-      g.items.push({ ...r, name: equipmentName(r.equipmentId), codeName: DOWNTIME_NAME[r.code], time: formatTime(r.createdAt) })
+      g.items.push(r.kind === 'order'
+        ? { ...r, name: '추가 주문 배정', codeName: '추가 주문', time: formatTime(r.createdAt) }
+        : { ...r, name: equipmentName(r.equipmentId), codeName: DOWNTIME_NAME[r.code], time: formatTime(r.createdAt) })
     }
     return out
   })
@@ -107,10 +109,26 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return r.id
   }
 
+  /** 추가 주문 배정 승인·적용 (R-05). 적용 뒤 보고서를 다시 읽는다 */
+  async function apply(id: string) {
+    const result = await source.cmd.applyOrderReport(id)
+    const r = await source.q.getReplanReport(id)
+    if (selectedId.value === id) report.value = r
+    return result
+  }
+
+  /** 추가 주문 배정 검토 만들기 (R-04, 고장 건 없이). request = 현장 말 그대로. 만든 보고서 ID */
+  async function createOrder(request: string) {
+    const r = await source.cmd.createOrderReport(request)
+    await loadList()
+    return r.id
+  }
+
   // ── 보고서 내용의 문장과 숫자 ──
   const view = computed(() => {
     const r = report.value
     if (!r) return null
+    if (r.kind === 'order') return orderView(r)
     const name = equipmentName(r.equipmentId)
     const line = r.kind === 'line' ? `${r.equipmentId.split('-')[0]}라인` : null
     const capSum = r.allocations.reduce((a, x) => a + x.capacity, 0)
@@ -161,5 +179,52 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     }
   })
 
-  return { list, groups, report, view, missing, create, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
+  /** 추가 주문 배정 보고서의 문장과 숫자 (고장 보고서와 같은 모양에 맞춘다) */
+  function orderView(r: ReplanReport) {
+    const o = r.order
+    const lines = (ls: string[]) => (ls.length ? ls.map((l) => `${l}`).join('·') + '라인' : '없음')
+    const capSum = r.allocations.reduce((a, x) => a + x.capacity, 0)
+    const planSum = r.allocations.reduce((a, x) => a + x.remainingPlan, 0)
+    const addSum = r.allocations.reduce((a, x) => a + x.add, 0)
+    const due = o?.dueAt === '24:00' ? '오늘 24:00' : `오늘 ${o?.dueAt ?? '24:00'}`
+    const newText = o?.newLines.length ? `${lines(o.newLines)}${o.recommended ? ' (계산으로 추천)' : ''}` : '없음'
+    let compare = ''
+    if (o) {
+      const cur = `지금 가동 중인 ${o.current.lines.length}개 라인(${lines(o.current.lines)})의 남은 능력은 ${formatNumber(o.current.capacity)}개로, `
+        + (o.current.unmet ? `추가 주문 중 ${formatNumber(o.current.unmet)}개를 ${due}까지 만들 수 없습니다.` : `추가 주문을 모두 소화할 수 있습니다.`)
+      const add = o.newLines.length
+        ? ` ${lines(o.newLines)}을 준비 ${o.setupMinutes}분 뒤 가동하면 남은 능력이 ${formatNumber(o.withNew.capacity)}개가 되어 `
+          + (o.withNew.unmet ? `${formatNumber(o.withNew.unmet)}개가 여전히 모자랍니다.` : '납기 안에 모두 만들 수 있습니다.')
+        : ''
+      compare = cur + add
+    }
+    return {
+      title: `추가 주문 배정 검토 · ${formatNumber(o?.addQty ?? r.shortage)}개`,
+      created: `${dateWithDay(toDateStr(Date.parse(r.createdAt)))} ${formatTime(r.createdAt)} 생성 · ${r.createdBy}`,
+      name: '추가 주문', line: null as string | null,
+      start: formatTime(r.baseAt), code: '추가 주문', detail: o?.request ?? '-',
+      occurred: `추가 주문 ${formatNumber(o?.addQty ?? r.shortage)}개가 들어와 ${due}까지 만들어야 합니다.`,
+      remaining: formatDuration(r.remainingSec),
+      remainingRange: `${formatTime(r.baseAt)} ~ ${o?.dueAt ?? '24:00'}`,
+      stoppedLabel: '추가 주문', stoppedSub: `납기 ${due}`,
+      shortageText: '추가 주문 수량을 지금 가동 라인과 새로 켤 라인의 남은 능력 비율대로 나눕니다.',
+      allocText: r.allocations.length
+        ? `${r.allocations.length}개 라인의 남은 능력 비율대로 ${formatNumber(r.shortage)}개를 나눴습니다. 남은 능력 = 납기까지 시간 ÷ 라인 CT ${formatNumber(r.ctSec)}초 − 남은 계획 (새로 켤 라인은 준비 시간을 뺀 시간).`
+        : '나눌 수 있는 라인이 없습니다.',
+      rows: r.allocations.map((a) => ({ key: a.target, target: `${a.target}라인`, remainingPlan: a.remainingPlan, capacity: a.capacity, share: a.share, add: a.add })),
+      sums: { remainingPlan: planSum, capacity: capSum, add: addSum },
+      ok: r.unmet === 0,
+      result: r.unmet === 0
+        ? `배정 합 ${formatNumber(addSum)}개로 추가 주문을 ${due}까지 모두 만들 수 있을 것으로 예상합니다.`
+        : `배정 합 ${formatNumber(addSum)}개로, ${formatNumber(r.unmet)}개는 ${due}까지 만들기 어려울 것으로 예상합니다.`,
+      unmet: r.unmet,
+      order: o ?? null,
+      compare,
+      newText,
+      lines,
+      due,
+    }
+  }
+
+  return { list, groups, report, view, missing, create, createOrder, apply, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
 }

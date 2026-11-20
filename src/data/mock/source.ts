@@ -465,6 +465,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         return past
       },
       createReplanReport: async (eventId) => reports.create(eventId),
+      createOrderReport: async (request) => reports.createOrder(request),
+      applyOrderReport: async (id) => reports.applyOrder(id),
       async createUser(u) {
         if (demoUsers.some((x) => x.loginId === u.loginId)) return { ok: false, error: '이미 있는 아이디입니다' }
         demoUsers.push({ loginId: u.loginId, name: u.name, role: u.role, email: u.email || null, memo: u.memo || null, lastLoginAt: null })

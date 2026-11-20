@@ -13,6 +13,8 @@ import { source } from '@/data'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
 import { downloadReplanDoc } from '@/lib/replanDoc'
+import CauseTraceSection from '@/components/domain/CauseTraceSection.vue'
+import type { ReplanApplyResult } from '@/types/report'
 
 const route = useRoute()
 const router = useRouter()
@@ -28,6 +30,38 @@ const TABS = [
   { key: 'replan', label: '계획수정 보고서', to: '/reports/replan' },
 ]
 const PRIORITY: Record<string, string> = { DUE_DATE: '납기 준수', SAFETY: '안전·품질', BALANCED: '잔여 생산능력' }
+
+// ── 추가 주문 배정 (R-04): 고장 건 없이, 요청 문장으로 만든다 ──
+/** 새 추가 주문 검토를 쓰는 중 (?order=1) */
+const orderMode = computed(() => !selectedId.value && route.query.order === '1')
+/** 보고 있는 보고서가 추가 주문 배정 */
+const isOrder = computed(() => report.value?.kind === 'order')
+/** 추가 주문 보고서의 문장·숫자 (고장 보고서 view에 비교 문장 등이 더 있다) */
+const ov = computed(() => { const x = v.value; return x && 'compare' in x ? x : null })
+function openOrder() {
+  router.push({ path: '/reports/replan', query: { order: '1' } })
+}
+// 승인하고 적용 (R-05): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 → 대시보드에 가동으로 보인다
+const applying = ref(false)
+const applyResult = ref<ReplanApplyResult | null>(null)
+watch(selectedId, () => { applyResult.value = null })
+const canApply = computed(() => isOrder.value && !report.value?.appliedAt && !applying.value)
+async function applyOrder() {
+  const id = selectedId.value
+  const o = report.value?.order
+  if (!id || !o || !canApply.value) return
+  const lines = o.newLines.length ? `${o.newLines.join('·')}라인 가동, ` : ''
+  if (!window.confirm(`${lines}오늘 라인 목표에 배정 수량을 더합니다. 적용할까요?`)) return
+  applying.value = true
+  genError.value = ''
+  try {
+    applyResult.value = await rp.apply(id)
+  } catch (e) {
+    genError.value = e instanceof Error ? e.message : '적용하지 못했습니다'
+  } finally {
+    applying.value = false
+  }
+}
 
 // ── 고장 건 고르기 ──
 const queryEvent = computed(() => {
@@ -59,7 +93,7 @@ function openTrouble(id: string, replace = false) {
 
 // 아무것도 고르지 않았으면: 진행 중 고장이 있으면 그 건, 없으면 가장 최근 보고서
 watch([rp.list, rp.troubles], ([l, t]) => {
-  if (selectedId.value || queryEvent.value || !l || !t) return
+  if (selectedId.value || queryEvent.value || route.query.order || !l || !t) return
   const ongoing = t.find((e) => e.end === null)
   if (ongoing) openTrouble(ongoing.id, true)
   else if (l[0]) router.replace(`/reports/replan/${l[0].id}`)
@@ -89,17 +123,20 @@ const shownCount = computed(() => groups.value.reduce((a, g) => a + g.items.leng
 
 // ── AI 보고서 생성 ──
 const request = ref('')
-watch(report, (r) => { if (r) request.value = r.ai?.additionalRequest ?? '' })
-watch(queryEvent, () => { if (!selectedId.value) request.value = '' })
+watch(report, (r) => { if (r) request.value = r.ai?.additionalRequest ?? r.order?.request ?? '' })
+watch([queryEvent, orderMode], () => { if (!selectedId.value) request.value = '' })
+/** 추가 주문 쪽이면 요청 문장이 있어야, 고장 쪽이면 고장 건이 있어야 만든다 */
+const orderSide = computed(() => orderMode.value || isOrder.value)
+const canGenerate = computed(() => !generating.value && (orderSide.value ? !!request.value.trim() : !!eventId.value))
 const generating = ref(false)
 const genError = ref('')
 async function generate() {
   const ev = eventId.value
-  if (!ev || generating.value) return
+  if (!canGenerate.value) return
   generating.value = true
   genError.value = ''
   try {
-    const id = await rp.create(ev, request.value)
+    const id = orderSide.value ? await rp.createOrder(request.value) : await rp.create(ev!, request.value)
     router.replace(`/reports/replan/${id}`)
   } catch (e) {
     genError.value = e instanceof Error ? e.message : '보고서를 만들지 못했습니다'
@@ -110,6 +147,7 @@ async function generate() {
 
 // ── 보고서 문서 값 ──
 const title = computed(() => {
+  if (orderSide.value) return ov.value ? ov.value.title : '추가 주문 배정 검토'
   const name = report.value ? equipmentName(report.value.equipmentId) : trouble.value ? equipmentName(trouble.value.equipmentId) : null
   return name ? `계획수정 보고서 · ${name}` : '계획수정 보고서'
 })
@@ -122,10 +160,17 @@ const doc = computed(() => {
   const it = r.ai?.interpretation
   const label = (key: string) => (key.length === 1 ? key : equipmentName(key))
   // 재배정 표: 시안처럼 멈춘 라인(설비)도 회색 줄로 넣고, 요청으로 뺀 라인은 노란 줄
+  const added = r.order?.newLines ?? []
   const rows = vv.rows.map((x) => {
     const stopped = it?.stoppedLines.includes(x.key) ?? false
     const excluded = !stopped && (it?.excludedLines.includes(x.key) ?? false)
-    return { ...x, label: label(x.key) + (stopped ? ' (요청 정지)' : excluded ? ' (제외)' : ''), cls: stopped ? 'stopped' : excluded ? 'excluded' : '' }
+    // 추가 주문: 새로 켜는 라인은 노란 줄 + 표시
+    const fresh = added.includes(x.key)
+    return {
+      ...x,
+      label: label(x.key) + (stopped ? ' (요청 정지)' : excluded ? ' (제외)' : fresh ? ' (새로 가동)' : ''),
+      cls: stopped ? 'stopped' : excluded || fresh ? 'excluded' : '',
+    }
   })
   const stoppedKey = r.kind === 'line' ? r.equipmentId.split('-')[0] : r.kind === 'paint' ? r.equipmentId : null
   if (stoppedKey) {
@@ -135,15 +180,15 @@ const doc = computed(() => {
   return {
     documentNo: r.documentNo ?? r.id,
     created,
-    targetLine: vv.line ?? (r.kind === 'paint' ? '도장' : '출고'),
+    targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : '출고'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
     author: r.createdBy,
-    status: '검토 대기',
+    status: r.appliedAt ? `승인·적용 ${formatTime(r.appliedAt).slice(0, 5)}${r.appliedBy ? ` · ${r.appliedBy}` : ''}` : '검토 대기',
     stopSec,
     stop: formatDuration(stopSec),
     rows,
     totalPlan: rows.reduce((a, x) => a + x.remainingPlan, 0),
-    grade: vv.ok ? '목표 달성 가능' : `목표 미달 예상 ${formatNumber(vv.unmet)}개`,
+    grade: vv.ok ? (r.kind === 'order' ? '납기 안 소화 가능' : '목표 달성 가능') : `${r.kind === 'order' ? '납기 미달 예상' : '목표 미달 예상'} ${formatNumber(vv.unmet)}개`,
     resultText: ai.value?.summary ? `${vv.result} ${ai.value.summary}` : vv.result,
     actions: r.ai?.actions ?? [],
     risks: [...(r.ai?.risks ?? []), '본 보고서는 생산계획을 자동 변경하지 않습니다.'],
@@ -201,6 +246,19 @@ async function downloadPdf() {
       <section class="panel side">
         <div class="ph"><h2>계획수정 보고서</h2><span class="meta">현재·이력</span></div>
         <div class="list">
+          <h3 class="list-section">추가 주문</h3>
+          <div
+            :class="['trouble-card', 'order-card', { on: orderMode || isOrder }]"
+            role="button"
+            tabindex="0"
+            @click="openOrder"
+            @keydown.enter.prevent="openOrder"
+            @keydown.space.prevent="openOrder"
+          >
+            <div class="trouble-top"><b>추가 주문 배정 검토</b></div>
+            <p>추가 주문이 들어왔을 때 지금 가동 라인과 새로 켤 라인에 나누는 안을 AI가 만듭니다.</p>
+          </div>
+
           <h3 class="list-section">현재 트러블 슈팅</h3>
           <div
             v-for="t in troubleRows"
@@ -242,7 +300,7 @@ async function downloadPdf() {
                 :class="{ on: it.id === selectedId }"
                 :aria-current="it.id === selectedId ? 'page' : undefined"
               >
-                <b>{{ it.name }}</b><time>{{ it.time }}</time><span>AI 계획수정 보고서</span>
+                <b>{{ it.name }}</b><time>{{ it.time }}</time><span>{{ it.kind === 'order' ? 'AI 추가 주문 배정' : 'AI 계획수정 보고서' }}</span>
               </RouterLink>
             </template>
             <p v-if="rp.list.value && !periodInvalid && !shownCount" class="period-empty">선택한 기간에 작성한 보고서가 없습니다.</p>
@@ -253,27 +311,50 @@ async function downloadPdf() {
       <section class="panel doc">
         <div class="doc-head">
           <div><h2>{{ title }}</h2><p>현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
-          <button class="btn primary" type="button" :disabled="!eventId || generating" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : 'AI 보고서 생성' }}</button>
+          <button class="btn primary" type="button" :disabled="!canGenerate" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : orderSide ? 'AI 배정 검토 생성' : 'AI 보고서 생성' }}</button>
+          <button v-if="isOrder" class="btn primary" type="button" :disabled="!canApply" @click="applyOrder">
+            {{ report?.appliedAt ? '적용됨' : applying ? '적용 중…' : '승인하고 적용' }}
+          </button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
         </div>
 
         <div class="report-tools">
           <div class="request-box">
-            <label for="additionalRequest">AI 추가 요청</label>
+            <label for="additionalRequest">{{ orderSide ? '추가 주문 요청 (AI가 조건으로 해석)' : 'AI 추가 요청' }}</label>
             <textarea
               id="additionalRequest"
               v-model="request"
               maxlength="500"
-              :disabled="!eventId || generating"
-              placeholder="예: A라인은 긴급 주문 생산 중이므로 재배정 대상에서 제외하고 납기 준수를 우선해줘."
+              :disabled="!(eventId || orderSide) || generating"
+              :placeholder="orderSide
+                ? '예: 지금 A~D 4개 라인만 돌리고 있는데 추가 주문 300개 들어왔어. 오늘 안에 끝내야 하니 한 라인 더 가동해서 재배정해줘.'
+                : '예: A라인은 긴급 주문 생산 중이므로 재배정 대상에서 제외하고 납기 준수를 우선해줘.'"
             />
           </div>
           <div class="tool-actions">
             <span v-if="ai" :class="['ai-state', { warn: ai.mock }]">{{ ai.mock ? `AI 생성 실패 · 템플릿 문장${ai.fallbackReason ? ` (${ai.fallbackReason})` : ''}` : `AI 생성 · ${ai.model}` }}</span>
           </div>
           <p v-if="genError" class="gen-error">{{ genError }}</p>
-          <div v-if="ai?.additionalRequest && ai.interpretation" class="info-panel">
+          <div v-if="applyResult" class="info-panel">
+            <h4>적용 결과 · {{ formatTime(applyResult.appliedAt).slice(0, 5) }}</h4>
+            <div class="info-grid">
+              <div><b>가동 시작</b>{{ applyResult.startedLines.length ? applyResult.startedLines.map((l) => `${l}라인`).join(', ') + (applyResult.lineCommandSent ? ' (가동 명령 전달됨 · 대시보드에서 확인)' : ' (가동 명령 전달 못 함)') : '없음' }}</div>
+              <div><b>오늘 목표</b>{{ applyResult.targets.map((t) => `${t.lineId} ${formatNumber(t.before)}→${formatNumber(t.after)}`).join(' · ') || '변경 없음' }}</div>
+              <div v-if="applyResult.notes.length"><b>참고</b>{{ applyResult.notes.join(' · ') }}</div>
+            </div>
+          </div>
+          <div v-if="ov?.order" class="info-panel">
+            <h4>AI 요청 해석 결과 · {{ ov.order.parsedBy }}</h4>
+            <div class="info-grid">
+              <div><b>추가 수량</b>{{ formatNumber(ov.order.addQty) }}개 · 납기 {{ ov.due }}</div>
+              <div><b>가동 중 라인</b>{{ ov.lines(ov.order.runningLines) }}</div>
+              <div><b>새로 가동</b>{{ ov.newText }} · 준비 {{ ov.order.setupMinutes }}분</div>
+              <div v-if="ov.order.excludedLines.length"><b>제외</b>{{ ov.lines(ov.order.excludedLines) }}</div>
+              <div v-if="ov.order.notes.length"><b>참고</b>{{ ov.order.notes.join(' · ') }}</div>
+            </div>
+          </div>
+          <div v-else-if="ai?.additionalRequest && ai.interpretation" class="info-panel">
             <h4>AI 추가 요청 반영 결과</h4>
             <div class="info-grid">
               <div><b>정지·제외 라인</b>{{ ai.interpretation.excludedLines.length ? ai.interpretation.excludedLines.join(', ') : '없음' }}</div>
@@ -288,7 +369,7 @@ async function downloadPdf() {
         <div v-else-if="selectedId && !doc" class="report-empty"><b>불러오는 중</b></div>
         <div v-else-if="!doc" class="report-empty">
           <b>생성된 AI 보고서가 없습니다</b>
-          <span>{{ eventId ? '추가 요청을 입력한 뒤 ‘AI 보고서 생성’을 눌러주세요.' : '왼쪽에서 고장 건이나 이전 보고서를 고르세요.' }}</span>
+          <span>{{ orderMode ? '추가 주문 요청을 입력한 뒤 ‘AI 배정 검토 생성’을 눌러주세요.' : eventId ? '추가 요청을 입력한 뒤 ‘AI 보고서 생성’을 눌러주세요.' : '왼쪽에서 고장 건, 추가 주문, 이전 보고서 중 하나를 고르세요.' }}</span>
         </div>
 
         <article v-else-if="v" class="report-paper">
@@ -302,7 +383,13 @@ async function downloadPdf() {
                 <tr><th>작성자</th><td>{{ doc.author }}</td><th>문서 상태</th><td>{{ doc.status }}</td></tr>
               </tbody>
             </table>
-            <div class="summary-grid">
+            <div v-if="ov?.order" class="summary-grid">
+              <div class="summary-item"><span>추가 주문</span><b>{{ formatNumber(ov.order.addQty) }}</b><small>개</small></div>
+              <div class="summary-item"><span>가동 라인</span><b>{{ ov.order.current.lines.length }} → {{ ov.order.withNew.lines.length }}</b><small>개</small></div>
+              <div class="summary-item"><span>배정 합</span><b>{{ formatNumber(v.sums.add) }}</b><small>개</small></div>
+              <div class="summary-item"><span>납기 미달</span><b>{{ formatNumber(v.unmet) }}</b><small>개</small></div>
+            </div>
+            <div v-else class="summary-grid">
               <div class="summary-item"><span>생산 계획</span><b>{{ formatNumber(report?.stoppedPlan) }}</b><small>개</small></div>
               <div class="summary-item"><span>현재 실적</span><b>{{ formatNumber(report?.stoppedDone) }}</b><small>개</small></div>
               <div class="summary-item"><span>예상 부족</span><b>{{ formatNumber(report?.shortage) }}<small>개</small></b></div>
@@ -310,6 +397,36 @@ async function downloadPdf() {
             </div>
           </header>
 
+          <template v-if="ov?.order">
+            <section>
+              <h3>1. 주문 현황</h3>
+              <div>
+                <p>{{ v.occurred }}</p>
+                <dl class="facts">
+                  <dt>추가 수량</dt><dd>{{ formatNumber(ov.order.addQty) }}개</dd><dt>납기</dt><dd>{{ ov.due }}</dd>
+                  <dt>가동 중</dt><dd>{{ ov.lines(ov.order.runningLines) }}</dd><dt>새로 가동</dt><dd>{{ ov.newText }}</dd>
+                  <dt>준비 시간</dt><dd>{{ ov.order.setupMinutes }}분</dd>
+                </dl>
+                <p v-if="ov.order.request" class="order-request">요청 원문: “{{ ov.order.request }}” ({{ ov.order.parsedBy }} 해석)</p>
+              </div>
+            </section>
+
+            <section>
+              <h3>2. 라인 가동 비교</h3>
+              <div>
+                <p>{{ ov.compare }}</p>
+                <table class="tbl">
+                  <thead><tr><th>구분</th><th>라인</th><th class="num">남은 능력 합</th><th class="num">납기 미달</th></tr></thead>
+                  <tbody>
+                    <tr><td>지금 가동 라인만</td><td>{{ ov.lines(ov.order.current.lines) }}</td><td class="num">{{ formatNumber(ov.order.current.capacity) }}</td><td class="num">{{ formatNumber(ov.order.current.unmet) }}</td></tr>
+                    <tr :class="{ excluded: ov.order.newLines.length }"><td>{{ ov.order.newLines.length ? '새 라인까지 가동' : '(새 라인 없음)' }}</td><td>{{ ov.lines(ov.order.withNew.lines) }}</td><td class="num">{{ formatNumber(ov.order.withNew.capacity) }}</td><td class="num">{{ formatNumber(ov.order.withNew.unmet) }}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </template>
+
+          <template v-else>
           <section>
             <h3>1. 발생 현황</h3>
             <div>
@@ -319,7 +436,14 @@ async function downloadPdf() {
           </section>
 
           <section>
-            <h3>2. 생산 영향</h3>
+            <h3>2. 원인 추적</h3>
+            <CauseTraceSection v-if="report?.causeTrace" :trace="report.causeTrace" />
+            <p v-else>이 보고서에는 원인 추적 기록이 없습니다 (원인 추적 기능 전에 만든 보고서). ‘AI 보고서 생성’을 다시 누르면 함께 만듭니다.</p>
+          </section>
+          </template>
+
+          <section>
+            <h3>3. 생산 영향</h3>
             <div>
               <p>{{ v.shortageText }}</p>
               <div class="calc">
@@ -330,7 +454,7 @@ async function downloadPdf() {
           </section>
 
           <section>
-            <h3>3. 생산 재배정안</h3>
+            <h3>4. 생산 재배정안</h3>
             <div>
               <p>{{ v.allocText }}</p>
               <table v-if="doc.rows.length" class="tbl">
@@ -350,18 +474,18 @@ async function downloadPdf() {
           </section>
 
           <section>
-            <h3>4. 종합 검토</h3>
+            <h3>5. 종합 검토</h3>
             <div class="result"><span :class="['grade', v.ok ? 'ok' : 'ng']">{{ doc.grade }}</span><p>{{ doc.resultText }}</p></div>
           </section>
 
           <section>
-            <h3>5. 권장 조치</h3>
+            <h3>6. 권장 조치</h3>
             <ol v-if="doc.actions.length" class="report-list"><li v-for="(a, i) in doc.actions" :key="i">{{ a }}</li></ol>
             <p v-else>AI 보고서 생성 시 작성됩니다.</p>
           </section>
 
           <section>
-            <h3>6. 위험 및 확인사항</h3>
+            <h3>7. 위험 및 확인사항</h3>
             <ul class="report-list"><li v-for="(r, i) in doc.risks" :key="i">{{ r }}</li></ul>
           </section>
 
@@ -815,6 +939,15 @@ async function downloadPdf() {
   margin-bottom: 2px;
 }
 
+/* 추가 주문 배정 카드: 고장 카드와 같은 틀, 강조 없음 */
+.order-card {
+  border-style: dashed;
+}
+
+.order-request {
+  color: var(--c-paper-ink-2);
+}
+
 .report-empty {
   display: flex;
   box-sizing: border-box;
@@ -958,11 +1091,13 @@ async function downloadPdf() {
 }
 
 .report-paper section:nth-of-type(1) { min-height: 110px; }
-.report-paper section:nth-of-type(2) { min-height: 100px; }
-.report-paper section:nth-of-type(3) { min-height: 244px; }
-.report-paper section:nth-of-type(4) { min-height: 92px; }
-.report-paper section:nth-of-type(5) { min-height: 116px; }
+
+/* 2. 원인 추적은 내용만큼 (최소 높이 없음) */
+.report-paper section:nth-of-type(3) { min-height: 100px; }
+.report-paper section:nth-of-type(4) { min-height: 244px; }
+.report-paper section:nth-of-type(5) { min-height: 92px; }
 .report-paper section:nth-of-type(6) { min-height: 116px; }
+.report-paper section:nth-of-type(7) { min-height: 116px; }
 
 .report-paper h3 {
   display: block;

@@ -332,8 +332,10 @@ export interface ReassignmentSummaryDto {
   stopMin: number
   lossQty: number
   createdAt: string
-  /** 고장 사유 코드 (11/19 추가) */
-  code: ReasonCode
+  /** 고장 사유 코드 (11/19 추가). 추가 주문 배정은 null */
+  code: ReasonCode | null
+  /** line · paint · vision · order (order = 추가 주문 배정, 고장 건 없음 → downtimeId 0, equipmentId null) (11/20 추가) */
+  kind: 'line' | 'paint' | 'vision' | 'order' | null
 }
 
 /** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */
@@ -353,7 +355,7 @@ export interface ReassignmentDetailDto {
   startedAt: string
   createdAt: string
   createdBy: string | null
-  kind: 'line' | 'paint' | 'vision' | null
+  kind: 'line' | 'paint' | 'vision' | 'order' | null
   baseAt: string | null
   remainingSec: number | null
   ctSec: number | null
@@ -367,7 +369,66 @@ export interface ReassignmentDetailDto {
     /** AI 추가 요청과 그 해석 (제외·정지 라인, 우선 기준 BALANCED·DUE_DATE·SAFETY) */
     additionalRequest: string | null
     requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[] } | null
+    /** 원인 추적 (11/20 추가). 예전 보고서는 없음 */
+    causeTrace?: CauseTraceDto | null
+    /** 추가 주문 배정 조건과 라인 가동 비교 (kind = order, 11/20 추가) */
+    order?: OrderInfoDto | null
   } | null
+  /** R-05 승인·적용 시각과 사람 (적용 전 null, 11/20 추가) */
+  appliedAt?: string | null
+  appliedBy?: string | null
+}
+
+/** R-05 추가 주문 배정 승인·적용 결과 */
+export interface ApplyResponseDto {
+  reportId: number
+  appliedAt: string
+  /** 가동 명령을 보낸 새 라인 */
+  startedLines: string[]
+  /** 끝낸 계획정지 번호 */
+  endedStops: number[]
+  /** 바꾼 오늘 라인 목표 */
+  targets: { lineId: string; before: number; after: number }[]
+  /** 라인 가동 명령(MQTT)이 브로커에 닿았는지 */
+  lineCommandSent: boolean
+  notes: string[]
+}
+
+/** R-02 ai.order: 추가 주문 해석 조건 · 지금 라인만(current) / 새 라인까지(withNew) 비교 */
+export interface OrderInfoDto {
+  request: string | null
+  addQty: number
+  /** HH:mm (24:00 = 오늘 안) */
+  dueAt: string
+  setupMinutes: number
+  runningLines: string[]
+  newLines: string[]
+  /** 새 라인을 요청에서 정하지 않아 계산으로 고름 */
+  recommended: boolean
+  idleLines: string[]
+  excludedLines: string[]
+  /** "AI · 모델" 또는 "규칙" */
+  parsedBy: string
+  notes: string[]
+  current: { lines: string[]; capacity: number; unmet: number }
+  withNew: { lines: string[]; capacity: number; unmet: number }
+}
+
+/** R-02 ai.causeTrace: 근거(E1…) · 원인 후보와 근거 강도(규칙 점수) · 근거 번호를 단 문장과 검증 결과 */
+export interface CauseTraceDto {
+  windowFrom: string
+  windowTo: string
+  evidence: { id: string; type: 'FAULT' | 'ALARM' | 'TREND' | 'QUALITY' | 'STATE' | 'HISTORY'; title: string; detail: string; at: string; source: string }[]
+  causes: {
+    id: string; label: string; item: string | null; score: number; grade: 'HIGH' | 'MEDIUM' | 'LOW'
+    parts: { label: string; points: number; max: number; note: string }[]
+    evidence: string[]
+  }[]
+  sentences: { text: string; kind: 'fact' | 'inference' | 'action'; evidence: string[]; verified: boolean; issue: string | null }[]
+  verifiedCount: number
+  model: string
+  mock: boolean
+  fallbackReason: string | null
 }
 
 // ── 관리·공통 (C) ──

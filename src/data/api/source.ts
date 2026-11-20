@@ -139,8 +139,9 @@ function productDetailOf(d: ProductDetailDto): ProductDetail {
 
 /** R-02·R-03 → 계획수정 보고서 화면. 예전 보고서(계산 칸 없음)는 0·null로 채운다 */
 const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
-  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode,
-  createdBy: r.createdBy ?? '-', stateEventId: String(r.downtimeId), start: r.startedAt, detail: r.detail,
+  // 추가 주문 배정(kind = order)은 고장 건이 없어 설비·고장 번호가 비어 있다
+  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
+  createdBy: r.createdBy ?? '-', stateEventId: r.kind === 'order' ? '' : String(r.downtimeId), start: r.startedAt ?? r.createdAt, detail: r.detail,
   kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
@@ -149,6 +150,10 @@ const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
     title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
     fallbackReason: r.ai.fallbackReason ?? null, additionalRequest: r.ai.additionalRequest ?? null, interpretation: r.ai.requestInterpretation ?? null,
   } : null,
+  causeTrace: r.ai?.causeTrace ?? null,
+  order: r.ai?.order ?? null,
+  appliedAt: r.appliedAt ?? null,
+  appliedBy: r.appliedBy ?? null,
 })
 // ── 구역·비가동 공통 (11/20 화면 간 숫자 맞추기) ──
 // 화면의 구역은 생산 라인 A~F와 도장(PT)·출고(VI). 백엔드는 라인만 lineId로 받으므로 PT·VI는 공정 조건으로 바꾼다
@@ -574,7 +579,10 @@ export function createApiSource(): DataSource {
       // 계획수정 보고서: R-01 목록 · R-02 내용 (11/19)
       async getReplanReports(from, to) {
         const p = await api.R01({ from, to, page: 1, size: 100 })
-        return p.items.map((r) => ({ id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode, stateEventId: String(r.downtimeId) }))
+        return p.items.map((r) => ({
+          id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode, kind: r.kind ?? undefined,
+          stateEventId: r.kind === 'order' ? undefined : String(r.downtimeId),
+        }))
       },
       async getReplanReport(id) {
         try {
@@ -694,6 +702,11 @@ export function createApiSource(): DataSource {
       },
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
+      createOrderReport: async (request) => replanOf(await api.R04(request.trim())),
+      async applyOrderReport(id) {
+        const r = await api.R05(Number(id))
+        return { appliedAt: r.appliedAt, startedLines: r.startedLines, targets: r.targets, lineCommandSent: r.lineCommandSent, notes: r.notes }
+      },
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }
