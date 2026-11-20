@@ -25,6 +25,7 @@ import ActionMemoEditor from '@/components/domain/ActionMemoEditor.vue'
 import { useInlineEdit } from '@/components/base/inlineEdit'
 import { useAlarmHistory, MAX_DAYS, type AlarmRow } from '@/composables/useAlarmHistory'
 import type { HistoryTodo } from '@/types/events'
+import { isCommsEvent } from '@/data/historyTodo'
 import type { DowntimeCode } from '@/types/state'
 
 const route = useRoute()
@@ -160,6 +161,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
               <span class="memo">
                 <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
                 <button
+                  v-if="!isCommsEvent(row.id)"
                   class="link inline"
                   type="button"
                   :data-edit="memo.attr(row.id, 'open')"

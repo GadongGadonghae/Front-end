@@ -1,5 +1,5 @@
 <!-- SCR-001 메인 대시보드 (화면정의서 3장 SCR-001)
-     11/18 변경: 첫 화면은 3D 공장만 크게. 오늘 생산 · 종합 가동률 · 품질은 왼쪽 카드 열.
+     11/18 변경: 첫 화면은 3D 공장만 크게. 오늘 생산 · 종합 가동률 · 불량률(11/20 "품질"에서 이름 바꿈)은 왼쪽 카드 열.
      알림 열(D-46)은 뺐다 (고장은 토스트·헤더 알림으로). 2D 전환은 없앰 (3D 탑뷰로 대신)
      설비 대수는 배치도 범례에 함께 적는다. 화면은 조립만 하고 값은 composable이 만든다 -->
 <script setup lang="ts">
@@ -62,7 +62,7 @@ const ngRows = computed<BarRow[]>(() =>
         <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
       </BasePanel>
 
-      <BasePanel class="go" title="품질" meta="오늘 · 불량률" @click="router.push('/outbound')">
+      <BasePanel class="go" title="불량률" meta="오늘" @click="router.push('/outbound')">
         <div class="lead">
           <BaseFigure :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
           <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>

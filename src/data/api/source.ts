@@ -87,10 +87,9 @@ const stateEventOf = (e: DowntimeEventDto): StateEvent => ({
   reportId: null, alarmLevel: null,
 })
 const eventOf = (e: DowntimeEventDto): HistoryEvent => ({ ...stateEventOf(e), notify: null })
-/** U-08 상태 조건: 통신 끊김(DC)은 백엔드가 아직 비가동 이력으로 주지 않는다 (D-117, 백엔드 요청 중) → S·I·D만 보낸다 */
-const stopStatus = (states: HistoryQuery['states']) => states.filter((s) => s !== 'DC').join(',') || undefined
-/** DC만 고른 조회: 백엔드에 아직 없어 빈 결과 */
-const onlyComms = (states: HistoryQuery['states']) => states.length > 0 && states.every((s) => s === 'DC')
+/** U-08 상태 조건: 쉼표로 여러 개 (예: D,DC). 통신 끊김(DC)은 고를 때만 와요 (11/20 백엔드: 상태 이력의 DC 구간, eventId 음수·메모 불가).
+ *  상태를 안 고르면 백엔드는 S·I·D만 줘서 가동률·비가동 숫자에 DC가 섞이지 않아요 */
+const stopStatus = (states: HistoryQuery['states']) => states.join(',') || undefined
 // ── 제품 추적 (P-01·P-02 → 생산 조회 화면) ──
 const STEPS: ProcessId[] = ['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION']
 const productResult = (f: ProductDto['finalResult']): Product['result'] => (f === 'OK' ? 'ok' : f === 'NG' ? 'ng' : 'wip')
@@ -223,7 +222,6 @@ function worstOf(lists: Seg[][], until: number): Seg[] {
  *  아래 allEvents와 같은 기준: 1분 미만 포함(main 11/20), 100건씩 최대 20쪽 */
 async function historyAll(q: Omit<HistoryQuery, 'page' | 'todo'>): Promise<HistoryEvent[]> {
   const out: HistoryEvent[] = []
-  if (onlyComms(q.states)) return out
   for (let page = 1; page <= 20; page++) {
     const p = await api.U08({
       from: q.from, to: q.to,
@@ -532,7 +530,6 @@ export function createApiSource(): DataSource {
           const all = (await historyAll(q)).filter(isTodo[q.todo])
           return { items: all.slice((q.page - 1) * 50, q.page * 50), total: all.length, page: q.page, size: 50 }
         }
-        if (onlyComms(q.states)) return { items: [], total: 0, page: q.page, size: 50 }
         const p = await api.U08({
           from: q.from, to: q.to,
           lineId: q.lineId, process: q.process as ProcessId | undefined, status: stopStatus(q.states), reasonCode: q.code, inProgress: q.ongoing,
@@ -540,7 +537,7 @@ export function createApiSource(): DataSource {
         })
         return { ...p, items: p.items.map(eventOf) }
       },
-      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S'] }), Date.now()),
+      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S', 'DC'] }), Date.now()),
       getRiskHistory: async (q) => ({ items: [], total: 0, page: q.page, size: 50 }),
       // 일일 생산 리포트 (11/19): 전용 API 없이 있는 API를 모아서 만든다
       //  목표 G-02 · 실적·불량 M-07(라인별, 공정별은 라인 6개 합) · OEE U-01 · 라인 OEE U-04 · 비가동 U-07 · 재공 M-13 + 코일 M-16(오늘만)

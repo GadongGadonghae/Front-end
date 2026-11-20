@@ -31,3 +31,7 @@ export function summarize(events: HistoryEvent[], nowMs: number): HistorySummary
   for (const k of Object.keys(todo) as HistoryTodo[]) todo[k] = events.filter(isTodo[k]).length
   return { byCode: [...byCode.values()], comms, todo }
 }
+
+/** 실서버 U-08의 통신 끊김 항목: eventId가 음수 (상태 이력 번호, 비가동 번호와 겹치지 않게). 메모 저장(U-09)이 안 돼요 (11/20).
+ *  데모 데이터의 통신 끊김은 양수라 메모를 쓸 수 있어요 */
+export const isCommsEvent = (id: string) => id.startsWith('-')
