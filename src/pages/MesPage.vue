@@ -6,6 +6,8 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
+import ChartDonut from '@/components/charts/ChartDonut.vue'
+import ChartProgress from '@/components/charts/ChartProgress.vue'
 import MesReportView from '@/components/domain/MesReportView.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
@@ -30,12 +32,37 @@ const MENU: { name: string; open?: View }[] = [
 ]
 
 // ── 더미 데이터 (시연용, 실제 값 아님) ──
-const KPIS = [
-  { label: '오늘 생산량', value: '41,280', unit: '개', sub: '계획 대비 96.2%' },
-  { label: '설비 가동률', value: '87.4', unit: '%', sub: '전일 대비 +1.3%p' },
-  { label: '불량률', value: '1.8', unit: '%', sub: '목표 2.0% 이내' },
-  { label: '납기 준수율', value: '98.5', unit: '%', sub: '이번 달 누적' },
+const PLAN_TOTAL = 42_900
+const DONE_TOTAL = 41_280
+const DONE_RATE = (DONE_TOTAL / PLAN_TOTAL) * 100
+const OEE = { total: 84.1, avail: 94.0, perf: 93.5, qual: 95.7 }
+const OEE_SLICES = [
+  { key: 'oee', value: OEE.total, color: 'var(--c-accent)', title: `OEE ${OEE.total}%` },
+  { key: 'rest', value: 100 - OEE.total, color: 'var(--c-track)', title: '손실' },
 ]
+const PPM_TARGET = 2000
+const PPM_DAYS = [
+  { d: '11/14', v: 2300 }, { d: '11/15', v: 2150 }, { d: '11/16', v: 2100 }, { d: '11/17', v: 1950 },
+  { d: '11/18', v: 1880 }, { d: '11/19', v: 1830 }, { d: '11/20', v: 1820 },
+]
+const SPARK = { w: 220, h: 64, min: 1600, max: 2400 }
+const sparkY = (v: number) => SPARK.h - ((v - SPARK.min) / (SPARK.max - SPARK.min)) * SPARK.h
+const sparkPoints = PPM_DAYS.map((x, i) => `${(i / (PPM_DAYS.length - 1)) * SPARK.w},${sparkY(x.v)}`).join(' ')
+const DUE_TARGET = 98
+const DUE_WEEKS = [
+  { w: '1주', v: 97.8 }, { w: '2주', v: 98.9 }, { w: '3주', v: 98.7 },
+]
+// 막대 높이: 96~100% 구간을 0~100%로 확대 (차이가 보이도록)
+const dueH = (v: number) => `${((v - 96) / 4) * 100}%`
+const dueTargetBottom = `${((DUE_TARGET - 96) / 4) * 100}%`
+
+const DELIVERIES = [
+  { at: '08:00', to: '현대 울산', item: '사이드 아우터 패널', qty: 1200, state: '완료' },
+  { at: '11:00', to: '현대 아산', item: '필러 리인포스', qty: 800, state: '완료' },
+  { at: '14:00', to: '기아 광명', item: '루프 레일', qty: 650, state: '진행' },
+  { at: '17:00', to: '현대 울산', item: '플로어 크로스멤버', qty: 900, state: '지연 위험' },
+]
+const DELIVERY_CLASS: Record<string, string> = { 완료: 'ok', 진행: 'wait', '지연 위험': 'late' }
 const FACTORIES = [
   { name: '차체 캠퍼스 공장 1', plan: 9000, done: 8650, oee: 84.1, state: '정상' },
   { name: '차체 캠퍼스 공장 2', plan: 8200, done: 8010, oee: 88.6, state: '정상' },
@@ -46,11 +73,6 @@ const WEEK = [
   { d: '월', v: 38200 }, { d: '화', v: 40100 }, { d: '수', v: 39400 }, { d: '목', v: 42300 }, { d: '금', v: 41280 },
 ]
 const WEEK_MAX = Math.max(...WEEK.map((w) => w.v))
-const NOTICES = [
-  { at: '11/20 08:10', text: '공장 3 용접 라인 정기 점검 일정 안내 (11/24)' },
-  { at: '11/19 17:40', text: '신규 부품 코일 입고 계획 변경 (납기 조정)' },
-  { at: '11/19 09:05', text: '11월 협력사 종합평가 자료 제출 안내' },
-]
 const pct = (done: number, plan: number) => `${((done / plan) * 100).toFixed(1)}%`
 
 // ── 수신 보고서 ──
@@ -103,10 +125,56 @@ async function onLogout() {
           <p class="dummy-note">이 화면의 숫자와 목록은 모두 <b>더미 데이터</b>입니다. 열리는 메뉴는 [수신 보고서] 하나뿐입니다.</p>
 
           <section class="kpis">
-            <div v-for="k in KPIS" :key="k.label" class="kpi">
-              <span class="k-label">{{ k.label }}</span>
-              <b class="k-val">{{ k.value }}<span class="k-unit">{{ k.unit }}</span></b>
-              <span class="k-sub">{{ k.sub }}</span>
+            <!-- 오늘 생산량: 계획 대비 진행 → 진행 막대 -->
+            <div class="kpi">
+              <span class="k-label">오늘 생산량</span>
+              <b class="k-val">{{ DONE_TOTAL.toLocaleString() }}<span class="k-unit">개</span></b>
+              <div class="k-chart prog">
+                <ChartProgress :percent="DONE_RATE" :label="`계획 ${PLAN_TOTAL.toLocaleString()}개 대비 ${DONE_RATE.toFixed(1)}%`" />
+                <span class="k-cap"><span>계획 {{ PLAN_TOTAL.toLocaleString() }}</span><span>{{ DONE_RATE.toFixed(1) }}%</span></span>
+              </div>
+            </div>
+
+            <!-- 설비 종합효율(OEE): 전체 중 차지하는 비율 → 도넛 + 가동·성능·양품 -->
+            <div class="kpi">
+              <span class="k-label">설비 종합효율(OEE)</span>
+              <b class="k-val">{{ OEE.total }}<span class="k-unit">%</span></b>
+              <div class="k-chart oee">
+                <ChartDonut :slices="OEE_SLICES" :label="`OEE ${OEE.total}%`" class="mini-donut" />
+                <ul>
+                  <li><span class="o-name">가동률</span><b>{{ OEE.avail }}%</b></li>
+                  <li><span class="o-name">성능</span><b>{{ OEE.perf }}%</b></li>
+                  <li><span class="o-name">양품률</span><b>{{ OEE.qual }}%</b></li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- 불량 PPM: 시간에 따른 추이 + 목표선 → 선 그래프 -->
+            <div class="kpi">
+              <span class="k-label">불량 PPM</span>
+              <b class="k-val">{{ PPM_DAYS[PPM_DAYS.length - 1].v.toLocaleString() }}</b>
+              <div class="k-chart">
+                <svg :viewBox="`0 0 ${SPARK.w} ${SPARK.h}`" preserveAspectRatio="none" role="img" aria-label="최근 7일 불량 PPM 추이, 목표 2,000 이하">
+                  <line class="ref" x1="0" :y1="sparkY(PPM_TARGET)" :x2="SPARK.w" :y2="sparkY(PPM_TARGET)" />
+                  <polyline class="spark" :points="sparkPoints" />
+                </svg>
+                <span class="k-cap"><span>최근 7일</span><span>점선 = 목표 {{ PPM_TARGET.toLocaleString() }}</span></span>
+              </div>
+            </div>
+
+            <!-- 납기 준수율: 기간별 비교 + 목표 → 주차별 막대 -->
+            <div class="kpi">
+              <span class="k-label">납기 준수율(현대·기아)</span>
+              <b class="k-val">98.5<span class="k-unit">%</span></b>
+              <div class="k-chart">
+                <ul class="cols" role="img" aria-label="이번 달 주차별 납기 준수율, 목표 98%">
+                  <li v-for="w in DUE_WEEKS" :key="w.w" class="col">
+                    <i :style="{ height: dueH(w.v) }"></i><span class="col-name">{{ w.w }}</span>
+                  </li>
+                  <li class="ref-line" :style="{ bottom: dueTargetBottom }"></li>
+                </ul>
+                <span class="k-cap"><span>이번 달 주차별</span><span>선 = 목표 {{ DUE_TARGET }}%</span></span>
+              </div>
             </div>
           </section>
 
@@ -141,13 +209,16 @@ async function onLogout() {
           </div>
 
           <section class="panel">
-            <h2>공지 · 알림</h2>
-            <ul class="notices">
-              <li v-for="n in NOTICES" :key="n.at"><time>{{ n.at }}</time>{{ n.text }}</li>
-            </ul>
-            <button type="button" class="to-reports" @click="view = 'reports'">
-              공장 1에서 받은 보고서 {{ flow.sent.value.length }}건 확인하기 ›
-            </button>
+            <h2>납입 일정 <small>고객사별 · 오늘</small></h2>
+            <table>
+              <thead><tr><th>시간</th><th>고객사</th><th>품목</th><th>수량</th><th>상태</th></tr></thead>
+              <tbody>
+                <tr v-for="d in DELIVERIES" :key="d.at">
+                  <td>{{ d.at }}</td><td>{{ d.to }}</td><td>{{ d.item }}</td><td>{{ d.qty.toLocaleString() }}</td>
+                  <td><span :class="['state', DELIVERY_CLASS[d.state]]">{{ d.state }}</span></td>
+                </tr>
+              </tbody>
+            </table>
           </section>
         </template>
 
@@ -198,13 +269,14 @@ async function onLogout() {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--page-gutter);
+  min-height: 76px;
+  padding: 0 var(--page-gutter);
   background: var(--c-inverse);
   color: var(--c-inverse-ink);
 }
 
 .brand {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
 }
 
@@ -242,7 +314,7 @@ async function onLogout() {
 
 .frame {
   display: grid;
-  grid-template-columns: 220px 1fr;
+  grid-template-columns: 260px 1fr;
   min-height: 0;
 }
 
@@ -259,12 +331,13 @@ async function onLogout() {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--sp-3);
+  padding: var(--sp-4) var(--sp-3);
   border: 0;
   border-radius: var(--r-1);
   background: none;
   color: var(--c-ink);
   font: inherit;
+  font-size: var(--fs-lg);
   text-align: left;
   cursor: pointer;
 }
@@ -323,9 +396,144 @@ async function onLogout() {
 }
 
 .k-val {
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
   font-variant-numeric: tabular-nums;
   font-weight: var(--fw-strong);
+}
+
+.k-chart {
+  display: grid;
+  gap: var(--sp-1);
+  min-height: 84px;
+  margin-top: var(--sp-2);
+}
+
+.k-cap {
+  display: flex;
+  justify-content: space-between;
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
+.prog {
+  align-content: end;
+}
+
+.oee {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+.oee ul {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  font-size: var(--fs-sm);
+  list-style: none;
+}
+
+.oee li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.oee .o-name {
+  color: var(--c-ink-3);
+}
+
+.mini-donut {
+  --donut-size: 80px;
+
+  margin: 0;
+}
+
+svg {
+  width: 100%;
+  height: 64px;
+  overflow: visible;
+}
+
+.spark {
+  fill: none;
+  stroke: var(--c-accent);
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.ref {
+  stroke: var(--c-line-strong);
+  stroke-dasharray: 4 3;
+  vector-effect: non-scaling-stroke;
+}
+
+.cols {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-3);
+  height: 64px;
+  margin: 0;
+  padding: 0 0 18px;
+  list-style: none;
+}
+
+.col {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: flex-end;
+  height: 100%;
+}
+
+.cols i {
+  display: block;
+  width: 100%;
+  border-radius: var(--r-1) var(--r-1) 0 0;
+  background: var(--c-accent);
+}
+
+.col .col-name {
+  position: absolute;
+  bottom: -18px;
+  left: 0;
+  width: 100%;
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.ref-line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  margin-bottom: 18px;
+  border-top: var(--line-w) dashed var(--c-line-strong);
+}
+
+.state {
+  padding: 2px var(--sp-2);
+  border-radius: var(--r-3);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
+}
+
+.state.ok {
+  background: var(--c-run);
+  color: var(--c-run-ink);
+}
+
+.state.wait {
+  background: var(--c-idle);
+  color: var(--c-idle-ink);
+}
+
+.state.late {
+  background: var(--c-down);
+  color: var(--c-down-ink);
 }
 
 .k-unit {
@@ -395,30 +603,6 @@ th {
   height: 14px;
   border-radius: var(--r-1);
   background: var(--c-proc-1);
-}
-
-.notices {
-  display: grid;
-  gap: var(--sp-2);
-  margin: 0 0 var(--sp-3);
-  padding: 0;
-  list-style: none;
-}
-
-.notices time {
-  margin-right: var(--sp-3);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-}
-
-.to-reports {
-  padding: var(--sp-2) var(--sp-3);
-  border: var(--line-w) solid var(--c-accent);
-  border-radius: var(--r-1);
-  background: var(--c-accent-tint);
-  color: var(--c-ink);
-  font: inherit;
-  cursor: pointer;
 }
 
 .reports {
