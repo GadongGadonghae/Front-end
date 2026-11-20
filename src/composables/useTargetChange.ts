@@ -47,7 +47,8 @@ export function useTargetChange() {
       writeSeen(id, now)
       return
     }
-    const changed = seen.quantity !== now.quantity || (now.updatedAt != null && seen.updatedAt !== now.updatedAt)
+    // 공장 목표 합이 바뀔 때만 (보고서 승인으로 라인 사이 계획만 옮겨진 것은 알리지 않음, 11/20)
+    const changed = seen.quantity !== now.quantity
     if (changed && row?.updatedBy !== userName.value) {
       change.value = { date: today, before: seen.quantity, after: now.quantity, by: row?.updatedBy ?? null, at: now.updatedAt }
     }

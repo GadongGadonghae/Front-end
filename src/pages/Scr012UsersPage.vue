@@ -25,6 +25,7 @@ const ROLES: { value: UserRole; label: string }[] = [
   { value: 'LINE_MANAGER', label: ROLE_LABEL.LINE_MANAGER },
   { value: 'PRODUCTION_MANAGER', label: ROLE_LABEL.PRODUCTION_MANAGER },
   { value: 'PLANT_MANAGER', label: ROLE_LABEL.PLANT_MANAGER },
+  { value: 'CAMPUS_HEAD', label: ROLE_LABEL.CAMPUS_HEAD },
 ]
 const roleName = (r: string) => ROLES.find((x) => x.value === r)?.label ?? r
 const COLS: TableColumn[] = [

@@ -20,6 +20,9 @@ const TONE: Record<StopState, BarRowView['tone']> = { S: 'stop', I: 'idle', D: '
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
 
 /** 2026-11-16 (월) */
+/** 목표 변동 보고서의 가짜 고장 건 ID (11/20). 보고서 화면 왼쪽 맨 위 카드 */
+export const TARGET_EVENT = 'TARGET'
+
 export function dateWithDay(date: string) {
   const [y, m, d] = date.split('-').map(Number)
   return `${date} (${WEEKDAY[new Date(y, m - 1, d).getDay()]})`
@@ -84,7 +87,8 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       const d = toDateStr(Date.parse(r.createdAt))
       let g = out.at(-1)
       if (!g || g.date !== d) out.push(g = { date: d, label: dateWithDay(d), items: [] })
-      g.items.push({ ...r, name: equipmentName(r.equipmentId), codeName: DOWNTIME_NAME[r.code], time: formatTime(r.createdAt) })
+      const target = r.stateEventId === TARGET_EVENT
+      g.items.push({ ...r, name: target ? '생산 목표 변경' : equipmentName(r.equipmentId), codeName: target ? '생산 목표 변경' : DOWNTIME_NAME[r.code], time: formatTime(r.createdAt) })
     }
     return out
   })
@@ -102,7 +106,10 @@ export function useReplanReports(selectedId: Ref<string | null>) {
 
   /** 고장 건으로 AI 보고서 만들기 (D-68). 누를 때마다 새 보고서. 만든 보고서 ID */
   async function create(stateEventId: string, additionalRequest?: string) {
-    const r = await source.cmd.createReplanReport(stateEventId, additionalRequest)
+    // 목표 변동 보고서 (11/20): 고장 건 없이 오늘 목표 기준
+    const r = stateEventId === TARGET_EVENT
+      ? await source.cmd.createTargetReport(additionalRequest)
+      : await source.cmd.createReplanReport(stateEventId, additionalRequest)
     await Promise.all([loadList(), loadTroubles()])
     return r.id
   }
@@ -119,8 +126,10 @@ export function useReplanReports(selectedId: Ref<string | null>) {
   const view = computed(() => {
     const r = report.value
     if (!r) return null
-    const name = equipmentName(r.equipmentId)
+    const isTarget = r.kind === 'target'
+    const name = isTarget ? '생산 목표 변경' : equipmentName(r.equipmentId)
     const line = r.kind === 'line' ? `${r.equipmentId.split('-')[0]}라인` : null
+    const codeName = isTarget ? '생산 목표 변경' : DOWNTIME_NAME[r.code]
     const capSum = r.allocations.reduce((a, x) => a + x.capacity, 0)
     const planSum = r.allocations.reduce((a, x) => a + x.remainingPlan, 0)
     const addSum = r.allocations.reduce((a, x) => a + x.add, 0)
@@ -132,28 +141,32 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       created: `${dateWithDay(toDateStr(Date.parse(r.createdAt)))} ${formatTime(r.createdAt)} 생성 · ${r.createdBy}`,
       name, line,
       start: formatTime(r.start),
-      code: DOWNTIME_NAME[r.code],
+      code: codeName,
       detail: r.detail ?? '-',
-      occurred: r.kind === 'line'
+      occurred: isTarget
+        ? `${formatTime(r.start)} 기준 오늘 생산 목표는 ${formatNumber(r.target)}개입니다. 목표는 라인마다 똑같이 나눠 저장되는데, 계획정지 중인 라인의 몫은 만들 곳이 없어 가동 중인 라인이 나눠 맡는 것으로 계산했습니다.`
+        : r.kind === 'line'
         ? `${josa(name, '이/가')} ${formatTime(r.start)}에 ${josa(DOWNTIME_NAME[r.code], '으로/로')} 멈췄습니다. 라인 안 설비는 한 줄로 이어져 있어 ${line} 전체가 멈춘 것으로 보고 계산했습니다.`
         : r.kind === 'paint'
           ? `${josa(name, '이/가')} ${formatTime(r.start)}에 ${josa(DOWNTIME_NAME[r.code], '으로/로')} 멈췄습니다. 같은 도장 공정의 다른 1대가 나머지를 맡는 것으로 계산했습니다.`
           : `${josa(name, '이/가')} ${formatTime(r.start)}에 ${josa(DOWNTIME_NAME[r.code], '으로/로')} 멈췄습니다. 비전검사기는 1대뿐이라 대신할 설비가 없습니다.`,
       remaining,
       remainingRange: `${formatTime(r.baseAt)} ~ 24:00${baseDay !== toDateStr(Date.parse(r.createdAt)) ? ` (${baseDay})` : ''}`,
-      stoppedLabel: r.kind === 'line' ? `${line} 남은 라인 계획` : r.kind === 'paint' ? `${name} 남은 계획` : '남은 출고 (목표 − 실적)',
-      stoppedSub: r.kind === 'line'
+      stoppedLabel: isTarget ? '계획정지 라인 남은 계획' : r.kind === 'line' ? `${line} 남은 라인 계획` : r.kind === 'paint' ? `${name} 남은 계획` : '남은 출고 (목표 − 실적)',
+      stoppedSub: r.kind === 'line' || isTarget
         ? `라인 계획 ${formatNumber(r.stoppedPlan)} − 실적 ${formatNumber(r.stoppedDone)}`
         : r.kind === 'paint'
           ? `목표의 절반 ${formatNumber(r.stoppedPlan)} − 실적 ${formatNumber(r.stoppedDone)}`
           : `목표 ${formatNumber(r.stoppedPlan)} − 실적 ${formatNumber(r.stoppedDone)}`,
-      shortageText: r.kind === 'line'
+      shortageText: isTarget
+        ? '계획정지 중인 라인이 자정까지 만들 예정이던 계획이 부족 수량입니다.'
+        : r.kind === 'line'
         ? `${josa(line ?? '', '이/가')} 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.`
         : r.kind === 'paint'
           ? `${josa(name, '이/가')} 자정까지 맡을 예정이던 수량이 부족 수량입니다.`
           : '오늘 남은 출고 전량이 부족 수량입니다.',
       allocText: r.allocations.length
-        ? `${r.kind === 'line' ? `정상 라인 ${r.allocations.length}개` : '다른 도장 설비'}의 남은 능력 비율대로 ${formatNumber(r.shortage)}개를 나눴습니다. 남은 능력 = 남은 시간 ÷ ${r.kind === 'line' ? '라인 CT' : '도장 CT'} ${ct} − 남은 계획.`
+        ? `${r.kind === 'line' || isTarget ? `${isTarget ? '가동 중인' : '정상'} 라인 ${r.allocations.length}개` : '다른 도장 설비'}의 남은 능력 비율대로 ${formatNumber(r.shortage)}개를 나눴습니다. 남은 능력 = 남은 시간 ÷ ${r.kind === 'paint' ? '도장 CT' : '라인 CT'} ${ct} − 남은 계획.`
         : r.kind === 'vision' ? '대신할 설비가 없어 나눌 곳이 없습니다.' : '정상인 다른 라인(설비)이 없어 나눌 곳이 없습니다.',
       rows: r.allocations.map((a) => ({
         key: a.target,

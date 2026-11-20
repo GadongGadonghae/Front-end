@@ -328,20 +328,24 @@ export interface ProcessNgDto {
 /** R-01 */
 export interface ReassignmentSummaryDto {
   reportId: number
-  downtimeId: number
-  sourceLineId: string
-  equipmentId: string
+  /** 목표 변경 보고서는 null (11/20) */
+  downtimeId: number | null
+  sourceLineId: string | null
+  equipmentId: string | null
   stopMin: number
   lossQty: number
   createdAt: string
-  /** 고장 사유 코드 (11/19 추가) */
+  /** 고장 사유 코드 (11/19 추가). 목표 변경 보고서는 'TARGET' */
   code: ReasonCode
+  /** 공장장 승인(결재) 여부 (11/20) */
+  approved?: boolean
 }
 
 /** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */
 export interface ReassignmentDetailDto {
   reportId: number
-  downtimeId: number
+  /** 목표 변경 보고서(kind target)는 null */
+  downtimeId: number | null
   sourceLineId: string | null
   /** 부족 수량 */
   lossQty: number
@@ -349,13 +353,13 @@ export interface ReassignmentDetailDto {
   details: { targetLineId: string; spareCapacity: number; addQty: number; remainingPlan: number | null; share: number }[]
   /** 표시용 문서번호 AI-RPT-yyyyMMdd-NNN */
   documentNo: string
-  equipmentId: string
+  equipmentId: string | null
   code: ReasonCode
   detail: string | null
   startedAt: string
   createdAt: string
   createdBy: string | null
-  kind: 'line' | 'paint' | 'vision' | null
+  kind: 'line' | 'paint' | 'vision' | 'target' | null
   baseAt: string | null
   remainingSec: number | null
   ctSec: number | null

@@ -96,6 +96,8 @@ export const api = {
   R02: (reportId: number) => http.get<ReassignmentDetailDto>(`/reassignments/${reportId}`),
   /** R-03 AI 계획수정 보고서 만들기 (고장 건으로, 누를 때마다 새 보고서). additionalRequest = AI 추가 요청 */
   R03: (downtimeId: number, additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { downtimeId, additionalRequest }),
+  /** R-03 basis=target: 고장 건 없이 오늘 생산 목표 기준 (11/20 목표 변동) */
+  R03T: (additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { basis: 'target', additionalRequest }),
   /** R-04 보고서 승인(결재). 공장장만 (11/20) */
   R04: (reportId: number) => http.post<ReassignmentDetailDto>(`/reassignments/${reportId}/approve`, {}),
 

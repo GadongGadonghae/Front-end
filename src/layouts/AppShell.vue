@@ -9,6 +9,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useNow } from '@/composables/useNow'
 import { useFaultToast } from '@/composables/useFaultToast'
 import { useTargetChange } from '@/composables/useTargetChange'
+import { usePendingApprovals } from '@/composables/usePendingApprovals'
 import { formatNumber } from '@/lib/format'
 import { useMaster } from '@/composables/useMaster'
 import { useDataInfo } from '@/composables/useDataInfo'
@@ -43,6 +44,23 @@ const toast = useFaultToast()
 // 목표 생산량 변동 카드: 생산관리팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
 const target = useTargetChange()
 const qty = (n: number | null) => (n == null ? '미설정' : `${formatNumber(n)}개`)
+/** 목표 변동 카드 → 목표 기준 AI 보고서 작성 화면 (11/20) */
+function writeTargetReport() {
+  target.dismiss()
+  router.push({ path: '/reports/replan', query: { event: 'TARGET' } })
+}
+// 결재 대기 카드: 공장장에게만, 생산관리팀장이 보고서를 올리면 (11/20)
+const approvals = usePendingApprovals()
+const latestPending = computed(() => approvals.pending.value[0] ?? null)
+const pendingName = computed(() => {
+  const r = latestPending.value
+  return !r ? '' : r.stateEventId === 'TARGET' ? '생산 목표 변경' : equipmentName(r.equipmentId)
+})
+function openPending() {
+  const r = latestPending.value
+  approvals.dismiss()
+  if (r) router.push(`/reports/replan/${r.id}`)
+}
 
 async function onLogout() {
   await logout()
@@ -86,8 +104,19 @@ function viewFault() {
         <b>목표 생산량 변동</b>
         <span class="tc-qty">오늘 {{ qty(target.change.value.before) }} → <strong>{{ qty(target.change.value.after) }}</strong></span>
         <small v-if="target.change.value.by || target.change.value.at">{{ target.change.value.by ?? '' }}{{ target.change.value.at ? ` · ${formatTime(target.change.value.at)}` : '' }}</small>
+        <button class="tc-go" type="button" @click="writeTargetReport">AI 보고서 작성 ›</button>
       </div>
       <button class="tc-close" type="button" aria-label="목표 변동 알림 닫기" title="닫기" @click="target.dismiss()"><BaseIcon name="x" :size="16" /></button>
+    </aside>
+
+    <aside v-if="latestPending" class="target-card no-print" role="status" aria-live="polite">
+      <div class="tc-body">
+        <b>결재할 보고서가 올라왔어요</b>
+        <span class="tc-qty">AI 계획수정 보고서 · {{ pendingName }}{{ approvals.pending.value.length > 1 ? ` 외 ${approvals.pending.value.length - 1}건` : '' }}</span>
+        <small>{{ formatTime(latestPending.createdAt) }} 작성</small>
+        <button class="tc-go" type="button" @click="openPending">보고서 보기 ›</button>
+      </div>
+      <button class="tc-close" type="button" aria-label="결재 알림 닫기" title="닫기" @click="approvals.dismiss()"><BaseIcon name="x" :size="16" /></button>
     </aside>
 
     <FaultToast
@@ -259,6 +288,17 @@ nav a.on {
 }
 .tc-body small {
   color: var(--c-ink-3);
+}
+.tc-go {
+  justify-self: start;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-accent);
+  font: inherit;
+  font-weight: var(--fw-strong);
+  cursor: pointer;
 }
 .tc-close {
   display: grid;

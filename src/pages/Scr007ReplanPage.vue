@@ -8,7 +8,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
-import { useReplanReports } from '@/composables/useReports'
+import { TARGET_EVENT, useReplanReports } from '@/composables/useReports'
 import { useMaster } from '@/composables/useMaster'
 import { source } from '@/data'
 import { DOWNTIME_NAME } from '@/lib/status'
@@ -53,7 +53,12 @@ const queryEvent = computed(() => {
 })
 /** 보고서를 만들 고장 건: 보고 있는 보고서의 고장 건, 아니면 고른 트러블 */
 const eventId = computed(() => (selectedId.value ? report.value?.stateEventId ?? null : queryEvent.value))
-const troubleRows = computed(() => (rp.troubles.value ?? []).map((e) => {
+// 목표 변동 카드 (11/20): 생산 목표가 바뀌면 이 카드로 보고서를 만들어요 (고장 건 없이 오늘 목표 기준)
+const targetRow = computed(() => {
+  const made = rp.reportsOf(TARGET_EVENT).length
+  return { id: TARGET_EVENT, name: '생산 목표 변동', time: '오늘', text: '계획정지 라인 몫을 가동 중인 라인에 나누는 안', ongoing: false, made }
+})
+const troubleRows = computed(() => [targetRow.value, ...(rp.troubles.value ?? []).map((e) => {
   const made = rp.reportsOf(e.id).length
   return {
     id: e.id,
@@ -63,7 +68,7 @@ const troubleRows = computed(() => (rp.troubles.value ?? []).map((e) => {
     ongoing: e.end === null,
     made,
   }
-}))
+})])
 const trouble = computed(() => rp.troubles.value?.find((e) => e.id === eventId.value) ?? null)
 
 /** 트러블 카드: 만든 보고서가 있으면 가장 최근 것, 없으면 빈 보고서(생성 대기) */
@@ -127,7 +132,8 @@ async function generate() {
 
 // ── 보고서 문서 값 ──
 const title = computed(() => {
-  const name = report.value ? equipmentName(report.value.equipmentId) : trouble.value ? equipmentName(trouble.value.equipmentId) : null
+  const name = report.value?.kind === 'target' || (!report.value && eventId.value === TARGET_EVENT) ? '생산 목표 변경'
+    : report.value ? equipmentName(report.value.equipmentId) : trouble.value ? equipmentName(trouble.value.equipmentId) : null
   return name ? `계획수정 보고서 · ${name}` : '계획수정 보고서'
 })
 const doc = computed(() => {
@@ -152,7 +158,7 @@ const doc = computed(() => {
   return {
     documentNo: r.documentNo ?? r.id,
     created,
-    targetLine: vv.line ?? (r.kind === 'paint' ? '도장' : '출고'),
+    targetLine: vv.line ?? (r.kind === 'paint' ? '도장' : r.kind === 'target' ? '전체 라인' : '출고'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
     author: r.createdBy,
     status: r.approved ? '승인 완료' : '검토 대기',
@@ -235,7 +241,7 @@ async function downloadPdf() {
             <p>{{ t.text }}</p>
             <span :class="['trouble-badge', { created: t.made }]">{{ t.made ? `보고서 작성 완료${t.made > 1 ? ` · ${t.made}건` : ''}` : '보고서 미작성' }}</span>
           </div>
-          <p v-if="rp.troubles.value && !troubleRows.length" class="period-empty">오늘 고장 건이 없습니다.</p>
+          <p v-if="rp.troubles.value && troubleRows.length <= 1" class="period-empty">오늘 고장 건이 없습니다.</p>
 
           <div class="previous-reports">
             <h3 class="list-section">이전에 작성한 보고서</h3>

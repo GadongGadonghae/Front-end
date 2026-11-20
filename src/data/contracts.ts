@@ -108,6 +108,8 @@ export interface Commands {
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** 보고서 승인(결재). 공장장만 (11/20) */
   approveReplanReport(reportId: string): Promise<ReplanReport>
+  /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리팀장 (11/20) */
+  createTargetReport(additionalRequest?: string): Promise<ReplanReport>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** C-03 사용자 등록. 같은 아이디가 있으면 실패 */

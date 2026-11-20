@@ -7,6 +7,7 @@
 //   users     사용자 관리           O        -           -
 //   reportWrite   AI 리포트 작성    -        O           -
 //   reportApprove AI 리포트 승인    O        -           -
+//   캠퍼스장: 기록 열람만
 // 권한이 없는 설정 탭은 메뉴에서 숨겨요 (11/20 결정)
 import type { UserRole } from '@/types/user'
 
@@ -16,6 +17,8 @@ const GRANTS: Record<UserRole, readonly Permission[]> = {
   PLANT_MANAGER: ['target', 'users', 'reportApprove'],
   PRODUCTION_MANAGER: ['memo', 'limits', 'reportWrite'],
   LINE_MANAGER: ['memo'],
+  // 캠퍼스장 (11/20): 보기 전용. /mes 새 프론트에서 보고서를 봐요
+  CAMPUS_HEAD: [],
 }
 
 export const isRole = (r: unknown): r is UserRole => typeof r === 'string' && r in GRANTS

@@ -1,12 +1,13 @@
 // 사용자 관리 (API 명세 C-02 목록 · C-03 등록, 11/20)
 
 /** 역할(권한, 11/20): 공장장 · 생산관리팀장 · 라인 담당자. 할 수 있는 일은 lib/permissions.ts */
-export type UserRole = 'PLANT_MANAGER' | 'PRODUCTION_MANAGER' | 'LINE_MANAGER'
+export type UserRole = 'PLANT_MANAGER' | 'PRODUCTION_MANAGER' | 'LINE_MANAGER' | 'CAMPUS_HEAD'
 
 export const ROLE_LABEL: Record<UserRole, string> = {
   PLANT_MANAGER: '공장장',
   PRODUCTION_MANAGER: '생산관리팀장',
   LINE_MANAGER: '라인 담당자',
+  CAMPUS_HEAD: '캠퍼스장',
 }
 
 /** C-02 한 줄 */

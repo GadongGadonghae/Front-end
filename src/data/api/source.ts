@@ -146,8 +146,8 @@ function productDetailOf(d: ProductDetailDto): ProductDetail {
 
 /** R-02·R-03 → 계획수정 보고서 화면. 예전 보고서(계산 칸 없음)는 0·null로 채운다 */
 const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
-  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode,
-  createdBy: r.createdBy ?? '-', stateEventId: String(r.downtimeId), start: r.startedAt, detail: r.detail,
+  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
+  createdBy: r.createdBy ?? '-', stateEventId: r.downtimeId == null ? 'TARGET' : String(r.downtimeId), start: r.startedAt ?? r.baseAt ?? r.createdAt, detail: r.detail,
   kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
@@ -593,7 +593,10 @@ export function createApiSource(): DataSource {
       // 계획수정 보고서: R-01 목록 · R-02 내용 (11/19)
       async getReplanReports(from, to) {
         const p = await api.R01({ from, to, page: 1, size: 100 })
-        return p.items.map((r) => ({ id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode, stateEventId: String(r.downtimeId) }))
+        return p.items.map((r) => ({
+          id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
+          stateEventId: r.downtimeId == null ? 'TARGET' : String(r.downtimeId), approved: r.approved ?? false,
+        }))
       },
       async getReplanReport(id) {
         try {
@@ -714,6 +717,7 @@ export function createApiSource(): DataSource {
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
       approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
+      createTargetReport: async (additionalRequest) => replanOf(await api.R03T(additionalRequest?.trim() || undefined)),
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

@@ -473,6 +473,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       },
       createReplanReport: async (eventId) => reports.create(eventId),
       approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
+      createTargetReport: async () => { throw new Error('데모 데이터에서는 목표 변동 보고서를 만들 수 없어요 (실서버 전용)') },
       async createUser(u) {
         if (demoUsers.some((x) => x.loginId === u.loginId)) return { ok: false, error: '이미 있는 아이디입니다' }
         demoUsers.push({ loginId: u.loginId, name: u.name, role: u.role, email: u.email || null, memo: u.memo || null, lastLoginAt: null })

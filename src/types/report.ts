@@ -31,8 +31,10 @@ export interface ReplanSummary {
   createdAt: string
   equipmentId: string
   code: DowntimeCode
-  /** 만든 고장 건 (상태 이력 ID = 비가동 번호). 데모 목록엔 없을 수 있음 */
+  /** 만든 고장 건 (상태 이력 ID = 비가동 번호). 목표 변경 보고서는 'TARGET'. 데모 목록엔 없을 수 있음 */
   stateEventId?: string
+  /** 공장장 승인(결재) 여부 (11/20) */
+  approved?: boolean
 }
 
 /** 라인(또는 같은 공정 다른 설비)별 추가 배정 */
@@ -57,8 +59,8 @@ export interface ReplanReport extends ReplanSummary {
   /** 고장 시작 시각과 원인 */
   start: string
   detail: string | null
-  /** line: 라인 안 설비 → 라인 전체 정지 · paint: 도장 1대 → 다른 1대 · vision: 대체 없음 */
-  kind: 'line' | 'paint' | 'vision'
+  /** line: 라인 안 설비 → 라인 전체 정지 · paint: 도장 1대 → 다른 1대 · vision: 대체 없음 · target: 생산 목표 변경(계획정지 라인 몫을 가동 라인에, 11/20) */
+  kind: 'line' | 'paint' | 'vision' | 'target'
   /** 계산 기준 시각 = 만든 시각 (지난 날 건은 그날 고장 시각) */
   baseAt: string
   /** 기준 시각부터 자정까지 (초) */
