@@ -51,7 +51,7 @@ async function load() {
   try {
     const [r, h, rp] = await Promise.all([
       source.q.getDailyReport(d),
-      source.q.getHistory({ from: d, to: d, states: ['D', 'S'], minMinutes: 1, page: 1 }).then((p) => p.items).catch(() => [] as HistoryEvent[]),
+      source.q.getHistory({ from: d, to: d, states: ['D', 'S'], minMinutes: 0, page: 1 }).then((p) => p.items).catch(() => [] as HistoryEvent[]),
       source.q.getReplanReports(d, d).catch(() => [] as ReplanSummary[]),
     ])
     if (date.value !== d) return

@@ -115,6 +115,8 @@ export function useAlarmHistory() {
   const alarmQuery = computed<HistoryQuery>(() => ({
     from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined,
     states: pickedStates.value, code: code.value || undefined, ongoing: ongoing.value || undefined, page: page.value,
+    // 짧은 건도 모두 남긴다 (1분 미만으로 끝난 대기도 해제 시각과 함께, 11/20)
+    minMinutes: 0,
   }))
   const riskQuery = computed<RiskQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, page: page.value }))
   watch([tab, from, to, lineId, process, pickedStates, code, ongoing], () => { page.value = 1 })
