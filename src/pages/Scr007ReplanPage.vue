@@ -12,12 +12,17 @@ import { useMaster } from '@/composables/useMaster'
 import { source } from '@/data'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
-import { downloadReplanDoc } from '@/lib/replanDoc'
+import { downloadReplanDoc, type ReplanDocData } from '@/lib/replanDoc'
+import ReportApproval from '@/components/domain/ReportApproval.vue'
+import { useAuth } from '@/composables/useAuth'
+import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 
 const route = useRoute()
 const router = useRouter()
 const selectedId = computed(() => (typeof route.params.id === 'string' && route.params.id ? route.params.id : null))
 const rp = useReplanReports(selectedId)
+const { can } = useAuth()
+const flow = useReportFlow()
 const { equipmentName } = useMaster()
 const report = computed(() => rp.report.value)
 const v = computed(() => rp.view.value)
@@ -138,7 +143,7 @@ const doc = computed(() => {
     targetLine: vv.line ?? (r.kind === 'paint' ? '도장' : '출고'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
     author: r.createdBy,
-    status: '검토 대기',
+    status: flowLine(flow.flowOf(`replan:${r.id}`)).label,
     stopSec,
     stop: formatDuration(stopSec),
     rows,
@@ -150,30 +155,47 @@ const doc = computed(() => {
   }
 })
 
-const docBusy = ref(false)
-async function downloadDoc() {
+/** .doc 양식 값. 내려받기와 결재 작성(MES로 보낼 내용)에 같이 쓴다 */
+const docData = computed<ReplanDocData | null>(() => {
   const r = report.value
   const vv = v.value
   const d = doc.value
-  if (!r || !vv || !d || docBusy.value) return
+  if (!r || !vv || !d) return null
+  return {
+    documentNo: d.documentNo, generatedAt: d.created, targetLine: d.targetLine,
+    plan: r.stoppedPlan, actual: r.stoppedDone, shortage: r.shortage, stopSec: d.stopSec,
+    factLine: d.targetLine, factEquipment: vv.name, factStart: vv.start, factCause: `${vv.code} · ${vv.detail}`,
+    remainingSec: r.remainingSec, modelName: d.model, docStatus: d.status, author: d.author,
+    allocationText: vv.allocText,
+    rows: d.rows.map((x) => [x.label, formatNumber(x.remainingPlan), formatNumber(x.capacity), `${formatNumber(x.share, 1)}%`, formatNumber(x.add)]),
+    totalPlan: formatNumber(d.totalPlan), totalCapacity: formatNumber(vv.sums.capacity), totalAllocation: formatNumber(vv.sums.add),
+    resultGrade: d.grade, resultText: d.resultText, actions: d.actions, risks: d.risks,
+  }
+})
+
+const docBusy = ref(false)
+async function downloadDoc() {
+  const dd = docData.value
+  if (!dd || docBusy.value) return
   docBusy.value = true
   try {
-    await downloadReplanDoc({
-      documentNo: d.documentNo, generatedAt: d.created, targetLine: d.targetLine,
-      plan: r.stoppedPlan, actual: r.stoppedDone, shortage: r.shortage, stopSec: d.stopSec,
-      factLine: d.targetLine, factEquipment: vv.name, factStart: vv.start, factCause: `${vv.code} · ${vv.detail}`,
-      remainingSec: r.remainingSec, modelName: d.model, docStatus: d.status, author: d.author,
-      allocationText: vv.allocText,
-      rows: d.rows.map((x) => [x.label, formatNumber(x.remainingPlan), formatNumber(x.capacity), `${formatNumber(x.share, 1)}%`, formatNumber(x.add)]),
-      totalPlan: formatNumber(d.totalPlan), totalCapacity: formatNumber(vv.sums.capacity), totalAllocation: formatNumber(vv.sums.add),
-      resultGrade: d.grade, resultText: d.resultText, actions: d.actions, risks: d.risks,
-    })
+    await downloadReplanDoc(dd)
   } catch (e) {
     genError.value = e instanceof Error ? e.message : '.doc 파일을 만들지 못했습니다'
   } finally {
     docBusy.value = false
   }
 }
+
+// ── 결재·전송 (11/20): 작성 = 생산 관리 팀장, 결재·전송 = 공장장 ──
+const flowKey = computed(() => (selectedId.value ? `replan:${selectedId.value}` : null))
+const flowView = computed(() => flowLine(flow.flowOf(flowKey.value)))
+function writeFlow() {
+  const dd = docData.value
+  if (dd && flowKey.value) flow.write(flowKey.value, 'replan', title.value, dd)
+}
+const approveFlow = () => { if (flowKey.value) flow.approve(flowKey.value) }
+const sendFlow = () => { if (flowKey.value) flow.send(flowKey.value) }
 
 /** PDF: 서버가 주면 내려받고, 없으면 브라우저 인쇄로 PDF 저장 */
 async function downloadPdf() {
@@ -253,10 +275,24 @@ async function downloadPdf() {
       <section class="panel doc">
         <div class="doc-head">
           <div><h2>{{ title }}</h2><p>현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
-          <button class="btn primary" type="button" :disabled="!eventId || generating" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : 'AI 보고서 생성' }}</button>
+          <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!eventId || generating" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : 'AI 보고서 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
         </div>
+        <ReportApproval
+          v-if="selectedId"
+          class="no-print"
+          :status="flowView.status"
+          :written="flowView.written"
+          :approved="flowView.approved"
+          :sent="flowView.sent"
+          :ready="!!docData"
+          :can-write="can('reportWrite')"
+          :can-approve="can('reportApprove')"
+          @write="writeFlow"
+          @approve="approveFlow"
+          @send="sendFlow"
+        />
 
         <div class="report-tools">
           <div class="request-box">
@@ -366,7 +402,7 @@ async function downloadPdf() {
           </section>
 
           <div class="approval">
-            <table><thead><tr><th>작성</th><th>생산관리 팀장</th></tr></thead><tbody><tr><td>{{ doc.author }}</td><td /></tr></tbody></table>
+            <table><thead><tr><th>작성 · 생산 관리 팀장</th><th>결재 · 공장장</th></tr></thead><tbody><tr><td>{{ flowView.writer ?? doc.author }}</td><td>{{ flowView.approver ?? '' }}</td></tr></tbody></table>
           </div>
           <p class="note2">※ 본 문서는 AI 기반 의사결정 지원 초안이며, 담당자 검토 및 승인 후 생산계획에 반영합니다.</p>
         </article>
@@ -377,6 +413,10 @@ async function downloadPdf() {
 
 <!-- 값·간격·색은 시안 B-report.html / b.css 그대로 (시안 변수 → 앱 토큰). 보고서 종이는 인쇄용이라 검은 글씨·맑은 고딕 고정 -->
 <style scoped>
+.flow {
+  margin-top: 12px;
+}
+
 .title {
   margin: 0;
   font-size: 22px;

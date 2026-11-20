@@ -23,3 +23,16 @@ export interface NewUser {
   email?: string
   memo?: string
 }
+
+/** 화면 권한용 계정 종류 (11/20 확정, 프론트 데모): 공장장 · 생산 관리 팀장 · 라인 담당자 · 캠퍼스장(보기 전용 + 임시 MES) */
+export type AppRole = 'PLANT_HEAD' | 'PROD_LEAD' | 'LINE_WORKER' | 'CAMPUS'
+
+/** 데모 로그인 계정 */
+export interface DemoAccount {
+  loginId: string
+  password: string
+  name: string
+  role: AppRole
+  /** 라인 담당자의 담당 라인 (조치 쓰기 범위). 나머지 계정은 빈 배열 */
+  lines: string[]
+}

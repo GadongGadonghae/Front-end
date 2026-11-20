@@ -24,6 +24,7 @@ import InverterStatus from '@/components/domain/InverterStatus.vue'
 import { useProcessDetail } from '@/composables/useProcessDetail'
 import { telemetryChart, useTelemetry } from '@/composables/useTelemetry'
 import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
+import { useAuth } from '@/composables/useAuth'
 import { useInspections, useMicrostops } from '@/composables/useInspections'
 import { useNow } from '@/composables/useNow'
 import { SEGMENT_PROCESS } from '@/lib/routes'
@@ -77,6 +78,7 @@ const speed = computed(() => {
 
 // 비가동 이력·조치 메모, 공정 검사
 const history = useEquipmentHistory(selectedId)
+const { can } = useAuth()
 const inspections = useInspections(process, paint ? undefined : lineId)
 const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
@@ -215,7 +217,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
       <div :class="['right', { paint }]">
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
-          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
+          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :readonly="!can('action', selectedId ?? undefined)" />
         </BasePanel>
         <BasePanel v-if="paint" title="오늘 요약" meta="도장 공정">
           <div class="sum-figs">

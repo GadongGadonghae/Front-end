@@ -46,6 +46,8 @@ export interface AlarmRow {
   start: string
   end: string
   line: string
+  /** 설비 ID (조치 쓰기 권한: 라인 담당자는 본인 라인만) */
+  equipmentId: string
   equipment: string
   code: string
   /** 관리값 이탈 알람 등급 (경고·심각) */
@@ -185,6 +187,7 @@ export function useAlarmHistory() {
     // 해제가 발생과 다른 날이면 날짜를 붙인다
     end: e.end ? (multiDay.value || !sameDay(e.start, e.end) ? when(e.end) : formatTime(e.end)) : '',
     line: areaLabel(e.equipmentId),
+    equipmentId: e.equipmentId,
     equipment: eqLabel(e.equipmentId),
     code: DOWNTIME_NAME[e.code],
     level: e.alarmLevel ? ALARM_LEVEL_NAME[e.alarmLevel] : null,

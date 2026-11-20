@@ -1,19 +1,24 @@
 // 로그인 상태 (FN-016): 자동 로그아웃 없음, 브라우저를 닫아도 7일 유지 (D-75)
 // 데모에서는 브라우저 저장소에 둔다. 실제 API가 생기면 백엔드 세션(쿠키)으로 바꾼다
+// 계정별 권한 (11/20): 데모 계정 4종(공장장·생산 관리 팀장·라인 담당자·캠퍼스장)의 역할은 프론트 계정표(data/accounts)에서 정한다
 import { computed, ref } from 'vue'
 import { source } from '@/data'
+import { DEMO_ACCOUNTS, findAccount } from '@/data/accounts'
+import { ROLE_NAME, allowed, type Perm } from '@/lib/access'
+import type { AppRole } from '@/types/user'
 
 const KEY = 'sfaas.session'
 const KEEP_MS = 7 * 24 * 3600 * 1000
 
-interface Session { name: string; expiresAt: number }
+interface Session { loginId: string; name: string; role: AppRole; lines: string[]; expiresAt: number }
 
 function read(): Session | null {
   try {
     const raw = localStorage.getItem(KEY)
     if (!raw) return null
     const s = JSON.parse(raw) as Session
-    return s.expiresAt > Date.now() ? s : null
+    // 역할이 없는 옛 저장값은 다시 로그인
+    return s.expiresAt > Date.now() && s.role ? s : null
   } catch {
     return null
   }
@@ -33,12 +38,21 @@ const session = ref<Session | null>(read())
 export function useAuth() {
   const loggedIn = computed(() => session.value !== null)
   const userName = computed(() => session.value?.name ?? '')
+  const role = computed(() => session.value?.role ?? null)
+  const roleName = computed(() => (session.value ? ROLE_NAME[session.value.role] : ''))
+  const lines = computed(() => session.value?.lines ?? [])
 
   /** 성공하면 true. 실패 문구는 화면이 정한다 (FN-016) */
   async function login(userId: string, password: string): Promise<boolean> {
+    const acc = findAccount(userId)
+    // 데모 데이터: 데모 계정 4종만 들어간다 (비밀번호 1234)
+    if (source.demo && (!acc || acc.password !== password)) return false
     const res = await source.cmd.login(userId, password)
     if (!res.ok) return false
-    session.value = { name: res.name, expiresAt: Date.now() + KEEP_MS }
+    // 실서버 계정이 데모 계정표에 없으면 보기 전용(캠퍼스장과 같은 권한, MES 제외)으로 둔다
+    session.value = acc
+      ? { loginId: acc.loginId, name: acc.name, role: acc.role, lines: acc.lines, expiresAt: Date.now() + KEEP_MS }
+      : { loginId: userId, name: res.name, role: 'CAMPUS', lines: [], expiresAt: Date.now() + KEEP_MS }
     write(session.value)
     return true
   }
@@ -49,10 +63,27 @@ export function useAuth() {
     write(null)
   }
 
-  return { loggedIn, userName, login, logout }
+  /** 권한 확인. 조치 쓰기는 설비 ID를 넘기면 담당 라인까지 본다 */
+  const can = (perm: Perm, equipmentId?: string) => allowed(role.value, lines.value, perm, equipmentId)
+
+  return { loggedIn, userName, role, roleName, lines, can, login, logout }
 }
 
 /** 라우터 가드용: 반응형 없이 지금 로그인했는지 */
 export function isLoggedIn(): boolean {
   return session.value !== null
+}
+
+/** 라우터 가드용: 지금 계정의 권한 */
+export function hasPerm(perm: Perm): boolean {
+  const s = session.value
+  return !!s && allowed(s.role, s.lines, perm)
+}
+
+/** 로그인 화면의 데모 계정 목록 */
+export const DEMO_LOGINS = DEMO_ACCOUNTS.map((a) => ({ ...a, roleName: ROLE_NAME[a.role] }))
+
+/** 로그인 후 첫 화면: 캠퍼스장은 임시 MES, 나머지는 대시보드 */
+export function homePath(): string {
+  return session.value?.role === 'CAMPUS' && source.demo ? '/mes' : '/'
 }
