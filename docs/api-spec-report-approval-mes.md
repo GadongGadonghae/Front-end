@@ -2,6 +2,7 @@
 
 | 일자 | 내용 |
 |---|---|
+| 2026-11-20 | 결정 반영: 보고서 내용은 **서버가 생성**(DB 조회 + Java 계산 + 사람 입력 자연어는 Gemini, 결과를 DB에 JSON 저장) · MES 수신함은 **캠퍼스장만** |
 | 2026-11-20 | 첫 작성. 프론트가 브라우저 저장(localStorage)으로 시연 중인 기능을 서버 API로 옮기기 위한 초안. 기존 `docs/api-spec-v3.1.md` 규칙을 따름 |
 
 > 이 문서는 **제안**입니다. 필드·주소는 백엔드와 맞춰 바꿀 수 있습니다. 바뀌면 프론트는 `src/composables/useReportFlow.ts`의 저장·불러오기 부분만 고치면 됩니다 (화면 코드는 거의 안 바뀜).
@@ -11,7 +12,7 @@
 AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리하고, 전송된 보고서를 **임시 MES**에서 캠퍼스장이 열람합니다.
 
 ```
-생산 관리 팀장: 보고서 작성(결재 요청)
+생산 관리 팀장: 보고서 생성·작성(서버가 DB로 계산, 문장은 Gemini)
       ↓ POST /api/reports
 공장장: 결재            POST /api/reports/{reportId}/approve
       ↓
@@ -53,18 +54,21 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 
 ## 4. 엔드포인트
 
-### R-10 보고서 작성(결재 요청)
+### R-10 보고서 생성·작성
 - `POST /api/reports` — 권한 `PROD_LEAD`
-- 본문
+- **내용은 서버가 만듭니다.** 프론트는 무엇을 만들지만 보냅니다.
 ```json
 {
   "kind": "DAILY",
   "targetKey": "2026-11-20",
-  "title": "일일 생산 보고서 · 2026-11-20",
-  "content": { "...": "6장 참고" }
+  "additionalRequest": "A라인은 긴급 주문 중이니 재배정에서 제외하고 납기를 우선해줘"
 }
 ```
-- `kind`: `DAILY`(일일 생산 보고서) · `REPLAN`(계획수정 보고서). `targetKey`: DAILY는 날짜, REPLAN은 보고서 ID(`reportId`). 같은 `kind + targetKey`가 이미 `WRITTEN`/`APPROVED`면 **같은 보고서를 갱신**하고 상태를 `WRITTEN`으로 되돌림. `SENT`면 409.
+- `kind`: `DAILY`(일일 생산 보고서) · `REPLAN`(계획수정 보고서). `targetKey`: DAILY는 날짜, REPLAN은 비가동 `eventId`(고장 건). `additionalRequest`는 선택, 사람이 입력한 자연어(최대 500자).
+- 서버 처리: ① DB 조회 + **Java 코드로 계산**(실적·달성률·OEE·재배정 등 숫자) ② 사람이 쓴 자연어 해석과 요약·검토 문장은 **Gemini** 호출 ③ 결과 전체를 **`content`(JSON)로 DB에 저장**, `status = WRITTEN`
+- Gemini 호출이 실패하면 **템플릿 문장으로 대신**하고 `content.ai.mock = true`, `content.ai.fallbackReason`에 이유를 남깁니다 (지금 프론트가 이미 이렇게 표시함).
+- 같은 `kind + targetKey`가 `WRITTEN`/`APPROVED`면 **다시 생성**하고 상태를 `WRITTEN`으로 되돌립니다(재결재 필요). `SENT`면 409.
+- 기존 `POST /api/reassignments/...`(R-03 재배정 보고서 생성)와 같은 일을 하므로, 합칠지 따로 둘지는 백엔드가 정해 주세요.
 - 응답 `201`: 7장 보고서 객체
 
 ### R-11 보고서 목록
@@ -84,9 +88,9 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 - 서버가 전송자와 전송 시각을 기록하고 `SENT`로 바꿈. 응답: 7장 보고서 객체
 
 ### M-01 MES 수신함 (임시 MES)
-- `GET /api/mes/reports?factoryId=&page=1&size=50` — 권한 `CAMPUS` (필요하면 `PLANT_HEAD`도)
+- `GET /api/mes/reports?factoryId=&page=1&size=50` — 권한 **`CAMPUS`만** (결정)
 - **`SENT`만** 최근 전송 순. 응답: `{ "items": [ <보고서 요약> ], "total": 1, "page": 1, "size": 50 }`
-- 열람 상세는 R-12 사용. (MES 화면에는 캠퍼스·공장 구분 표시가 있으므로 `campusId`·`factoryId`를 보고서에 같이 저장하면 좋음. 현재 우리 시스템은 **차체 캠퍼스 공장 1** 한 곳)
+- 열람 상세는 R-12 사용(`CAMPUS`는 `SENT`만 조회 가능). (MES 화면에는 캠퍼스·공장 구분 표시가 있으므로 `campusId`·`factoryId`를 보고서에 같이 저장하면 좋음. 현재 우리 시스템은 **차체 캠퍼스 공장 1** 한 곳)
 
 ## 5. 오류 응답
 
@@ -99,32 +103,14 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 
 본문은 기존 오류 형식을 따름 (예: `{ "code": "REPORT_NOT_APPROVED", "message": "결재 완료 후에만 전송할 수 있습니다" }`).
 
-## 6. `content` (보고서 내용)
+## 6. `content` (보고서 내용, 서버가 생성)
 
-프론트는 보고서를 만들 때 **그 시점의 문서 내용**을 그대로 보관하고, MES가 그 내용을 읽기 전용으로 보여 줍니다. 생성 후 원천 데이터가 바뀌어도 작성 이력은 그대로 보존합니다 (일일 보고서 하단 문구와 같은 원칙). 가장 간단한 방법은 **JSON 문서를 그대로 저장**(DB `jsonb` 컬럼)하는 것입니다.
+서버가 DB에서 읽어 Java로 계산한 **숫자 원본**과 Gemini가 쓴 **문장**을 한 JSON으로 만들어 DB(`jsonb`)에 저장합니다. 생성 이후 원천 데이터가 바뀌어도 작성 이력은 그대로 보존합니다. 프론트는 이 JSON을 화면·`.doc`·MES 열람에 그대로 씁니다 (쉼표·% 같은 표시 형식은 프론트가 붙임).
 
-`DAILY`
-```json
-{
-  "values": { "DOC_NO": "DAILY-20261120-D", "DOC_AT": "2026-11-20 09:29:16", "PROD_DATE": "2026-11-20 (금)", "SHIFT": "일 단위 (00:00~24:00)",
-    "STATUS": "전송 완료", "SUM_PLAN": "9,000개", "SUM_ACTUAL": "5,567개", "SUM_RATE": "61.9%", "SUM_DEFECT": "229개",
-    "SUMMARY_TEXT": "...", "AI_REVIEW": "...", "QUALITY": "...", "M0": "78.4%", "M1": "89.1%", "M2": "92.0%", "M3": "95.6%" },
-  "tables": { "LINES": [["A","1,500","983","65.5%","81.2%","34"]], "PROC": [["슬리팅","5,831","30","0.5%"]],
-    "DOWN": [["C라인 프레스 1단","모델 교체 · 금형 교체","01:28~01:53 (25:00)","-"]], "WIP": [["코일입고","슬리팅","140롤"]], "HANDOVER": [["1. ..."]] },
-  "fileName": "DAILY-20261120-D.doc"
-}
-```
-`REPLAN`
-```json
-{ "documentNo": "AI-RPT-20261120-001", "generatedAt": "2026-11-20 09:12", "targetLine": "B", "plan": 1500, "actual": 810, "shortage": 126,
-  "stopSec": 2520, "factEquipment": "B라인 프레스 3단", "factStart": "09:12", "factCause": "장비고장(알람) · 압력 상한 초과",
-  "remainingSec": 52000, "modelName": "AI 분석 보고서", "docStatus": "전송 완료", "author": "김현수", "allocationText": "...",
-  "rows": [["D","1,200","300","25.0%","126"]], "totalPlan": "1,200", "totalCapacity": "300", "totalAllocation": "126",
-  "resultGrade": "목표 달성 가능", "resultText": "...", "actions": ["..."], "risks": ["..."] }
-```
-- 프론트 타입 정의: `src/lib/dailyDoc.ts`(`DailyDocData`), `src/lib/replanDoc.ts`(`ReplanDocData`). 값은 이미 화면 표시용 글자(쉼표·% 포함)로 들어 있습니다.
-- 서버가 숫자 원본으로 문서를 직접 만들 수 있게 되면 그때 `content`를 서버 생성 방식으로 바꿔도 됩니다 (프론트 변경 필요).
-- `STATUS`/`docStatus` 값(문서 안의 "문서 상태")은 서버가 저장하지 않고, 조회할 때 `status`에서 `작성`/`결재 완료`/`전송 완료`로 바꿔 채워도 됩니다.
+- 일일 보고서(`DAILY`): 프론트의 기존 일일 리포트 API(API-080, `DailyReport` 타입 `src/types/report.ts`)와 같은 숫자 구조 + 문장 필드(`summary`, `aiReview`, `quality`, `handover[]`)
+- 계획수정 보고서(`REPLAN`): 기존 `ReplanReport` 타입(`src/types/report.ts`)과 같은 구조 + `ai`(`title`, `summary`, `actions[]`, `risks[]`, `model`, `mock`, `fallbackReason`, `additionalRequest`, `interpretation`)
+- 필드 이름과 구조는 **서버 정의가 기준**입니다. 정해지면 프론트가 `MesReportView.vue`와 `.doc` 만드는 부분을 서버 JSON에 맞춰 바꿉니다 (지금은 프론트 화면 값 문자열을 그대로 저장하는 임시 방식).
+- 문서 안 "문서 상태"는 저장하지 않고 `status`에서 채워도 됩니다.
 
 ## 7. 보고서 객체
 
@@ -171,15 +157,19 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 
 ## 9. 프론트가 서버로 바뀔 때 고칠 곳
 
-- `src/composables/useReportFlow.ts` — `write`/`approve`/`send` → R-10/R-13/R-14, `sent` → M-01, `flowOf` → R-11/R-12 (지금은 localStorage 키 `sfaas.reportFlow.v1`)
+- `src/composables/useReportFlow.ts` — `write`(지금은 화면 값을 찍어 저장 → 서버가 생성하므로 "AI 리포트 생성" 버튼이 R-10을 호출하도록 합침)/`approve`/`send` → R-10/R-13/R-14, `sent` → M-01, `flowOf` → R-11/R-12 (지금은 localStorage 키 `sfaas.reportFlow.v1`)
 - `src/composables/useAuth.ts` — 로그인 응답의 `role`·`lines` 사용 (지금은 프론트 데모 계정표 `src/data/accounts.ts`)
 - `src/data/contracts.ts`·`src/data/api/*` — 위 호출 추가 (data 층은 Vue를 모르는 순수 TS 규칙 유지)
 - 시연용 데모 계정(`plant`·`lead`·`lineA`·`campus`, 비밀번호 1234)은 서버 계정으로 대체
 
-## 10. 정해야 할 것
+## 10. 결정된 것 / 정해야 할 것
 
+**결정됨 (2026-11-20)**
+- MES 수신함은 **캠퍼스장(`CAMPUS`)만** 봄
+- 보고서 내용은 **서버가 생성**(DB 조회 + Java 계산, 사람 입력 자연어는 Gemini), 결과를 **DB에 JSON으로 저장**
+
+**정해야 할 것**
 1. 전송 후 수정·재전송을 막을지 (현재 프론트는 막음)
-2. `role` 4종으로 바꿀지, 기존 3종에 매핑할지
-3. `content`를 프론트가 보내는 JSON으로 저장할지, 서버가 원천 데이터로 직접 만들지
-4. MES 수신함을 `CAMPUS`만 쓰게 할지, 공장장도 볼 수 있게 할지
-5. 캠퍼스·공장 구분 값(`campusId`·`factoryId`)을 지금 넣을지
+2. `role`을 4종으로 바꿀지, 기존 3종에 매핑할지
+3. 캠퍼스·공장 구분 값(`campusId`·`factoryId`)을 지금 넣을지 (프론트 제안: **넣기**, 값은 서버 설정 고정값으로 시작)
+4. 기존 R-03(재배정 보고서 생성)과 R-10을 합칠지
