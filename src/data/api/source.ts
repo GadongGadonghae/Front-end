@@ -715,6 +715,11 @@ export function createApiSource(): DataSource {
       },
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
+      // N-01: 서버가 보고서·장비 정보를 모아 LLM 요약 후 슬랙 웹훅으로 보낸다 (기록은 남기지 않음)
+      async sendReplanToSlack(reportId) {
+        const r = await api.N01(Number(reportId))
+        return { sentAt: r.sentAt, mock: r.mock, summary: r.summary, summaryFallback: r.summaryFallbackReason }
+      },
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

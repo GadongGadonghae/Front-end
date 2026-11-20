@@ -370,6 +370,16 @@ export interface ReassignmentDetailDto {
   } | null
 }
 
+/** N-01 슬랙 전송 결과. summaryModel = "template"이면 LLM 대신 템플릿 문장 */
+export interface SlackSendDto {
+  reportId: number
+  mock: boolean
+  sentAt: string
+  summary: string[]
+  summaryModel: string
+  summaryFallbackReason: string | null
+}
+
 // ── 관리·공통 (C) ──
 
 /** C-02 (lastLoginAt은 시간대 없는 KST) */

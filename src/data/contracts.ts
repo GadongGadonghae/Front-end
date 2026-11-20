@@ -9,7 +9,7 @@ import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, Telem
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
-import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
+import type { DailyReport, ReplanReport, ReplanSummary, SlackSendResult, TargetRow } from '@/types/report'
 import type { NewUser, UserRow } from '@/types/user'
 
 export type Unsubscribe = () => void
@@ -105,6 +105,8 @@ export interface Commands {
   saveActionMemo(eventId: string, memo: string): Promise<HistoryEvent>
   /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
+  /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 정보 + 보고서 + LLM 요약). 실패하면 이유를 담은 오류를 던진다 */
+  sendReplanToSlack(reportId: string): Promise<SlackSendResult>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** C-03 사용자 등록. 같은 아이디가 있으면 실패 */

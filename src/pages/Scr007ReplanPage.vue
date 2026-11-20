@@ -108,6 +108,26 @@ async function generate() {
   }
 }
 
+// ── 슬랙 전송 (N-01): 고장 장비 정보 + 보고서 + LLM 요약. 요약에 20초 안팎 걸려 그동안 버튼을 막는다 ──
+const slackBusy = ref(false)
+const slackMsg = ref<{ ok: boolean; text: string } | null>(null)
+watch(selectedId, () => { slackMsg.value = null })
+async function sendSlack() {
+  const id = selectedId.value
+  if (!id || slackBusy.value) return
+  slackBusy.value = true
+  slackMsg.value = null
+  try {
+    const r = await source.cmd.sendReplanToSlack(id)
+    const how = r.mock ? '슬랙 시험 모드 · 실제로 보내지 않음' : '슬랙 전송 완료'
+    slackMsg.value = { ok: true, text: `${how} (${formatTime(r.sentAt)})${r.summaryFallback ? ` · AI 요약 실패로 템플릿 문장 사용` : ''}` }
+  } catch (e) {
+    slackMsg.value = { ok: false, text: e instanceof Error ? e.message : '슬랙으로 보내지 못했습니다' }
+  } finally {
+    slackBusy.value = false
+  }
+}
+
 // ── 보고서 문서 값 ──
 const title = computed(() => {
   const name = report.value ? equipmentName(report.value.equipmentId) : trouble.value ? equipmentName(trouble.value.equipmentId) : null
@@ -256,6 +276,7 @@ async function downloadPdf() {
           <button class="btn primary" type="button" :disabled="!eventId || generating" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : 'AI 보고서 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
+          <button class="btn" type="button" :disabled="!doc || !selectedId || slackBusy || generating" @click="sendSlack">{{ slackBusy ? '슬랙 전송 중…' : '슬랙 전송' }}</button>
         </div>
 
         <div class="report-tools">
@@ -273,6 +294,7 @@ async function downloadPdf() {
             <span v-if="ai" :class="['ai-state', { warn: ai.mock }]">{{ ai.mock ? `AI 생성 실패 · 템플릿 문장${ai.fallbackReason ? ` (${ai.fallbackReason})` : ''}` : `AI 생성 · ${ai.model}` }}</span>
           </div>
           <p v-if="genError" class="gen-error">{{ genError }}</p>
+          <p v-if="slackMsg" :class="slackMsg.ok ? 'slack-msg' : 'gen-error'" role="status" aria-live="polite">{{ slackMsg.text }}</p>
           <div v-if="ai?.additionalRequest && ai.interpretation" class="info-panel">
             <h4>AI 추가 요청 반영 결과</h4>
             <div class="info-grid">
@@ -779,10 +801,15 @@ async function downloadPdf() {
   color: #b42318;
 }
 
-.gen-error {
+.gen-error,
+.slack-msg {
   grid-column: 1 / -1;
   margin: 0;
   font-size: 13px;
+}
+
+.slack-msg {
+  color: var(--c-ink-3);
 }
 
 .info-panel {

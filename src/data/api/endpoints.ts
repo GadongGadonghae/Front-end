@@ -4,7 +4,7 @@ import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
-  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
+  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, SlackSendDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
 
@@ -96,6 +96,8 @@ export const api = {
   R02: (reportId: number) => http.get<ReassignmentDetailDto>(`/reassignments/${reportId}`),
   /** R-03 AI 계획수정 보고서 만들기 (고장 건으로, 누를 때마다 새 보고서). additionalRequest = AI 추가 요청 */
   R03: (downtimeId: number, additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { downtimeId, additionalRequest }),
+  /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 + 보고서 + LLM 요약). 웹훅 없음 503, 슬랙 실패 502 */
+  N01: (reportId: number) => http.post<SlackSendDto>(`/reassignments/${reportId}/slack`),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

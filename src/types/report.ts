@@ -108,3 +108,14 @@ export interface TargetRow {
   done: number | null
   updatedBy: string | null
 }
+
+/** N-01 계획수정 보고서 슬랙 전송 결과 (보낸 기록은 서버에 남지 않음) */
+export interface SlackSendResult {
+  sentAt: string
+  /** true = 서버가 slack.mock 이라 실제로 보내지 않고 로그에만 남김 (또는 데모 데이터) */
+  mock: boolean
+  /** 메시지에 넣은 요약 문장 */
+  summary: string[]
+  /** LLM 요약이 실패해 템플릿 문장으로 대신한 이유. 대신하지 않았으면 null */
+  summaryFallback: string | null
+}
