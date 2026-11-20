@@ -102,7 +102,7 @@ function viewFault() {
     <aside v-if="target.change.value" class="target-card no-print" role="status" aria-live="polite">
       <div class="tc-body">
         <b>목표 생산량 변동</b>
-        <span class="tc-qty">오늘 {{ qty(target.change.value.before) }} → <strong>{{ qty(target.change.value.after) }}</strong></span>
+        <span class="tc-qty">오늘 {{ target.change.value.before == null ? '목표' : qty(target.change.value.before) }} → <strong>{{ qty(target.change.value.after) }}</strong></span>
         <small v-if="target.change.value.by || target.change.value.at">{{ target.change.value.by ?? '' }}{{ target.change.value.at ? ` · ${formatTime(target.change.value.at)}` : '' }}</small>
         <button class="tc-go" type="button" @click="writeTargetReport">AI 보고서 작성 ›</button>
       </div>

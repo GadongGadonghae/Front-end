@@ -41,8 +41,14 @@ export function useTargetChange() {
     const row = (await source.q.getTargets(today, today).catch(() => []))[0]
     const now: Seen = { date: today, quantity: row?.quantity ?? null, updatedAt: row?.updatedAt ?? null }
     const seen = readSeen(id) ?? memory
-    // 처음 보거나 날짜가 바뀌면 조용히 기억만 (로그인 전 변경까지 알리지 않음)
+    // 처음 보거나 날짜가 바뀌면: 오늘 다른 사람이 목표를 바꾼 기록이 있으면 바로 알려요 (로그인 전에 공장장이 바꾼 경우, 11/20 시나리오).
+    // 이전 수치는 모르니 before = null ("오늘 목표 → N개"). 그런 기록이 없으면 조용히 기억만
     if (!seen || seen.date !== today) {
+      const changedToday = !!row?.updatedAt && toDateStr(Date.parse(row.updatedAt)) === today && !!row.updatedBy && row.updatedBy !== userName.value
+      if (changedToday) {
+        change.value = { date: today, before: null, after: now.quantity, by: row?.updatedBy ?? null, at: now.updatedAt }
+        return
+      }
       memory = now
       writeSeen(id, now)
       return
