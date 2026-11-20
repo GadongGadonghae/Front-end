@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 D3 · 손볼 건 먼저</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<link rel="stylesheet" href="dk.css">
+<style>
+  /* D3: 왼쪽 맨 위가 "아직 손볼 건"(크게) → 지금 진행 중 → 코드는 건수만 작게.
+     표에서 메모 없는 고장 행의 [쓰기]는 버튼으로 (할 일이 보이게) */
+  .livelist { display: flex; flex-direction: column; gap: 4px; }
+  .livelist > span { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; font-size: 13px; }
+  .livelist > span.D { background: #fbe9e9; }
+  .livelist > span.I { background: #fdf3d0; }
+  .livelist > span b { font-weight: 600; }
+  .livelist > span em { margin-left: auto; font-style: normal; color: var(--ink-2); }
+  .cr { grid-template-columns: minmax(0, 1fr) 3.5em; }
+  tr.tone-D .link[data-memo], tr.need .link[data-memo] { padding: 3px 10px; border: 1px solid var(--ink); border-radius: 6px; color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script src="dk.js"></script>
+<script>
+  const { rows, table, pager, filters, key, dur } = AL
+  const live = rows.filter((r) => r.ongoing && r.s !== 'S')
+  DK.mount('시안 D3 · 손볼 건 먼저', (S) => {
+    const list = DK.filtered(S)
+    // 메모 없는 고장 행 표시 (CSS가 [쓰기]를 버튼으로)
+    const html = table(list, { sel: S.sel, memo: S.memo }).replace(/<tr data-id="(\d+)" class="/g, (m, id) => { const r = rows.find((x) => x.id === Number(id)); return r.s === 'D' && !r.memo ? `${m}need ` : m })
+    return `<main class="page dk">
+      <aside class="panel scroll side"><header><h2>아직 손볼 건</h2><span class="meta">누르면 표를 거름</span></header>
+        <div>${DK.todo(S, { big: true })}</div>
+        <div class="block"><h3>지금 진행 중<span class="aux">${live.length}건</span></h3>
+          <div class="livelist">${live.map((r) => `<span class="${r.s}">${key(r.s)}<b>${r.name}</b><em>${dur(r.len)}</em></span>`).join('')}</div></div>
+        <div class="block"><h3>코드별 건수</h3>${DK.codeGroups(S, { counts: false })}</div>
+      </aside>
+      <section class="panel scroll main">${filters()}
+        <div class="tblhead"><h2>이력</h2><span class="meta">${list.length}건</span>${DK.chip(S)}</div>
+        ${html}${pager(list.length)}</section>
+    </main>`
+  })
+</script>
+</body>
+</html>

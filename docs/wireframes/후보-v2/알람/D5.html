@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 D5 · 시간대 분포</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<link rel="stylesheet" href="dk.css">
+<style>
+  /* D5: 왼쪽 맨 위에 "언제 몰렸나" — 시간마다 시작한 건수(고장 · 대기 쌓음, 지금 이후 비움). 칸을 누르면 그 시간 건만 거름.
+     아래는 D1과 같은 코드 목록 · 손볼 건 */
+  .hours { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); gap: 2px; align-items: end; height: 72px; }
+  .hours button { display: flex; flex-direction: column-reverse; height: 100%; padding: 0; border: 0; border-radius: 2px; background: none; cursor: pointer; }
+  .hours button:hover { background: var(--sunk); }
+  .hours button.fut { background: var(--sunk); cursor: default; }
+  .hours button.on { outline: 2px solid var(--ink); outline-offset: 1px; }
+  .hours i { display: block; width: 100%; }
+  .hours i.D { background: var(--down); }
+  .hours i.I { background: var(--idle); box-shadow: inset 0 0 0 1px var(--idle-edge); }
+  .hx { position: relative; height: 16px; margin-top: 4px; color: var(--ink-3); font-size: 12px; }
+  .hx span { position: absolute; transform: translateX(-50%); }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script src="dk.js"></script>
+<script>
+  const { rows, shown, table, pager, filters, legend } = AL
+  const NOWH = Math.floor(AL.NOW / 3600)
+  const maxH = Math.max(...Array.from({ length: 24 }, (_, h) => shown.filter((r) => Math.floor(r.from / 3600) === h).length))
+  const UNIT = 72 / Math.max(maxH, 3)
+  DK.mount('시안 D5 · 시간대 분포', (S) => {
+    const hSel = S.f?.startsWith('hour:') ? Number(S.f.slice(5)) : null
+    const list = hSel != null ? shown.filter((r) => Math.floor(r.from / 3600) === hSel) : DK.filtered(S)
+    const bars = Array.from({ length: 24 }, (_, h) => {
+      if (h > NOWH) return '<button class="fut" disabled aria-label="아직 오지 않은 시간"></button>'
+      const l = shown.filter((r) => Math.floor(r.from / 3600) === h)
+      const d = l.filter((r) => r.s === 'D').length; const i = l.length - d
+      return `<button data-f="hour:${h}" class="${hSel === h ? 'on' : ''}" title="${h}시 · 고장 ${d} · 대기 ${i}">${d ? `<i class="D" style="height:${d * UNIT}px"></i>` : ''}${i ? `<i class="I" style="height:${i * UNIT}px"></i>` : ''}</button>`
+    }).join('')
+    return `<main class="page dk">
+      <aside class="panel scroll side"><header><h2>오늘 요약</h2></header>
+        <div><h3>언제 몰렸나<span class="aux">시간마다 시작한 건수</span></h3>
+          <div class="hours">${bars}</div>
+          <div class="hx">${[0, 6, 12, 18].map((h) => `<span style="left:${((h + 0.5) / 24) * 100}%">${h}시</span>`).join('')}</div></div>
+        <div class="block">${DK.codeGroups(S)}</div>
+        <div class="block"><h3>아직 손볼 건</h3>${DK.todo(S)}</div>
+      </aside>
+      <section class="panel scroll main">${filters()}
+        <div class="tblhead"><h2>이력</h2><span class="meta">${list.length}건</span>${hSel != null ? `<span class="fchip">거름 <b>${hSel}시대</b><button class="link" data-f="">풀기</button></span>` : DK.chip(S)}</div>
+        ${table(list, { sel: S.sel, memo: S.memo })}${pager(list.length)}</section>
+    </main>`
+  })
+</script>
+</body>
+</html>

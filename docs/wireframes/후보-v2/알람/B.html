@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 B · 표 + 오른쪽 상세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<style>
+  /* B: 왼쪽 = 줄인 이력 표 (훑기용 열만), 오른쪽 = 고른 건 하나의 전부 (발송 기록 · 조치 메모 · 보고서 · 같은 라인 같은 때) */
+  .page { grid-template-columns: minmax(0, 1fr) 440px; }
+  .band { display: flex; align-items: center; gap: 10px; margin: -16px -16px 14px; padding: 14px 16px; border-radius: 8px 8px 0 0; background: var(--sunk); }
+  .band.D { background: rgb(198 40 40 / 10%); }
+  .band.I { background: rgb(241 194 27 / 16%); }
+  .band .nm { font-size: 20px; font-weight: 600; }
+  .band .el { margin-left: auto; text-align: right; }
+  .band .el b { display: block; font-size: 22px; font-weight: 600; line-height: 1.1; }
+  .band .el small { color: var(--ink-3); font-size: 12px; }
+  .codeline { font-size: 15px; font-weight: 600; }
+  .codeline + p { margin: 2px 0 14px; color: var(--ink-2); }
+  .log { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+  .log div { display: grid; grid-template-columns: 4.5em 5em 1fr; gap: 8px; }
+  .log .fail { font-weight: 600; text-decoration: underline 2px var(--ink-3); text-underline-offset: 3px; }
+  .rel { display: flex; flex-direction: column; gap: 4px; }
+  .rel span { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 6px; background: var(--sunk); font-size: 13px; }
+  .rel span b { font-weight: 600; }
+  .rel span em { margin-left: auto; font-style: normal; color: var(--ink-3); }
+  .actions { display: flex; gap: 8px; margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script>
+  const { rows, shown, key, STATE, hms, dur, table, pager, filters } = AL
+  const detail = (r) => {
+    const rel = rows.filter((x) => x.id !== r.id && x.line === r.line && x.from < (r.to ?? AL.NOW) && (x.to ?? AL.NOW) > r.from)
+    const log = r.mail == null ? '<p class="none">고장(D)이 아니라 보내지 않음</p>'
+      : `<div class="log"><div><span>메일</span><span class="t">${hms(r.from + 1)}</span><span class="${r.mail ? '' : 'fail'}">${r.mail ? '✓ 보냄' : '✗ 실패'}</span></div>
+         <div><span>슬랙</span><span class="t">${hms(r.from + 2)}</span><span class="${r.slack ? '' : 'fail'}">${r.slack ? '✓ 보냄' : '✗ 실패 · 화면 알림은 그대로'}</span></div></div>`
+    return `<div class="band ${r.ongoing ? r.s : ''}">${key(r.s)}<span class="nm">${r.name}</span><span class="el"><b>${dur(r.len)}</b><small>${r.ongoing ? '진행 중' : '지속'}</small></span></div>
+      <div class="codeline">${STATE[r.s]} · ${r.code}</div><p>${r.detail}</p>
+      <dl class="dl"><dt>발생</dt><dd>${hms(r.from)}</dd><dt>해제</dt><dd>${r.ongoing ? '<b>진행 중</b>' : hms(r.to)}</dd><dt>공정</dt><dd>${r.proc}</dd></dl>
+      <h3 class="sub">발송</h3>${log}
+      <h3 class="sub">조치 메모 <small>한 줄 · 선택</small></h3>
+      <div class="memo-box"><span class="inp ${r.memo ? 'has' : ''}">${r.memo ?? '무엇을 했는지 한 줄로'}</span><button class="btn primary">저장</button></div>
+      <p class="demo-note" style="margin-top:6px">${r.by ? `조치 담당자 ${r.by} · ${r.at} 저장` : '저장하면 로그인한 사람 이름이 담당자로 남음'}</p>
+      ${r.report ? `<div class="actions"><button class="btn ${r.report === 'make' ? 'primary' : ''}">계획수정 보고서 ${r.report === 'view' ? '보기' : '만들기'}</button><button class="btn">공정 상세로</button></div>` : '<div class="actions"><button class="btn">공정 상세로</button></div>'}
+      <h3 class="sub">같은 라인 같은 때 <small>겹친 기간의 다른 건</small></h3>
+      ${rel.length ? `<div class="rel">${rel.map((x) => `<span>${key(x.s)}<b>${x.eq}</b>${x.code} · ${x.detail}<em>${hms(x.from).slice(0, 5)}~${x.ongoing ? '' : hms(x.to).slice(0, 5)}</em></span>`).join('')}</div>` : '<p class="none">데이터 없음</p>'}`
+  }
+  AL.mount('시안 B · 표 + 오른쪽 상세', (S) => {
+    const r = rows.find((x) => x.id === S.sel)
+    return `<main class="page">
+      <section class="panel scroll"><div style="margin-bottom:12px">${filters({ compact: true })}</div>
+        ${table(shown, { cols: ['start', 'end', 'name', 'code', 'dur', 'sent', 'memo'], sel: S.sel })}${pager(shown.length)}</section>
+      <aside class="panel scroll">${detail(r)}</aside></main>`
+  })
+</script>
+</body>
+</html>

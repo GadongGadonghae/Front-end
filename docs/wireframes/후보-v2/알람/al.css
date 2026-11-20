@@ -1,0 +1,89 @@
+/* 알람·비가동 이력 시안 공용 (가동률 시안 common.css 위에 더함). 구성 확인용 — px 값을 Vue로 옮기지 않는다 */
+.page { display: grid; gap: 16px; overflow: hidden; }
+.panel.scroll { overflow: auto; }
+.gtabs { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--track); }
+.gtabs button { padding: 6px 16px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); font: inherit; cursor: pointer; }
+.gtabs button b { margin-left: 6px; font-weight: 600; }
+.gtabs button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-strong); }
+
+/* 필터 줄: 기간 → 라인 → 공정 → 상태 → 코드 → 진행 중만 (D-84) */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.filters .lab { color: var(--ink-3); font-size: 13px; margin-left: 4px; }
+.filters .hint { color: var(--ink-3); font-size: 12px; }
+.ck { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); font-size: 13px; cursor: pointer; }
+.ck:not(.on)::before { content: ""; width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1.5px var(--ink-3); }
+.ck.on > .ic { width: 14px; height: 14px; padding: 1px; border-radius: 3px; background: var(--ink); color: #fff; }
+.ck b { font-weight: 600; }
+.ck.off { color: var(--ink-3); }
+
+/* 표 */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { position: sticky; top: 0; z-index: 1; text-align: left; color: var(--ink-3); font-weight: 400; padding: 0 12px 6px 0; border-bottom: 1px solid var(--line-strong); background: var(--surface); white-space: nowrap; }
+.tbl th.r, .tbl td.r { text-align: right; }
+.tbl td { padding: 9px 12px 9px 0; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.tbl td:first-child, .tbl th:first-child { padding-left: 10px; }
+.tbl td.wrap { white-space: normal; }
+.tbl tr.tone-D td { background: #fbe9e9; }
+.tbl tr.tone-I td { background: #fdf3d0; }
+.tbl tr.sel td { box-shadow: inset 0 1px 0 var(--ink), inset 0 -1px 0 var(--ink); }
+.tbl tr[data-id] { cursor: pointer; }
+.t { color: var(--ink-2); }
+.live { font-weight: 600; color: var(--ink); }
+.none { color: var(--ink-3); }
+.eq b { font-weight: 600; }
+.eq small { margin-left: 6px; color: var(--ink-3); font-size: 12px; }
+.code { display: inline-flex; align-items: center; gap: 8px; }
+.dur { font-weight: 600; font-size: 14px; }
+.sent { display: inline-flex; gap: 10px; }
+.sent span { display: inline-flex; align-items: center; gap: 3px; color: var(--ink-2); }
+.sent span.fail { color: var(--ink); font-weight: 600; text-decoration: underline 2px var(--ink-3); text-underline-offset: 3px; }
+.memo { display: inline-flex; align-items: center; gap: 8px; max-width: 260px; }
+.memo .txt { overflow: hidden; text-overflow: ellipsis; }
+.link { padding: 0; border: 0; background: none; color: #2149c4; font: inherit; font-size: 13px; cursor: pointer; }
+.who small { display: block; color: var(--ink-3); font-size: 12px; }
+.btn { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); font: inherit; font-size: 13px; color: var(--ink); cursor: pointer; white-space: nowrap; }
+.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+.pager { display: flex; align-items: center; gap: 12px; margin-top: 12px; color: var(--ink-3); font-size: 13px; }
+.pager .pg { display: inline-flex; gap: 4px; margin-left: auto; }
+.pager .pg span { min-width: 28px; padding: 3px 8px; border-radius: 4px; text-align: center; }
+.pager .pg span.on { background: var(--ink); color: #fff; font-weight: 600; }
+
+/* 지속 막대: 그 건의 길이를 표 안 가장 긴 건 대비로 */
+.dbar { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.dbar .tr { width: 90px; height: 8px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.dbar .tr i { display: block; height: 100%; }
+.fill-D { background: var(--down); }
+.fill-I { background: var(--idle); box-shadow: inset 0 0 0 1px var(--idle-edge); }
+.fill-S { background: #6b717b; }
+
+/* 상세 칸 공용 */
+.dl { display: grid; grid-template-columns: 6em 1fr; gap: 8px 12px; font-size: 13px; }
+.dl dt { color: var(--ink-3); }
+.dl dd { margin: 0; }
+.memo-box { display: flex; gap: 6px; }
+.memo-box .inp { flex: 1; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: 6px; color: var(--ink-3); font-size: 13px; background: var(--surface); }
+.memo-box .inp.has { color: var(--ink); }
+.sub { margin: 18px 0 8px; font-size: 14px; font-weight: 600; }
+.sub small { margin-left: 6px; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+.demo-note { color: var(--ink-3); font-size: 12px; }
+.risk { display: inline-block; padding: 1px 8px; border-radius: 4px; box-shadow: inset 0 0 0 2px var(--down); font-size: 14px; font-weight: 600; }
+
+/* 아이콘 · 지속 · 메모 펼침 (2차: 시안 D 변형) */
+.ic { flex: none; vertical-align: -2px; }
+.field { display: inline-flex; align-items: center; gap: 6px; }
+.field .ic { color: var(--ink-3); }
+.bell { display: inline-flex; align-items: center; gap: 4px; }
+.sent span { gap: 4px; }
+.dur-t { color: var(--ink-2); }
+.tbl tr.memo-row td { padding: 0 10px 14px; background: var(--surface); border-bottom: 1px solid var(--line-strong); }
+.tbl tr:has(+ .memo-row) td { border-bottom-color: transparent; }
+.memo-ed { display: grid; gap: 8px; max-width: 880px; margin-left: auto; padding-top: 4px; }
+.memo-ed label { font-size: 13px; font-weight: 600; }
+.memo-ed label span { margin-left: 8px; color: var(--ink-3); font-weight: 400; }
+.memo-ed textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); font: 14px/1.5 var(--font); resize: vertical; }
+.memo-ed textarea:focus { outline: 2px solid #2149c4; outline-offset: 1px; border-color: transparent; }
+.memo-act { display: flex; align-items: center; gap: 8px; }
+.memo-act .hint { margin-right: auto; color: var(--ink-3); font-size: 12px; }
+.saved { display: inline-flex; align-items: center; gap: 4px; color: #2149c4; font-size: 12px; }
+.link:focus-visible, .btn:focus-visible, button:focus-visible { outline: 2px solid #2149c4; outline-offset: 2px; }
+::selection { background: rgb(33 73 196 / 18%); }
