@@ -260,8 +260,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
 
   // ── 배정 칸 (11/20): 물량이 시작되는 코일 입고 왼쪽 바닥에, 라인 줄마다 현재 생산 / 배정(오늘 목표) ──
   // 승인·적용된 추가 주문 배정이 있으면 "+N 추가 배정"을 붙이고 강조색 테두리
-  tag('배정<small>생산 / 배정</small>', 'f3d-zone f3d-alloc-head', [-78, 7, -42])
-  const allocTags = LINES.map((_L, i) => tag('', 'f3d-alloc', [-78, 1, lineZ(i)]))
+  tag('배정<small>생산 / 배정</small>', 'f3d-zone f3d-alloc-head', [-94, 7, -42])   // 11/20: 코일 입고·설비를 가리지 않게 왼쪽으로 (-78 → -94)
+  const allocTags = LINES.map((_L, i) => tag('', 'f3d-alloc', [-94, 1, lineZ(i)]))
   const num = (n: number | null | undefined) => (n == null ? '-' : n.toLocaleString('ko-KR'))
 
   // ── 도장 경로 ──
