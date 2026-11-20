@@ -1,5 +1,5 @@
 <!-- 제품 여정 시간표 (생산 조회 공정 중 추적, D-107 시안 G4): 제품마다 한 줄, 가로 = 시각.
-     공정마다 머문 구간을 굵은 칸으로 (뒤 공정일수록 진한 회색), 공정 사이 이동·대기는 가는 선.
+     공정마다 머문 구간을 굵은 칸으로 (칸 색 = 공정), 공정 사이 이동·대기는 가는 선.
      지금 처리 중 = 강조 파랑 테두리, 설비 고장으로 멈춤 = 빨강 칸 + 행 바탕 옅은 빨강, 불량 제외 = 먹색 칸.
      지금 이후는 옅은 면. 1초마다 지금 칸이 자라지만 깜빡이지 않는다 -->
 <script setup lang="ts">
@@ -178,14 +178,18 @@ const gaps = (r: JourneyRowView) => r.lanes.slice(1).map((l, i) => ({ a: r.lanes
   background: var(--c-surface-sunk);
 }
 
-.p0 { background: var(--c-step-1); }
-.p1 { background: var(--c-step-2); }
-.p2 { background: var(--c-step-3); }
-.p3 { background: var(--c-step-4); }
-.p4 { background: var(--c-step-5); }
+/* 칸 색 = 어느 공정인지 (머문 시간은 칸 길이) */
+.p0 { --proc: var(--c-proc-1); }
+.p1 { --proc: var(--c-proc-2); }
+.p2 { --proc: var(--c-proc-3); }
+.p3 { --proc: var(--c-proc-4); }
+.p4 { --proc: var(--c-proc-5); }
 
+.lane i.done { background: color-mix(in srgb, var(--proc) 50%, var(--c-surface)); }
+
+/* 지금 처리 중: 그 공정 색을 옅게 + 파란 테두리 */
 .lane .now {
-  background: var(--c-accent-tint);
+  background: color-mix(in srgb, var(--proc) 18%, var(--c-surface));
   box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-accent);
 }
 

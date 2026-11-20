@@ -8,6 +8,7 @@ import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseDateField from '@/components/base/BaseDateField.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 import OeeBridge from '@/components/domain/OeeBridge.vue'
 import DowntimeDonut from '@/components/domain/DowntimeDonut.vue'
 import UtilLedger from '@/components/domain/UtilLedger.vue'
@@ -52,10 +53,10 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
       <BasePanel class="main">
         <template #head>
           <h2>상태</h2>
-          <BaseSegmented v-model="tab" label="구역" size="sm" :options="TABS" />
+          <!-- 설비별로 들어간 뒤 [생산 라인] 탭을 다시 눌러도 전체 라인으로 돌아온다 -->
+          <span @click="tab === 'line' && u.backToLines()"><BaseSegmented v-model="tab" label="구역" size="sm" :options="TABS" /></span>
           <span v-if="tab === 'line' && u.line.value" class="crumb">
-            <button type="button" @click="u.backToLines">생산 라인</button>
-            <BaseIcon name="chevron-right" :size="16" />
+            <BaseButton size="sm" @click="u.backToLines"><BaseIcon class="back" name="chevron-right" :size="16" />전체 라인 보기</BaseButton>
             <b>{{ u.scopeName.value }}</b><span class="meta">설비별</span>
           </span>
         </template>
@@ -146,23 +147,13 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
 .crumb {
   display: inline-flex;
   align-items: center;
-  gap: var(--sp-1);
+  gap: var(--sp-3);
   color: var(--c-ink-3);
 }
 
-.crumb button {
-  padding: var(--sp-1) var(--sp-2);
-  border: 0;
-  border-radius: var(--r-1);
-  background: none;
-  color: var(--c-ink-2);
-  font: inherit;
-  cursor: pointer;
-}
-
-.crumb button:hover {
-  background: var(--c-surface-sunk);
-  color: var(--c-ink);
+/* 왼쪽 화살표 = 오른쪽 화살표를 뒤집어 씀 */
+.back {
+  transform: scaleX(-1);
 }
 
 .crumb b {

@@ -1,5 +1,5 @@
-<!-- 24시간 상태 띠 (가동률 D-108): 이상만 색. 가동은 옅은 중립, 대기·고장·통신 끊김만 상태 색, 계획정지는 회색 빗금(가동률에서 뺌).
-     아주 짧은 손실도 보이게 최소 폭을 둔다. 지금도 이어지는 구간은 먹색 테두리 (깜빡이지 않음), 지금 이후는 가라앉은 면. 지금 선은 UtilLedger가 줄 전체에 하나로 긋는다 -->
+<!-- 24시간 상태 띠 (가동률 D-108): 가동은 옅은 초록, 대기·고장·통신 끊김만 상태 색, 계획정지는 회색 빗금(가동률에서 뺌).
+     아주 짧은 이상 구간도 보이게 최소 폭(4분, 그리고 --seg-min-w)을 둔다. 지금도 이어지는 구간은 먹색 테두리 (깜빡이지 않음), 지금 이후는 가라앉은 면. 지금 선은 UtilLedger가 줄 전체에 하나로 긋는다 -->
 <script setup lang="ts">
 import type { StateSpanView } from '@/types/view'
 
@@ -42,6 +42,16 @@ i {
 }
 
 .s-R { background: var(--c-run-quiet); }
+
+/* 이상 구간(계획정지·대기·고장·통신 끊김)은 아무리 짧아도 최소 폭만큼은 보이게 */
+.s-S,
+.s-I,
+.s-D,
+.s-DC {
+  z-index: 1;
+  min-width: var(--seg-min-w);
+}
+
 .s-S { background: repeating-linear-gradient(135deg, var(--c-stop) 0 3px, var(--c-stop-hatch) 3px 5px); }
 .s-I { background: var(--c-idle); box-shadow: inset 0 0 0 var(--line-w) var(--c-idle-edge); }
 .s-D { background: var(--c-down); }

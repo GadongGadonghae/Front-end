@@ -246,9 +246,10 @@ const cell = (c: LedgerRowView['days'][number]) => {
   font-weight: var(--fw-strong);
 }
 
+/* 손실 시간: 보조 정보라 작고 흐리게 (OEE가 주인공) */
 .loss {
-  font-size: var(--fs-row);
-  font-weight: var(--fw-strong);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
   text-align: right;
   white-space: nowrap;
 }

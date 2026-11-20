@@ -1,8 +1,12 @@
-<!-- 제품 여정 범례 (ProductJourney와 같은 칠): 머문 시간 · 지금 처리 중 · 설비 고장으로 멈춤 · 불량 제외 -->
+<!-- 제품 여정 범례 (ProductJourney와 같은 칠): 공정 5색 · 지금 처리 중(옅은 칠 + 파란 테두리) · 설비 고장으로 멈춤 · 지금 이후 -->
+<script setup lang="ts">
+const PROCS = ['슬리팅', '프레스', '용접', '도장', '출고']
+</script>
+
 <template>
   <ul class="legend" aria-label="범례">
-    <li><i class="done"></i>공정에 머문 시간</li>
-    <li><i class="now"></i>지금 처리 중</li>
+    <li v-for="(p, i) in PROCS" :key="p"><i :style="{ background: `color-mix(in srgb, var(--c-proc-${i + 1}) 50%, var(--c-surface))` }"></i>{{ p }}</li>
+    <li class="sep"><i class="now"></i>지금 처리 중</li>
     <li><i class="stuck"></i>설비 고장으로 멈춤</li>
     <li><i class="fut"></i>지금 이후</li>
   </ul>
@@ -28,14 +32,19 @@ li {
   white-space: nowrap;
 }
 
+/* 공정 색과 상태 표시 사이 구분 */
+.sep {
+  padding-left: var(--sp-4);
+  border-left: var(--line-w) solid var(--c-line-strong);
+}
+
 i {
   width: var(--sp-5);
   height: var(--sp-3);
   border-radius: var(--r-1);
 }
 
-.done { background: var(--c-step-3); }
-.now { background: var(--c-accent-tint); box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-accent); }
+.now { background: var(--c-surface); box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-accent); }
 .stuck { background: var(--c-down); }
 .fut { background: var(--c-surface-sunk); box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong); }
 </style>
