@@ -1,11 +1,12 @@
 // 데모 알람·비가동 이력 (API-070)과 예지보전 위험 이력 (API-071).
 // 오늘은 지금 상태 이력 그대로, 지난 날은 가동률 화면과 같은 비가동 구간(analysis.stopsOf)에 상세·메모·발송 결과를 붙인다. 값은 데모용 (CLAUDE.md)
 import type { DowntimeCode, StateCode, StopState } from '@/types/state'
-import type { HistoryEvent, HistoryQuery, NotifyResult, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
+import type { HistoryEvent, HistoryQuery, HistorySummary, HistorySummaryQuery, NotifyResult, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
 import type { Equipment } from '@/types/plant'
 import type { Paged } from '@/types/production'
 import { MASTER } from '@/data/mock/master'
-import { PAST_DETAIL, PAST_MEMOS, SLACK_FAIL_TODAY } from '@/data/mock/scenario'
+import { isTodo, summarize } from '@/data/historyTodo'
+import { PAST_DETAIL, PAST_MEMOS, MAIL_FAIL_TODAY } from '@/data/mock/scenario'
 import { between, dayStart, daysOf, hash, localDate, noise, rng } from '@/data/mock/rand'
 
 type Stop = { state: StopState; code: DowntimeCode; from: number; to: number }
@@ -42,8 +43,8 @@ export function createHistory(ctx: Ctx) {
     return { items: list.slice((p - 1) * ctx.pageSize, p * ctx.pageSize), total: list.length, page: p, size: ctx.pageSize }
   }
 
-  const notifyOf = (id: string, state: StateCode, failSlack: boolean): NotifyResult | null =>
-    state === 'D' ? { email: noise('mail', id) > 0.03, slack: !failSlack } : null
+  const notifyOf = (id: string, state: StateCode, failMail: boolean): NotifyResult | null =>
+    state === 'D' ? { email: !failMail && noise('mail', id) > 0.03 } : null
 
   /** 장비고장(알람) 상세: 그 설비 종류의 상한 있는 관리값 하나 */
   function alarmDetail(e: Equipment, r: () => number) {
@@ -76,7 +77,7 @@ export function createHistory(ctx: Ctx) {
   }
 
   const todayEvents = (): HistoryEvent[] =>
-    ctx.events().map((ev) => ({ ...ev, alarmLevel: ev.code === 'UP_ALARM' ? 'CRITICAL' as const : null, notify: notifyOf(ev.id, ev.state, SLACK_FAIL_TODAY.includes(ev.equipmentId)) }))
+    ctx.events().map((ev) => ({ ...ev, alarmLevel: ev.code === 'UP_ALARM' ? 'CRITICAL' as const : null, notify: notifyOf(ev.id, ev.state, MAIL_FAIL_TODAY.includes(ev.equipmentId)) }))
 
   const eqOf = (id: string) => MASTER.equipment.find((e) => e.id === id)
 
@@ -91,12 +92,15 @@ export function createHistory(ctx: Ctx) {
           && q.states.includes(ev.state)
           && (!q.code || ev.code === q.code)
           && (!q.ongoing || ev.end == null)
+          && (!q.todo || isTodo[q.todo](ev))
           // 1분 미만은 비가동 1건으로 세지 않는다 (백엔드 minMinutes=1). 진행 중이면 지금까지 길이로
           && ((ev.end ? Date.parse(ev.end) : ctx.now()) - Date.parse(ev.start)) >= (q.minMinutes ?? 1) * 60_000
       })
       .sort((a, b) => b.start.localeCompare(a.start))
   }
   const list = (q: HistoryQuery): Paged<HistoryEvent> => page(all(q), q.page)
+  /** 왼쪽 요약 열 (D-109): 상태 셋을 모두 넣어 센다 */
+  const summary = (q: HistorySummaryQuery): HistorySummary => summarize(all({ ...q, states: ['D', 'I', 'S'] }), ctx.now())
 
   /** 이력 한 건 (오늘 건 EV-n, 지난 날 건 EV-YYYYMMDD-설비-n) */
   function find(id: string): HistoryEvent | null {
@@ -137,5 +141,5 @@ export function createHistory(ctx: Ctx) {
     return { ...found, ...memo }
   }
 
-  return { list, all, find, risks, saveMemo }
+  return { list, all, summary, find, risks, saveMemo }
 }

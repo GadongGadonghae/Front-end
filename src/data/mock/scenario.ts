@@ -111,8 +111,8 @@ export const PAINT_NG_BY_LINE: Record<string, number> = { A: 4, B: 3, C: 4, D: 3
 /** 실설비 슬리터(A) 최근 트립 (데모): 지금보다 며칠 전 */
 export const INVERTER_LAST_TRIP = { name: 'OCT 과전류', agoSec: 2 * 86400 + 22 * 3600 + 31 * 60, recoveredAfterSec: 180 }
 
-/** 오늘 고장 건 중 슬랙 발송이 실패한 설비 (데모, D-63 "실패 표시"를 보이려고) */
-export const SLACK_FAIL_TODAY = ['F-WD']
+/** 오늘 고장 건 중 메일 발송이 실패한 설비 (데모, D-63 "실패 표시"를 보이려고) */
+export const MAIL_FAIL_TODAY = ['F-WD']
 
 /** 지난 날 이력의 상세 문구 (데모). 장비고장(알람)은 그 설비 관리값 항목으로 "○○ 상한 초과"를 만든다 */
 export const PAST_DETAIL: Record<DowntimeCode, string[]> = {

@@ -3,7 +3,7 @@
 // 필터·페이지가 바뀌면 다시 부른다. 진행 중 건의 지속시간은 화면 시계로 늘리고, 알람이 생기거나 풀리면 다시 부른다 (API 명세 4.6)
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { source } from '@/data'
-import type { HistoryEvent, HistoryQuery, RiskEvent, RiskQuery } from '@/types/events'
+import type { HistoryEvent, HistoryQuery, HistorySummaryQuery, HistoryTodo, RiskEvent, RiskQuery } from '@/types/events'
 import type { DowntimeCode, StopState } from '@/types/state'
 import { useMaster } from '@/composables/useMaster'
 import { useNow } from '@/composables/useNow'
@@ -13,6 +13,21 @@ import { formatDuration, formatTime, toDateStr } from '@/lib/format'
 import { metricLabel } from '@/lib/metrics'
 
 export type HistoryTab = 'alarm' | 'risk'
+
+/** 알람 = 고장(D) 코드. 명세 3종(장비고장 · 장비고장(알람) · 안전문제, FN-005)은 0건이어도 늘 보이고, 백엔드에만 있는 고장 코드는 건이 있을 때만 (D-109, Q-39) */
+const ALARM_CODES: DowntimeCode[] = ['UP_BREAKDOWN', 'UP_ALARM', 'UP_SAFETY']
+const TODO_LABEL: Record<HistoryTodo, string> = { ongoingFault: '진행 중 고장', notifyFail: '메일 발송 실패' }
+/** 아직 손볼 건 (D-111): 지금 손볼 것만 */
+const TODO_KEYS: HistoryTodo[] = ['ongoingFault', 'notifyFail']
+const STATE_LABEL: Record<StopState, string> = { D: '고장', I: '대기', S: '정지' }
+
+/** 왼쪽 요약 열 (D-109) */
+export interface AlarmSummaryView {
+  /** hidden = 상태 필터에서 빠져 표에 안 나옴 (요약은 셋 다 센다) */
+  states: { state: StopState; label: string; count: number; hidden: boolean }[]
+  alarms: { code: DowntimeCode; name: string; count: number }[]
+  todo: { key: HistoryTodo; label: string; count: number }[]
+}
 
 
 /** 기간 최대 31일 (D-66) */
@@ -72,6 +87,8 @@ export function useAlarmHistory() {
   const states = ref<Record<StopState, boolean>>({ D: true, I: true, S: false })
   const code = ref<'' | DowntimeCode>('')
   const ongoing = ref(false)
+  /** 아직 손볼 건만 (왼쪽 열에서 고름) */
+  const todo = ref<'' | HistoryTodo>('')
   const page = ref(1)
 
   // 기간: 끝이 시작보다 앞이면 맞추고, 31일을 넘으면 반대쪽을 당긴다
@@ -104,10 +121,11 @@ export function useAlarmHistory() {
   const pickedStates = computed(() => (['D', 'I', 'S'] as StopState[]).filter((s) => states.value[s]))
   const alarmQuery = computed<HistoryQuery>(() => ({
     from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined,
-    states: pickedStates.value, code: code.value || undefined, ongoing: ongoing.value || undefined, page: page.value,
+    states: pickedStates.value, code: code.value || undefined, ongoing: ongoing.value || undefined, todo: todo.value || undefined, page: page.value,
   }))
+  const summaryQuery = computed<HistorySummaryQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined }))
   const riskQuery = computed<RiskQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, page: page.value }))
-  watch([tab, from, to, lineId, process, pickedStates, code, ongoing], () => { page.value = 1 })
+  watch([tab, from, to, lineId, process, pickedStates, code, ongoing, todo], () => { page.value = 1 })
 
   const alarms = usePoll(
     () => (tab.value === 'alarm' ? source.q.getHistory(alarmQuery.value) : Promise.resolve(null)),
@@ -117,8 +135,12 @@ export function useAlarmHistory() {
     () => (tab.value === 'risk' ? source.q.getRiskHistory(riskQuery.value) : Promise.resolve(null)),
     null, () => [tab.value, riskQuery.value],
   )
+  const summary = usePoll(
+    () => (tab.value === 'alarm' ? source.q.getHistorySummary(summaryQuery.value) : Promise.resolve(null)),
+    null, () => [tab.value, summaryQuery.value],
+  )
   // 새 알람·해제, 위험 진입·해제가 오면 지금 보는 표를 다시 부른다
-  const offAlarm = source.live.onAlarm(() => { if (tab.value === 'alarm') alarms.reload() })
+  const offAlarm = source.live.onAlarm(() => { if (tab.value === 'alarm') { alarms.reload(); summary.reload() } })
   const offRisk = source.live.onRiskChanged(() => { if (tab.value === 'risk') risks.reload() })
   onScopeDispose(() => { offAlarm(); offRisk() })
 
@@ -137,7 +159,10 @@ export function useAlarmHistory() {
   }
   const sameDay = (a: string, b: string) => toDateStr(Date.parse(a)) === toDateStr(Date.parse(b))
 
-  const alarmRows = computed<AlarmRow[]>(() => (alarms.data.value?.items ?? []).map((e) => ({
+  /** 진행 중 고장 → 진행 중 대기 → 나머지 발생 최근순 (D-111). 진행 중 건은 늘 가장 최근이라 첫 페이지 안에서 다시 줄 세운다 */
+  const rank = (e: HistoryEvent) => (e.end != null ? 2 : e.state === 'D' ? 0 : 1)
+  const ordered = computed(() => [...(alarms.data.value?.items ?? [])].sort((a, b) => rank(a) - rank(b)))
+  const alarmRows = computed<AlarmRow[]>(() => ordered.value.map((e) => ({
     id: e.id,
     state: e.state,
     ongoing: e.end == null,
@@ -174,15 +199,46 @@ export function useAlarmHistory() {
   const size = computed(() => (tab.value === 'alarm' ? alarms.data.value?.size : risks.data.value?.size) ?? 50)
   const loading = computed(() => (tab.value === 'alarm' ? alarms.loading.value : risks.loading.value))
 
+  const summaryView = computed<AlarmSummaryView | null>(() => {
+    const s = summary.data.value
+    if (!s) return null
+    const of = (st: StopState) => s.byCode.filter((c) => c.state === st)
+    const otherAlarms = of('D').filter((c) => !ALARM_CODES.includes(c.code)).map((c) => c.code)
+    return {
+      states: (['D', 'I', 'S'] as StopState[]).map((st) => {
+        const cs = of(st)
+        return { state: st, label: STATE_LABEL[st], count: cs.reduce((a, c) => a + c.count, 0), hidden: !states.value[st] }
+      }),
+      alarms: [...ALARM_CODES, ...otherAlarms].map((c) => ({ code: c, name: DOWNTIME_NAME[c], count: s.byCode.find((x) => x.code === c)?.count ?? 0 })),
+      todo: TODO_KEYS.map((k) => ({ key: k, label: TODO_LABEL[k], count: s.todo[k] })),
+    }
+  })
+
+  /** 왼쪽 알람 코드: 누르면 그 코드만 (고장을 켠다), 다시 누르면 풀림 */
+  function pickAlarm(c: DowntimeCode) {
+    if (code.value === c) { code.value = ''; return }
+    states.value = { ...states.value, D: true }
+    code.value = c
+  }
+  function pickTodo(k: HistoryTodo) {
+    todo.value = todo.value === k ? '' : k
+  }
+  /** 요약에서 "표에 없음"인 상태를 표에도 보이게 */
+  function showState(st: StopState) {
+    states.value = { ...states.value, [st]: true }
+  }
+
   /** 조치 메모 저장. 빈 글이면 지운다. 담당자는 로그인 사용자 (D-84) */
   async function saveMemo(eventId: string, memo: string) {
     await source.cmd.saveActionMemo(eventId, memo)
     alarms.reload()
+    summary.reload()
   }
 
   return {
-    tab, from, to, lineId, process, states, code, ongoing, page, today,
+    tab, from, to, lineId, process, states, code, ongoing, todo, page, today,
     lineOptions, processOptions, codeOptions,
     alarmRows, riskRows, total, size, loading, saveMemo,
+    summaryView, pickAlarm, pickTodo, showState, todoLabel: (k: HistoryTodo) => TODO_LABEL[k], codeLabel: (c: DowntimeCode) => DOWNTIME_NAME[c],
   }
 }

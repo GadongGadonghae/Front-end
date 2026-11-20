@@ -92,6 +92,7 @@
   --head-h: 44px;
   --page-gutter: var(--sp-6);
   --col-summary: clamp(280px, 17vw, 320px);
+  --col-summary-sm: clamp(220px, 13vw, 248px); /* 좁은 요약 열 (알람 이력 D-109: 표의 메모 열을 넓게) */
   --col-side: clamp(340px, 22vw, 440px);
   --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
   --col-detail: clamp(340px, 20vw, 400px); /* 고른 제품 기록 열 (생산 조회) */
