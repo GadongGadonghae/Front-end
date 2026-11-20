@@ -1,5 +1,6 @@
-<!-- 24시간 상태 띠 (가동률 D-108): 가동은 옅은 초록, 대기·고장·통신 끊김만 상태 색, 계획정지는 회색 빗금(가동률에서 뺌).
-     아주 짧은 이상 구간도 보이게 최소 폭(4분, 그리고 --seg-min-w)을 둔다. 지금도 이어지는 구간은 먹색 테두리 (깜빡이지 않음), 지금 이후는 가라앉은 면. 지금 선은 UtilLedger가 줄 전체에 하나로 긋는다 -->
+<!-- 24시간 상태 띠 (가동률 D-108, D-113): 가동은 조금 옅은 초록, 대기·고장·통신 끊김만 상태 색, 계획정지는 회색 빗금(가동률에서 뺌).
+     아주 짧은 이상 구간도 보이게 최소 폭(4분, 그리고 --seg-min-w)을 둔다. 지금 이후는 가라앉은 면.
+     3시간마다 가는 눈금선을 띠 위에 긋는다 (축 글자와 같은 자리). 지금 선은 UtilLedger가 줄 전체에 하나로 긋는다 -->
 <script setup lang="ts">
 import type { StateSpanView } from '@/types/view'
 
@@ -22,6 +23,7 @@ const end = () => props.span
       :style="{ left: pct(s.from), width: width(s) }"
       :title="s.title"
     ></i>
+    <i class="grid" aria-hidden="true"></i>
   </span>
 </template>
 
@@ -57,10 +59,13 @@ i {
 .s-D { background: var(--c-down); }
 .s-DC { background: var(--c-dc); }
 
-.ongoing {
-  z-index: 1;
-  outline: var(--indicator-w) solid var(--c-ink);
-  outline-offset: var(--line-w);
+/* 3시간 눈금: 띠 위에 표면색 가는 선 (칠한 면을 끊어 시각을 짚게). 띠 양 끝은 긋지 않는다 */
+.grid {
+  inset: 0;
+  z-index: 2;
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, transparent 0 calc(100% / 8 - 1px), color-mix(in srgb, var(--c-surface) 70%, transparent) calc(100% / 8 - 1px) calc(100% / 8));
+  pointer-events: none;
 }
 
 .future {

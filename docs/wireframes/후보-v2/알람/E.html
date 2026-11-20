@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 E · 고장 묶음</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<style>
+  /* E: 고장 한 건과, 그 고장 동안 같은 라인에서 시작된 대기(재공부족·작업지연)를 한 묶음으로.
+     묶음 머리 = 고장 (조치 메모 · 보고서는 머리에만), 아래 = 따라 멈춘 설비. 묶이지 않은 대기는 따로.
+     묶는 규칙은 명세에 없음 — 화면에서 계산한 것 (결정 필요) */
+  .page { grid-template-rows: minmax(0, 1fr); }
+  .grp { flex-shrink: 0; margin-bottom: 14px; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .grp.on { border-color: var(--down); }
+  .gh { display: grid; grid-template-columns: 26px 220px minmax(0, 1fr) 150px 200px 320px 110px; gap: 14px; align-items: center; padding: 12px 14px; background: var(--sunk); }
+  .grp.on .gh { background: rgb(198 40 40 / 8%); }
+  .gh > .btn { justify-self: start; }
+  .gh .nm { font-size: 16px; font-weight: 600; }
+  .gh .nm small { display: block; color: var(--ink-3); font-size: 12px; font-weight: 400; }
+  .gh .why b { font-weight: 600; }
+  .gh .why div { color: var(--ink-2); font-size: 13px; }
+  .gh .loss { text-align: right; }
+  .gh .loss b { display: block; font-size: 20px; font-weight: 600; line-height: 1.1; }
+  .gh .loss small { color: var(--ink-3); font-size: 12px; }
+  .gf { display: grid; grid-template-columns: 26px 220px minmax(0, 1fr) 150px; gap: 14px; align-items: center; padding: 7px 14px; border-top: 1px solid var(--line); font-size: 13px; }
+  .gf .arrow { color: var(--ink-3); text-align: center; }
+  .gf .tm { text-align: right; color: var(--ink-2); }
+  .gf.live { background: rgb(241 194 27 / 12%); }
+  .grp-h { flex-shrink: 0; display: flex; align-items: baseline; gap: 8px; margin: 18px 0 8px; }
+  .grp-h h3 { font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script>
+  const { rows, shown, key, STATE, hms, dur, sent, memo, report, table, pager, filters } = AL
+  const faults = shown.filter((r) => r.s === 'D')
+  const follows = (f) => shown.filter((r) => r.s === 'I' && r.line === f.line && r.from >= f.from && r.from <= (f.to ?? AL.NOW))
+  const used = new Set(faults.flatMap((f) => follows(f).map((r) => r.id)))
+  const alone = shown.filter((r) => r.s === 'I' && !used.has(r.id))
+  const range = (r) => `${hms(r.from)} ~ ${r.ongoing ? '<b>진행 중</b>' : hms(r.to)}`
+  const group = (f) => {
+    const fl = follows(f)
+    const loss = f.len + fl.reduce((a, r) => a + r.len, 0)
+    return `<div class="grp ${f.ongoing ? 'on' : ''}">
+      <div class="gh">${key('D')}<span class="nm">${f.name}<small>${range(f)}</small></span>
+        <span class="why"><b>${STATE.D} · ${f.code}</b><div>${f.detail}</div></span>
+        <span class="loss"><b>${dur(f.len)}</b><small>${f.ongoing ? '지금까지' : '고장 시간'}</small></span>
+        ${sent(f)}<span>${memo(f)}</span>${report(f)}</div>
+      ${fl.map((r) => `<div class="gf ${r.ongoing ? 'live' : ''}"><span class="arrow">└</span><span class="eq"><b>${r.name}</b></span><span>${key('I')} ${r.code} · ${r.detail} <span class="t">· ${range(r)}</span></span><span class="tm"><b>${dur(r.len)}</b></span></div>`).join('')}
+      ${fl.length ? `<div class="gf"><span></span><span class="none">따라 멈춘 설비 ${fl.length}대</span><span></span><span class="tm">묶음 손실 합 <b>${dur(loss)}</b></span></div>` : ''}
+    </div>`
+  }
+  AL.mount('시안 E · 고장 묶음', () => `<main class="page">
+    <section class="panel scroll"><div style="margin-bottom:4px">${filters()}</div>
+      <div class="grp-h"><h3>고장 ${faults.length}건</h3><span class="meta">고장 동안 같은 라인에서 시작된 대기를 아래에 묶음 · 새 건이 위</span></div>
+      ${faults.map(group).join('')}
+      <div class="grp-h"><h3>따로 일어난 대기 ${alone.length}건</h3><span class="meta">묶을 고장이 없는 대기</span></div>
+      ${table(alone, { cols: ['start', 'end', 'line', 'eq', 'code', 'detail', 'dur', 'memo', 'who'] })}${pager(alone.length)}</section>
+  </main>`)
+</script>
+</body>
+</html>

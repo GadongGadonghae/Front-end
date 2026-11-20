@@ -69,14 +69,14 @@ const columns = computed<TableColumn[]>(() => [
           <span class="meta">{{ tab === 'live' ? '줄을 누르면 오른쪽에 공정별 기록' : '기간 · 결과 · 제품 ID로 찾기 · 빗금 줄 = 불량 제외' }}</span>
         </template>
         <template #tools>
-          <BaseToggle v-model="live" label="현재 상황">현재 상황<b v-if="p.wip.value" class="cnt">{{ p.wip.value.total }}</b></BaseToggle>
+          <BaseToggle v-model="live" label="현재 상황" />
         </template>
 
         <template v-if="tab === 'live'">
           <ProcessCounts :items="p.counts.value" />
           <div class="jbar">
             <JourneyLegend />
-            <span class="scale"><span class="lab">시간표 길이</span><BaseSegmented v-model="scale" label="시간표 길이" size="sm" :options="SCALES" /></span>
+            <span class="scale"><span class="lab">시간표 길이</span><BaseSegmented v-model="scale" label="시간표 길이" :options="SCALES" /></span>
           </div>
           <ProductJourney
             v-if="p.journey.value.length"
@@ -163,11 +163,6 @@ const columns = computed<TableColumn[]>(() => [
   font-size: var(--fs-md);
   font-weight: var(--fw-strong);
   white-space: nowrap;
-}
-
-.cnt {
-  margin-left: var(--sp-2);
-  font-weight: var(--fw-strong);
 }
 
 .meta {

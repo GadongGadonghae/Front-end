@@ -1,0 +1,38 @@
+/* 시안 D 변형 공용 (al.css 위에 더함). 구성 확인용 — px 값을 Vue로 옮기지 않는다
+   간격 단계: 4 · 8 · 12 · 16 · 24 · 32 */
+.page.dk { grid-template-columns: 300px minmax(0, 1fr); }
+.side { gap: 0; }
+.side > header { margin-bottom: 16px; }
+.side > header ~ div + div { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.side h3 { display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
+.side h3 .aux { font-weight: 400; }
+
+/* 상태별 코드 목록 */
+.cg + .cg { margin-top: 16px; }
+.cg-h { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 14px; }
+.cg-h b { font-weight: 600; }
+.cg-h .aux { font-size: 12px; }
+.cg-h .cg-n { margin-left: auto; font-weight: 600; }
+.cr { display: grid; grid-template-columns: minmax(0, 1fr) 3.5em 5em; gap: 8px; align-items: baseline; width: 100%; padding: 6px 8px 6px 28px; border: 0; border-radius: 6px; background: none; color: var(--ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.cr:hover { background: var(--sunk); }
+.cr .n, .cr .h { text-align: right; color: var(--ink-2); }
+.cr.zero, .cr.zero .n, .cr.zero .h { color: var(--ink-3); }
+.cr.on { background: var(--ink); color: #fff; }
+.cr.on .n, .cr.on .h { color: #c3c8cf; }
+.cg.muted .cg-h, .cg.muted .cr { color: var(--ink-3); }
+
+/* 손볼 건 */
+.todo { display: flex; flex-direction: column; gap: 4px; }
+.todo button { display: flex; align-items: baseline; gap: 8px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.todo button:hover { background: var(--sunk); }
+.todo button b { margin-left: auto; font-size: 16px; font-weight: 600; }
+.todo button.zero { color: var(--ink-3); }
+.todo button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.todo.big button { padding: 12px 14px; font-size: 14px; }
+.todo.big button b { font-size: 24px; line-height: 1; }
+
+.fchip { display: inline-flex; align-items: baseline; gap: 6px; margin-left: 8px; color: var(--ink-3); font-size: 13px; }
+.fchip b { color: var(--ink); font-weight: 600; }
+.main .filters { margin-bottom: 12px; }
+.tblhead { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.tblhead h2 { font-size: 16px; font-weight: 600; }

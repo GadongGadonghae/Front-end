@@ -36,12 +36,12 @@
   --c-idle-tint: #fdf3d0;     /* 진행 중 대기 행 바탕 */
 
   /* ── 가동률·생산 개편 (D-107·D-108): "이상만 색" ── */
-  --c-run-quiet: var(--c-run); /* 타임라인의 가동: 진한 초록 = R 상태색 그대로 (사용자 요청 2026-11-19) */
+  --c-run-quiet: color-mix(in srgb, var(--c-run) 72%, var(--c-surface)); /* 타임라인의 가동: R 초록을 조금 옅게 (11-19 진한 초록 → 11-20 고장·대기 조각이 묻혀 조금만 옅게, D-113) */
   --c-stop-hatch: #9aa1ab;    /* 계획정지 빗금 선 (가동률에서 뺌) */
   --c-dc-tint: #f0ebf6;       /* 진행 중 통신 끊김 행 바탕 */
-  --c-loss-a: #dde1e6;        /* OEE 다리: 시간 손실 */
-  --c-loss-p: #bcc2ca;        /* 성능 손실 */
-  --c-loss-q: #9aa1ab;        /* 품질 손실 */
+  --c-loss-a: #adb3bc;        /* OEE 다리: 시간 손실 (D-113: 흰 바탕 2:1 넘게, dataviz 검증 통과) */
+  --c-loss-p: #8f96a1;        /* 성능 손실 */
+  --c-loss-q: #737a86;        /* 품질 손실 */
 
   /* 제품 여정: 공정 범주 색 (dataviz 검사: 이웃 공정끼리 일반·색약 구분 통과, 고장 빨강·강조 파랑·상태색과 겹치지 않게) */
   --c-proc-1: #13968f;        /* 슬리팅 청록 */
@@ -113,6 +113,7 @@
   --head-h: 44px;
   --page-gutter: var(--sp-6);
   --col-summary: clamp(280px, 17vw, 320px);
+  --col-summary-sm: clamp(220px, 13vw, 248px); /* 좁은 요약 열 (알람 이력 D-109: 표의 메모 열을 넓게) */
   --col-side: clamp(340px, 22vw, 440px);
   --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
   --col-detail: clamp(340px, 20vw, 400px); /* 고른 제품 기록 열 (생산 조회) */
@@ -121,7 +122,7 @@
   --ledger-loss-w: 72px;                    /* 손실 시간 칸 (보조 정보라 작게) */
   --ledger-row-min: 40px;                   /* 상태 줄 최소 높이 */
   --ledger-row-max: 96px;                   /* 상태 줄 최대 높이 (줄이 적을 때) */
-  --seg-min-w: 6px;                         /* 상태 띠: 이상 구간 최소 폭 (아주 짧아도 보이게) */
+  --seg-min-w: 8px;                         /* 상태 띠: 이상 구간 최소 폭 (아주 짧아도 보이게, D-113에서 6 → 8) */
   --track-h-lg: 28px;                       /* 굵은 24시간 띠 · 제품 여정 칸 */
   --donut-size: 160px;
   --journey-id-w: 150px;                    /* 제품 여정: 제품 ID 칸 */

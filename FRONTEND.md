@@ -168,6 +168,7 @@ DESIGN.md를 같이 고친다.
 | `BaseSegmented` | 구간 버튼 (일/주/월, 1시간/8시간/오늘, 관리값 항목) |
 | `BaseTable` | 표: 머리줄, 숫자 열 정렬, 누를 수 있는 행, 펼침 행 slot |
 | `BaseInput`, `BaseSelect`, `BaseDateField`, `BaseCheck` | 입력 (`BaseInput` type=search로 검색) |
+| `BaseTextarea` | 여러 줄 입력 (이름표 + 보조 글, rows 줄 높이). 조치 메모 펼침 |
 | `BaseButton` | 기본·주요·작은 버튼 |
 | `BasePager` | 50건 페이지 |
 | `BaseEmpty` | "데이터 없음" (D-78) |
@@ -199,6 +200,9 @@ DESIGN.md를 같이 고친다.
 | `SummaryColumn` / `SummaryBlock` | 왼쪽 요약 열과 덩어리 | 010, 003, 007, 011 |
 | `EquipCard` | 공정 상세 설비 카드 (상태 띠 + 사이클·CT) | 002-x |
 | `DowntimeHistory` | 비가동 이력 + 조치 메모 | 002-x |
+| `AlarmSummary` | 알람 이력 왼쪽 요약: 상태별 건수 한 줄, 아직 손볼 건, 알람 코드별 건수 (누르면 거름, D-109·111) | 006 |
+| `ActionMemoEditor` | 조치 메모 펼침: 그 건의 상세·지속·발송 + 3줄 입력 + 취소·저장 (D-109) | 006 |
+| `NotifySent` | 알림 발송 결과 메일·슬랙 ✓/실패 (실패는 빨강 대신 굵게 밑줄) | 006 |
 | `InspectionPanel` | 공정 검사 숫자 + 불량 목록 | 002-x |
 | `ProcessSteps` | 제품이 거친 공정 표시 (통과·불량·진행 중·안 거침) | 011 |
 | `RiskList` / `RiskItem` | 예지보전 위험도 목록: 위험·주의 묶음, 항목 %, 80·90% 눈금 막대, 정상 접기 | 004 |

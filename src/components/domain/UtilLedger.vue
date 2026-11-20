@@ -1,9 +1,10 @@
-<!-- 가동률 상태 줄 (SCR-003, D-108 시안 G): 줄 = 이름 · OEE와 기준 대비(한 열) · 손실 시간 · 24시간 띠(일) 또는 날짜 칸(주·월).
-     지금 이상 상태인 줄은 바탕에 그 상태 색을 은은하게 깐다 (패턴은 계획정지만). 누를 수 있는 줄은 아래 단계(설비별)로 -->
+<!-- 가동률 상태 줄 (SCR-003, D-108 시안 G, D-113 다듬기): 줄 = 이름 · OEE와 기준 대비(한 열) · 손실 시간 · 24시간 띠(일) 또는 날짜 칸(주·월).
+     지금 고장·대기·통신 끊김인 줄만 바탕에 그 상태 색을 은은하게 (계획정지는 정상 계획이라 글자만). 누를 수 있는 줄은 아래 단계(설비별)로.
+     줄이 4개 이상이면 패널 높이를 채우고, 3개 이하(도장·출고)면 한 줄이 너무 커지지 않게 높이를 묶는다 -->
 <script setup lang="ts">
 import ChartDiverge from '@/components/charts/ChartDiverge.vue'
 import StateBand from '@/components/domain/StateBand.vue'
-import { compareColor, OEE_SPAN, strength } from '@/lib/compare'
+import { compareColor, OEE_SPAN } from '@/lib/compare'
 import { formatNumber, formatSpan } from '@/lib/format'
 import type { LedgerRowView } from '@/types/view'
 
@@ -27,11 +28,15 @@ const NOW_NAME = { S: '계획정지 중', I: '대기 중', D: '고장 중', DC: 
 const DAY = 86_400
 /** 띠 왼쪽 끝 = 00:00 */
 const start = 0
-/** 지금 표시와 겹치는 눈금은 뺀다 */
-/** 3시간 눈금 (띠 범위 안). 어제·내일 쪽 시각도 시계 시각으로 쓴다 */
+/** 지금 표시와 겹치는 눈금(앞뒤 1.2시간)은 뺀다 (시안 G) */
+const NEAR = 4_320
+const hm = (sec: number) => `${String(Math.floor(sec / 3600)).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`
+/** 3시간 눈금 (띠 범위 안). StateBand의 눈금선과 같은 자리 */
 const ticks = () => {
   const out: { at: number; label: string; end: boolean; begin: boolean }[] = []
+  const showNow = props.until < start + DAY
   for (let t = Math.ceil(start / 10_800) * 10_800; t <= start + DAY; t += 10_800) {
+    if (showNow && Math.abs(t - props.until) < NEAR) continue
     const h = t / 3600
     out.push({ at: t, label: `${String(h).padStart(2, '0')}시`, end: t === start + DAY, begin: t === start })
   }
@@ -42,7 +47,8 @@ const diffText = (d: number) => `${d > 0 ? '+' : ''}${formatNumber(d, 1)}`
 const cell = (c: LedgerRowView['days'][number]) => {
   if (c.future || c.oee == null) return null
   const d = c.base == null ? 0 : c.oee - c.base
-  return { bg: compareColor(d, OEE_SPAN, 12, 72), strong: strength(d, OEE_SPAN) > 0.55, title: `${c.date} OEE ${formatNumber(c.oee, 1)}%${c.base != null ? ` (${props.baseName} 대비 ${diffText(d)})` : ''}` }
+  // 가장 진해도 50%까지: 먹색 글자가 어느 칸에서나 AA(4.5:1)를 넘게 (흰 글자는 쓰지 않음, 먹색 50% 칸에서 약 4.9:1)
+  return { bg: compareColor(d, OEE_SPAN, 10, 50), title: `${c.date} OEE ${formatNumber(c.oee, 1)}%${c.base != null ? ` (${props.baseName} 대비 ${diffText(d)})` : ''}` }
 }
 </script>
 
@@ -58,7 +64,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
       </span>
     </div>
 
-    <div class="rows" :style="{ height: `calc(${rows.length} * var(--ledger-row-max))` }">
+    <div class="rows" :class="{ few: rows.length <= 3 }" :style="rows.length <= 3 ? { height: `calc(${rows.length} * var(--ledger-row-max))` } : undefined">
       <component
         :is="r.clickable ? 'button' : 'div'"
         v-for="r in rows"
@@ -86,12 +92,12 @@ const cell = (c: LedgerRowView['days'][number]) => {
         <StateBand v-if="mode === 'day'" :spans="r.spans" :until="until" />
         <span v-else class="days" :style="{ gridTemplateColumns: `repeat(${r.days.length}, minmax(0, 1fr))` }">
           <template v-for="c in r.days" :key="c.date">
-            <span v-if="cell(c)" class="c" :class="{ today: c.today, strong: cell(c)!.strong }" :style="{ background: cell(c)!.bg }" :title="cell(c)!.title">{{ r.days.length <= 7 ? formatNumber(c.oee, 1) : '' }}</span>
+            <span v-if="cell(c)" class="c" :class="{ today: c.today }" :style="{ background: cell(c)!.bg }" :title="cell(c)!.title">{{ r.days.length <= 7 ? formatNumber(c.oee, 1) : '' }}</span>
             <span v-else class="c future" title="아직 오지 않은 날"></span>
           </template>
         </span>
       </component>
-      <!-- 지금 선: 줄마다 끊기지 않게 상태 줄 전체를 지나는 실선 하나 -->
+      <!-- 지금 선: 줄마다 끊기지 않게 상태 줄 전체를 지나는 회색 점선 하나 (파랑은 "앞섬" 뜻이라 쓰지 않음, D-113) -->
       <div v-if="mode === 'day' && until < start + DAY" class="cols nowlayer" aria-hidden="true">
         <span></span><span></span><span></span>
         <span class="nowcell"><i :style="{ left: at(until) }"></i></span>
@@ -102,8 +108,9 @@ const cell = (c: LedgerRowView['days'][number]) => {
       <span></span><span></span><span></span>
       <span v-if="mode === 'day'" class="axis">
         <b v-for="t in ticks()" :key="t.at" :class="{ end: t.end, begin: t.begin }" :style="{ left: at(t.at) }">{{ t.label }}</b>
+        <b v-if="until < start + DAY" class="now" :style="{ left: at(until) }">지금 {{ hm(until) }}</b>
       </span>
-      <span v-else class="note">칸 = 하루 OEE · <i class="sw up"></i>{{ baseName }}보다 높음 <i class="sw down"></i>낮음 · 차이가 클수록 진하게 · 점선 = 오늘</span>
+      <span v-else class="note"><i class="sw up"></i>{{ baseName }}보다 높음 <i class="sw down"></i>낮음 · 테두리 = 오늘</span>
     </div>
   </div>
 </template>
@@ -123,6 +130,14 @@ const cell = (c: LedgerRowView['days'][number]) => {
   align-items: center;
 }
 
+/* 머리·발 줄도 행과 같은 폭 (행 바탕이 머리 구분선과 같은 끝에서 끝나게) */
+.head,
+.foot {
+  margin: 0 calc(var(--sp-2) * -1);
+  padding-right: var(--sp-2);
+  padding-left: var(--sp-2);
+}
+
 .head {
   padding-bottom: var(--sp-2);
   border-bottom: var(--line-w) solid var(--c-line-strong);
@@ -134,13 +149,17 @@ const cell = (c: LedgerRowView['days'][number]) => {
   text-align: right;
 }
 
-/* 줄이 적으면 (도장·출고) 한 줄이 너무 커지지 않게: 높이 = 줄 수 × 최대 줄 높이, 칸이 모자라면 줄어든다 */
+/* 줄이 4개 이상이면 패널 높이를 채운다. 3개 이하(.few, 높이는 줄 수 × 최대 줄 높이)면 위에 붙인다 */
 .rows {
   position: relative;
   display: flex;
-  flex: 0 1 auto;
+  flex: 1;
   flex-direction: column;
   min-height: 0;
+}
+
+.rows.few {
+  flex: 0 1 auto;
 }
 
 .row {
@@ -150,7 +169,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
   padding: 0 var(--sp-2);
   border: 0;
   border-bottom: var(--line-w) solid var(--c-line);
-  border-radius: var(--r-2);
+  border-radius: 0;
   background: none;
   color: inherit;
   font: inherit;
@@ -166,7 +185,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
   background: var(--row-hover, var(--c-surface-sunk));
 }
 
-/* 지금 상태를 행 바탕에 은은하게. 패턴은 계획정지만 (띠의 빗금과 같은 뜻) */
+/* 지금 상태를 행 바탕에 은은하게: 고장·대기·통신 끊김만. 계획정지는 정상 계획이라 바탕 없이 "계획정지 중" 글자만 */
 .cur-D {
   --row-hover: color-mix(in srgb, var(--c-down) 16%, var(--c-surface));
 
@@ -185,11 +204,6 @@ const cell = (c: LedgerRowView['days'][number]) => {
   background: var(--c-dc-tint);
 }
 
-.cur-S {
-  --row-hover: repeating-linear-gradient(135deg, var(--c-stop) 0 3px, var(--c-surface-sunk) 3px 9px);
-
-  background: repeating-linear-gradient(135deg, var(--c-surface-sunk) 0 3px, transparent 3px 9px);
-}
 
 .nm {
   font-size: var(--fs-row);
@@ -235,21 +249,21 @@ const cell = (c: LedgerRowView['days'][number]) => {
   font-size: var(--fs-sm);
 }
 
+/* 기준 대비 차이: 앞섬·뒤처짐 같은 굵기, 색으로만 나눈다 */
 .d {
   font-size: var(--fs-sm);
-}
-
-.d.pos { color: var(--c-accent); }
-
-.d.neg {
-  color: var(--c-ink);
   font-weight: var(--fw-strong);
 }
 
-/* 손실 시간: 보조 정보라 작고 흐리게 (OEE가 주인공) */
+.d.pos { color: var(--c-accent); }
+.d.neg { color: var(--c-ink); }
+
+/* 손실 시간: 이름과 같은 급 (시안 G). 숫자 열로 읽히게 고정폭 숫자 */
 .loss {
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
+  color: var(--c-ink);
+  font-size: var(--fs-row);
+  font-weight: var(--fw-strong);
+  font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
 }
@@ -272,12 +286,8 @@ const cell = (c: LedgerRowView['days'][number]) => {
   font-weight: var(--fw-strong);
 }
 
-.c.strong {
-  color: var(--c-inverse-ink);
-}
-
 .c.today {
-  outline: var(--line-w-strong) dashed var(--c-ink-2);
+  outline: var(--line-w-strong) solid var(--c-ink);
   outline-offset: 1px;
 }
 
@@ -314,7 +324,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
   position: absolute;
   top: 0;
   bottom: 0;
-  border-left: var(--indicator-w) solid var(--c-accent);
+  border-left: var(--line-w-strong) dashed var(--c-ink-3);
   transform: translateX(-50%);
 }
 
@@ -342,6 +352,11 @@ const cell = (c: LedgerRowView['days'][number]) => {
 
 .axis b.end {
   transform: translateX(-100%);
+}
+
+.axis b.now {
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
 }
 
 .note {

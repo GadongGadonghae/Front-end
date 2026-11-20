@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>알람 시안 D · 왼쪽 요약 열</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="al.css">
+<style>
+  /* D: 가동률 시안 G와 같은 틀. 왼쪽 = 고른 기간 요약 (상태별 건수·시간 · 코드별 시간 막대 · 아직 손볼 건 바로 거르기),
+     가운데 = 이력 표 (지속 열에 막대) */
+  .page { grid-template-columns: 320px minmax(0, 1fr); }
+  .tot { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .tot div { padding: 10px 12px; border-radius: 6px; background: var(--sunk); }
+  .tot div span { display: flex; align-items: center; gap: 6px; color: var(--ink-2); font-size: 13px; }
+  .tot div b { display: block; margin-top: 4px; font-size: 24px; font-weight: 600; line-height: 1.1; }
+  .tot div small { color: var(--ink-3); font-size: 12px; }
+  .codes { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .codes div { display: grid; grid-template-columns: 7.5em 1fr 7.5em; gap: 8px; align-items: center; }
+  .codes .tr { height: 10px; border-radius: 2px; background: var(--track); overflow: hidden; }
+  .codes .tr i { display: block; height: 100%; }
+  .codes b { text-align: right; font-weight: 600; }
+  .codes .off { color: var(--ink-3); }
+  .todo { display: flex; flex-direction: column; gap: 6px; }
+  .todo button { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+  .todo button b { margin-left: auto; font-size: 16px; font-weight: 600; }
+  .todo button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="al.js"></script>
+<script>
+  const { rows, shown, key, dur, table, pager, filters } = AL
+  const sum = (f) => rows.filter(f).reduce((a, r) => a + r.len, 0)
+  const hr = (s) => dur(s).replace(/ \d+초/, '')
+  const byCode = [...new Set(rows.map((r) => r.code))].map((c) => { const l = rows.filter((r) => r.code === c); return { c, s: l[0].s, n: l.length, sec: l.reduce((a, r) => a + r.len, 0) } }).sort((a, b) => b.sec - a.sec)
+  const maxC = Math.max(...byCode.map((x) => x.sec))
+  const TODO = [
+    ['memo', '조치 메모 없는 고장', (r) => r.s === 'D' && !r.memo],
+    ['fail', '발송 실패', (r) => r.mail === false || r.slack === false],
+    ['rep', '보고서 안 만든 고장', (r) => r.report === 'make'],
+  ]
+  let todo = null
+  document.addEventListener('click', (e) => { const b = e.target.closest('[data-todo]'); if (b) { todo = todo === b.dataset.todo ? null : b.dataset.todo; document.querySelector('[data-t="alarm"]').click() } })
+  AL.mount('시안 D · 왼쪽 요약 열', (S) => {
+    const f = TODO.find((x) => x[0] === todo)
+    const list = f ? rows.filter(f[2]) : shown
+    return `<main class="page">
+    <aside class="panel scroll"><header><h2>오늘 요약</h2></header>
+      <div class="tot">
+        <div><span>${key('D')}고장</span><b>${rows.filter((r) => r.s === 'D').length}건</b><small>${hr(sum((r) => r.s === 'D'))}</small></div>
+        <div><span>${key('I')}대기</span><b>${rows.filter((r) => r.s === 'I').length}건</b><small>${hr(sum((r) => r.s === 'I'))}</small></div>
+      </div>
+      <h3 class="sub">코드별 시간 <small>건수 · 시간</small></h3>
+      <div class="codes">${byCode.map((x) => `<div class="${x.s === 'S' ? 'off' : ''}"><span>${x.c}</span><span class="tr"><i class="fill-${x.s}" style="width:${(x.sec / maxC) * 100}%"></i></span><b>${x.n}건 · ${hr(x.sec)}</b></div>`).join('')}</div>
+      <p class="demo-note" style="margin-top:6px">정지(S) 코드는 흐리게 · 필터에서 켜면 표에도 나옴</p>
+      <h3 class="sub">아직 손볼 건 <small>누르면 표를 거름</small></h3>
+      <div class="todo">${TODO.map(([k, n, fn]) => `<button data-todo="${k}" class="${todo === k ? 'on' : ''}">${n}<b>${rows.filter(fn).length}</b></button>`).join('')}</div>
+    </aside>
+    <section class="panel scroll"><div style="margin-bottom:12px">${filters()}</div>
+      ${f ? `<p class="meta" style="margin-bottom:8px">거름: <b style="color:var(--ink)">${f[1]}</b> · <button class="link" data-todo="${todo}">풀기</button></p>` : ''}
+      ${table(list, { cols: ['start', 'end', 'line', 'eq', 'code', 'detail', 'dbar', 'sent', 'memo', 'who', 'report'], sel: S.sel })}${pager(list.length)}</section>
+  </main>`
+  })
+</script>
+</body>
+</html>
