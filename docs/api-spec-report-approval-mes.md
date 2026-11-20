@@ -2,6 +2,7 @@
 
 | 일자 | 내용 |
 |---|---|
+| 2026-11-20 | 캠퍼스·공장 구분 값(`campusId`·`factoryId`) **확정**(8장·11장) |
 | 2026-11-20 | 결정 반영: 보고서 내용은 **서버가 생성**(DB 조회 + Java 계산 + 사람 입력 자연어는 Gemini, 결과를 DB에 JSON 저장) · MES 수신함은 **캠퍼스장만** |
 | 2026-11-20 | 첫 작성. 프론트가 브라우저 저장(localStorage)으로 시연 중인 기능을 서버 API로 옮기기 위한 초안. 기존 `docs/api-spec-v3.1.md` 규칙을 따름 |
 
@@ -90,7 +91,7 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 ### M-01 MES 수신함 (임시 MES)
 - `GET /api/mes/reports?factoryId=&page=1&size=50` — 권한 **`CAMPUS`만** (결정)
 - **`SENT`만** 최근 전송 순. 응답: `{ "items": [ <보고서 요약> ], "total": 1, "page": 1, "size": 50 }`
-- 열람 상세는 R-12 사용(`CAMPUS`는 `SENT`만 조회 가능). (MES 화면에는 캠퍼스·공장 구분 표시가 있으므로 `campusId`·`factoryId`를 보고서에 같이 저장하면 좋음. 현재 우리 시스템은 **차체 캠퍼스 공장 1** 한 곳)
+- 열람 상세는 R-12 사용(`CAMPUS`는 `SENT`만 조회 가능). (MES 화면에는 캠퍼스·공장 구분 표시가 있으므로 `campusId`·`factoryId`를 보고서에 저장, 11장. 현재 우리 시스템은 **차체 캠퍼스 공장 1** 한 곳)
 
 ## 5. 오류 응답
 
@@ -147,7 +148,7 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 | target_key | varchar | 날짜 또는 보고서 ID. `(kind, target_key)` 유니크 |
 | title | varchar | |
 | status | varchar | `WRITTEN` · `APPROVED` · `SENT` |
-| campus_id, factory_id | varchar, int | 임시 MES 구분용 |
+| campus_id, factory_id | varchar, int | 11장 (설정 고정값 `BODY`/`1`) |
 | content | jsonb | 6장 |
 | written_by, written_at | bigint FK(user), timestamptz | |
 | approved_by, approved_at | 〃 | null 가능 |
@@ -166,10 +167,24 @@ AI 보고서를 **작성 → 결재 완료 → 전송 완료** 3단계로 관리
 
 **결정됨 (2026-11-20)**
 - MES 수신함은 **캠퍼스장(`CAMPUS`)만** 봄
+- 보고서에 **캠퍼스·공장 구분 값**(`campusId`·`factoryId`)을 저장 (11장)
 - 보고서 내용은 **서버가 생성**(DB 조회 + Java 계산, 사람 입력 자연어는 Gemini), 결과를 **DB에 JSON으로 저장**
 
 **정해야 할 것**
 1. 전송 후 수정·재전송을 막을지 (현재 프론트는 막음)
 2. `role`을 4종으로 바꿀지, 기존 3종에 매핑할지
-3. 캠퍼스·공장 구분 값(`campusId`·`factoryId`)을 지금 넣을지 (프론트 제안: **넣기**, 값은 서버 설정 고정값으로 시작)
-4. 기존 R-03(재배정 보고서 생성)과 R-10을 합칠지
+3. 기존 R-03(재배정 보고서 생성)과 R-10을 합칠지
+
+## 11. 캠퍼스·공장 구분 값 (확정)
+
+임시 MES 수신함이 여러 공장의 보고서를 한곳에 모아 보여 주므로, 보고서마다 어느 캠퍼스·공장 것인지 저장합니다.
+
+| 필드 | 값 | 뜻 |
+|---|---|---|
+| `campusId` | `BODY` 차체 캠퍼스 · `ELEC` 전장 캠퍼스 | 캠퍼스 |
+| `factoryId` | `1`, `2` | 캠퍼스 안의 공장 번호 |
+
+- **이 시스템은 차체 캠퍼스 공장 1(`BODY`/`1`)에만 도입**되어 있습니다. 보고서를 만들 때 서버가 **설정 고정값**(예: `application.yml`의 `plant.campus-id`, `plant.factory-id`)을 `reports.campus_id`, `reports.factory_id`에 넣어 주세요. 프론트가 보내지 않습니다 (R-10 본문에 없음).
+- 보고서 객체(7장)와 목록·상세 응답에 `campusId`, `factoryId`를 포함합니다.
+- M-01 `GET /api/mes/reports`는 `campusId`, `factoryId`로 거를 수 있습니다 (둘 다 선택).
+- MES 화면의 **전장 캠퍼스 · 공장 2** 등 다른 공장 표시는 시연용 더미이고, 실제로 이 값이 들어오는 것은 차체 캠퍼스 공장 1 하나뿐입니다. 다른 공장이 붙으면 설정값만 바꾸면 됩니다.

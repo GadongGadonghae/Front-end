@@ -8,6 +8,9 @@ import type { ReplanDocData } from '@/lib/replanDoc'
 
 const KEY = 'sfaas.reportFlow.v1'
 
+/** 이 시스템이 도입된 곳: 차체 캠퍼스 공장 1 (서버가 생기면 서버 설정 고정값으로 내려받음) */
+export const OUR_PLANT = { campusId: 'BODY', factoryId: 1 } as const
+
 export type FlowStatus = 'WRITTEN' | 'APPROVED' | 'SENT'
 export const FLOW_NAME: Record<FlowStatus, string> = { WRITTEN: '작성', APPROVED: '결재 완료', SENT: '전송 완료' }
 
@@ -17,6 +20,9 @@ export interface ReportFlow {
   key: string
   kind: 'daily' | 'replan'
   title: string
+  /** 어느 캠퍼스·공장 보고서인지 (임시 MES 구분용). 옛 저장값에는 없을 수 있음 */
+  campusId?: string
+  factoryId?: number
   status: FlowStatus
   writtenBy: string
   writtenAt: string
@@ -78,7 +84,7 @@ export function useReportFlow() {
   function write(key: string, kind: ReportFlow['kind'], title: string, doc: DailyDocData | ReplanDocData) {
     if (!can('reportWrite') || store.value[key]?.status === 'SENT') return
     put({
-      key, kind, title, status: 'WRITTEN', writtenBy: userName.value, writtenAt: now(),
+      key, kind, title, ...OUR_PLANT, status: 'WRITTEN', writtenBy: userName.value, writtenAt: now(),
       approvedBy: null, approvedAt: null, sentBy: null, sentAt: null,
       ...(kind === 'daily' ? { daily: doc as DailyDocData } : { replan: doc as ReplanDocData }),
     })
