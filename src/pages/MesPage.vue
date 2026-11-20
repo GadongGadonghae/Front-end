@@ -284,7 +284,7 @@ async function onLogout() {
   padding: 2px var(--sp-2);
   border: var(--line-w) solid currentcolor;
   border-radius: var(--r-1);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   font-weight: var(--fw-regular);
 }
 
@@ -294,6 +294,7 @@ async function onLogout() {
 
 .link {
   color: var(--c-inverse-ink);
+  font-size: var(--fs-row);
 }
 
 .out {
@@ -303,13 +304,13 @@ async function onLogout() {
   background: none;
   color: var(--c-inverse-ink);
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   cursor: pointer;
 }
 
 .user {
   color: var(--c-inverse-ink-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
 }
 
 .frame {
@@ -358,7 +359,7 @@ async function onLogout() {
   border-radius: var(--r-3);
   background: var(--c-accent);
   color: var(--c-inverse-ink);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   text-align: center;
 }
 
@@ -371,7 +372,7 @@ async function onLogout() {
 
 .dummy-note {
   color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
 }
 
 .kpis {
@@ -389,10 +390,10 @@ async function onLogout() {
   background: var(--c-surface);
 }
 
-.k-label,
-.k-sub {
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+.k-label {
+  color: var(--c-ink);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-strong);
 }
 
 .k-val {
@@ -412,7 +413,7 @@ async function onLogout() {
   display: flex;
   justify-content: space-between;
   color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
 }
 
 .prog {
@@ -430,7 +431,7 @@ async function onLogout() {
   gap: 2px;
   margin: 0;
   padding: 0;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   list-style: none;
 }
 
@@ -477,7 +478,7 @@ svg {
   gap: var(--sp-3);
   height: 64px;
   margin: 0;
-  padding: 0 0 18px;
+  padding: 0 0 24px;
   list-style: none;
 }
 
@@ -498,11 +499,11 @@ svg {
 
 .col .col-name {
   position: absolute;
-  bottom: -18px;
+  bottom: -24px;
   left: 0;
   width: 100%;
   color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   text-align: center;
 }
 
@@ -510,14 +511,14 @@ svg {
   position: absolute;
   right: 0;
   left: 0;
-  margin-bottom: 18px;
+  margin-bottom: 24px;
   border-top: var(--line-w) dashed var(--c-line-strong);
 }
 
 .state {
   padding: 2px var(--sp-2);
   border-radius: var(--r-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   font-weight: var(--fw-strong);
 }
 
@@ -539,7 +540,7 @@ svg {
 .k-unit {
   margin-left: var(--sp-1);
   color: var(--c-ink-3);
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
 }
 
 .grid2 {
@@ -563,7 +564,7 @@ h2 {
 
 h2 small {
   color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
 }
 
 table {
@@ -575,6 +576,7 @@ table {
 th,
 td {
   padding: var(--sp-2);
+  font-size: var(--fs-row);
   border-bottom: var(--line-w) solid var(--c-line);
   text-align: left;
 }
@@ -593,6 +595,7 @@ th {
 
 .bars li {
   display: grid;
+  font-size: var(--fs-row);
   grid-template-columns: 24px 1fr 64px;
   align-items: center;
   gap: var(--sp-2);
@@ -643,7 +646,7 @@ th {
 .when,
 .sign {
   color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
 }
 
 .vh {
