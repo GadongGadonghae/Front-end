@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가동률 시안 A · 줄마다 숫자 + 띠</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  /* A: 한 표 안에서 줄(라인)마다 OEE 숫자와 24시간 띠를 나란히 — 숫자와 시간을 같은 줄에서 비교 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+  .ledger header .tools { gap: 16px; }
+  .head-row, .row { display: grid; grid-template-columns: 96px 128px 92px minmax(0, 1fr); gap: 0 16px; align-items: center; }
+  .head-row { padding: 0 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--ink-3); font-size: 13px; }
+  .rows { display: flex; flex-direction: column; flex: 1; }
+  .row { flex: 1; min-height: 52px; border-bottom: 1px solid var(--line); }
+  .row .nm { font-weight: 600; }
+  .row .nm small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+  .row .oee { display: flex; align-items: baseline; gap: 6px; }
+  .row .apq { color: var(--ink-3); font-size: 12px; white-space: nowrap; }
+  .row .loss { font-weight: 600; text-align: right; }
+  .row .loss small { display: block; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+  .row.low .num { color: var(--ink); text-decoration: underline 2px var(--down); text-underline-offset: 4px; }
+  .row.sel { background: var(--sunk); box-shadow: inset 0 0 0 1px var(--line-strong); border-radius: 6px; }
+  .axis-row { display: grid; grid-template-columns: 96px 128px 92px minmax(0, 1fr); gap: 0 16px; padding-top: 6px; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .plant .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 12px; }
+  .codes { flex: 1; }
+  .code { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .code:first-of-type { border-top: 0; }
+  .code .cbar { grid-column: 2 / 4; height: 6px; background: var(--track); border-radius: 3px; }
+  .code .cbar i { display: block; height: 100%; border-radius: 3px; }
+  .code b { font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+  const { LINES, PLANT, CODES, fmtDur } = UT
+  const { track, axis, legend, key } = UTH
+  const maxCode = Math.max(...CODES.map((c) => c.sec))
+  document.getElementById('app').innerHTML = UT_SHELL('A · 줄마다 숫자 + 띠') + `
+  <main class="page">
+    <section class="panel ledger">
+      <header><h2>라인별 가동</h2><span class="meta">줄마다 OEE와 00~24시 상태</span>
+        <span class="tools">${legend()}<span class="seg"><b>라인순</b><span>OEE 낮은 순</span></span></span></header>
+      <div class="head-row"><span>라인</span><span>OEE · 시간·성능·양품</span><span style="text-align:right">손실 시간</span><span>상태 (가동은 옅게, 손실만 색)</span></div>
+      <div class="rows">
+        ${LINES.map((l) => `
+        <div class="row ${l.oee < PLANT.oee - 5 ? 'low' : ''} ${l.id === 'B' ? 'sel' : ''}">
+          <span class="nm">${l.name}<small>${l.kind}</small></span>
+          <span><span class="oee"><span class="num">${l.oee.toFixed(1)}<small>%</small></span></span><span class="apq">${l.a.toFixed(0)} · ${l.p.toFixed(0)} · ${l.q.toFixed(0)}</span></span>
+          <span class="loss">${l.loss ? fmtDur(l.loss) : '-'}<small>${l.events.length}건</small></span>
+          ${track(l)}
+        </div>`).join('')}
+      </div>
+      <div class="axis-row"><span></span><span></span><span></span>${axis()}</div>
+    </section>
+    <aside class="side">
+      <section class="panel plant">
+        <header><h2>공장 종합</h2><span class="meta">OEE · 오늘</span></header>
+        <p class="key">${PLANT.oee}<small>%</small></p>
+        <div class="figs">
+          <div><p class="aux">시간가동률</p><p class="num">${PLANT.a}<small>%</small></p></div>
+          <div><p class="aux">성능가동률</p><p class="num">${PLANT.p}<small>%</small></p></div>
+          <div><p class="aux">양품률</p><p class="num">${PLANT.q}<small>%</small></p></div>
+          <div><p class="aux">라인 수율</p><p class="num">${PLANT.lineYield}<small>%</small></p></div>
+        </div>
+      </section>
+      <section class="panel codes">
+        <header><h2>비가동 코드별</h2><span class="meta">시간 · 건수</span></header>
+        ${CODES.map((c) => `<div class="code">${key(c.s)}<span>${c.code}</span><b>${fmtDur(c.sec)} · ${c.n}건</b><span class="cbar"><i class="seg-${c.s}" style="width:${(c.sec / maxCode) * 100}%"></i></span></div>`).join('')}
+      </section>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

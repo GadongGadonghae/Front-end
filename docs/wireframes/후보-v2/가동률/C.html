@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가동률 시안 C · 라인에서 설비로 펼치기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  /* C: 위 = 공장 전체 라인 타임라인(촘촘), 고른 라인을 아래에 설비별 타임라인 + 사건 표로 펼침 (공장 > 라인 > 설비 계층, D-97) */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .overview { grid-column: 1; }
+  .lrow { display: grid; grid-template-columns: 88px minmax(0, 1fr) 64px; gap: 12px; align-items: center; height: 24px; padding: 0 6px; border-radius: 4px; cursor: pointer; }
+  .lrow + .lrow { margin-top: 3px; }
+  .lrow .nm { font-weight: 600; font-size: 13px; }
+  .lrow .v { text-align: right; font-weight: 600; }
+  .lrow.sel { background: var(--sunk); box-shadow: inset 0 0 0 1px var(--ink); }
+  .lrow .track { height: 14px; }
+  .ax { display: grid; grid-template-columns: 88px minmax(0, 1fr) 64px; gap: 12px; padding: 4px 6px 0; }
+  .detail { grid-column: 1; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; min-height: 0; }
+  .erow { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 12px; align-items: center; height: 30px; }
+  .erow .nm { font-size: 13px; }
+  .table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .table th { text-align: left; color: var(--ink-3); font-weight: 400; padding: 0 8px 6px 0; border-bottom: 1px solid var(--line-strong); }
+  .table td { padding: 8px 8px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .table tr.on td { background: #fbe9e9; }
+  .side { grid-column: 2; grid-row: 1 / 3; display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .bars .b { display: grid; grid-template-columns: 56px 1fr 44px; gap: 8px; align-items: center; height: 26px; font-size: 13px; }
+  .bars .b .tr { height: 6px; background: var(--track); border-radius: 3px; }
+  .bars .b .tr i { display: block; height: 100%; background: var(--ink-3); border-radius: 3px; }
+  .bars .b.sel .tr i { background: var(--ink); }
+  .bars .b.sel { font-weight: 600; }
+  .code { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-top: 1px solid var(--line); }
+  .code b { margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+  const { LINES, PLANT, CODES, NOW, fmtDur, fmtHM, STATE_NAME } = UT
+  const { track, axis, legend, key } = UTH
+  const t = (h, m = 0) => h * 3600 + m * 60
+  const mk = (name, evs) => {
+    const segs = []; let at = 0
+    for (const e of evs) { if (e.from > at) segs.push({ s: 'R', from: at, to: e.from }); segs.push(e); at = e.to }
+    if (at < NOW) segs.push({ s: 'R', from: at, to: NOW })
+    return { name, segs }
+  }
+  const EQ = [
+    mk('슬리팅', []),
+    mk('프레스 1단 성형', []),
+    mk('프레스 2단 트림', []),
+    mk('프레스 3단 피어싱', [{ s: 'D', from: t(14, 8), to: NOW, code: '알람(관리값 이탈)', eq: '3단', ongoing: true }]),
+    mk('프레스 4단 플랜지', [{ s: 'I', from: t(8, 2), to: t(8, 9), code: '재공부족', eq: '4단' }, { s: 'I', from: t(14, 8), to: NOW, code: '재공부족', eq: '4단', ongoing: true }]),
+    mk('용접', [{ s: 'I', from: t(14, 9), to: NOW, code: '재공부족', eq: '용접', ongoing: true }]),
+  ]
+  const B = LINES.find((l) => l.id === 'B')
+  const EVENTS = [
+    { at: '14:08', eq: '프레스 3단', s: 'D', code: '알람(관리값 이탈)', why: '압력(좌) 상한 초과 356/350', dur: '12분째', on: true },
+    { at: '14:08', eq: '프레스 4단', s: 'I', code: '재공부족', why: '앞 공정 정지', dur: '12분째', on: true },
+    { at: '14:09', eq: '용접', s: 'I', code: '재공부족', why: '앞 공정 정지', dur: '11분째', on: true },
+    { at: '08:02', eq: '프레스 4단', s: 'I', code: '재공부족', why: '앞 공정 정지', dur: '7분' },
+  ]
+  document.getElementById('app').innerHTML = UT_SHELL('C · 라인에서 설비로 펼치기') + `
+  <main class="page">
+    <section class="panel overview">
+      <header><h2>라인별 상태</h2><span class="meta">줄을 누르면 아래에 설비별로 펼침</span><span class="tools">${legend()}</span></header>
+      ${LINES.map((l) => `<div class="lrow ${l.id === 'B' ? 'sel' : ''}"><span class="nm">${l.name}</span>${track(l, { height: 14 })}<span class="v">${l.oee.toFixed(1)}%</span></div>`).join('')}
+      <div class="ax"><span></span>${axis([0, 6, 12, 18, 24])}<span></span></div>
+    </section>
+    <section class="detail">
+      <div class="panel">
+        <header><h2>B라인 설비별</h2><span class="meta">OEE ${B.oee}% · 손실 ${fmtDur(B.loss)}</span></header>
+        ${EQ.map((e) => `<div class="erow"><span class="nm">${e.name}</span>${track(e, { height: 18 })}</div>`).join('')}
+        <div class="erow"><span></span>${axis([0, 6, 12, 18, 24])}</div>
+      </div>
+      <div class="panel">
+        <header><h2>B라인 비가동</h2><span class="meta">오늘 ${EVENTS.length}건</span></header>
+        <table class="table"><thead><tr><th>시작</th><th>설비</th><th>사유</th><th>지속</th></tr></thead><tbody>
+        ${EVENTS.map((e) => `<tr class="${e.on && e.s === 'D' ? 'on' : ''}"><td>${e.at}</td><td>${key(e.s)} ${e.eq}</td><td>${e.code}<br><span class="aux">${e.why}</span></td><td><b>${e.dur}</b></td></tr>`).join('')}
+        </tbody></table>
+      </div>
+    </section>
+    <aside class="side">
+      <section class="panel">
+        <header><h2>공장 종합</h2><span class="meta">OEE · 오늘</span></header>
+        <p class="key">${PLANT.oee}<small>%</small></p>
+        <p class="aux" style="margin-top:6px">시간 ${PLANT.a} · 성능 ${PLANT.p} · 양품 ${PLANT.q} · 라인 수율 ${PLANT.lineYield}</p>
+      </section>
+      <section class="panel bars">
+        <header><h2>라인별 OEE</h2><span class="meta">누르면 그 라인으로</span></header>
+        ${LINES.slice().sort((a, b) => a.oee - b.oee).map((l) => `<div class="b ${l.id === 'B' ? 'sel' : ''}"><span>${l.name}</span><span class="tr"><i style="width:${l.oee}%"></i></span><span style="text-align:right">${l.oee.toFixed(1)}</span></div>`).join('')}
+      </section>
+      <section class="panel" style="flex:1">
+        <header><h2>비가동 코드별</h2><span class="meta">공장 전체</span></header>
+        ${CODES.map((c) => `<div class="code">${key(c.s)}<span>${c.code}</span><b>${fmtDur(c.sec)}</b><span class="aux">${c.n}건</span></div>`).join('')}
+      </section>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

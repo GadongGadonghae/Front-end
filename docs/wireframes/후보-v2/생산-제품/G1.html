@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G1 · 왼쪽 요약 열</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<link rel="stylesheet" href="gk.css">
+<style>
+  /* G1: 가동률 시안 G와 같은 틀. 왼쪽 = 오늘 흐름 요약 (계획 대비 · 투입 흐름 · 결과 도넛), 가운데 = 탭, 오른쪽 = 고른 제품 */
+  .page { display: grid; grid-template-columns: 280px minmax(0, 1fr) 380px; gap: 16px; }
+  .sum h2 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+  .pace { padding: 12px; border-radius: 8px; background: rgb(33 73 196 / 7%); margin-bottom: 4px; }
+  .pace .lb { color: var(--ink-2); font-size: 13px; }
+  .pace b { display: block; font-size: 32px; font-weight: 600; color: #2149c4; line-height: 1.2; }
+  .pace span { font-size: 13px; color: var(--ink-2); }
+  .sec { margin: 16px 0 8px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  .stuckbox { margin-top: auto; padding: 10px 12px; border-radius: 8px; background: rgb(198 40 40 / 7%); font-size: 13px; line-height: 1.6; }
+  .stuckbox b { color: var(--down); }
+  .main .gboard { margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script src="gk.js"></script>
+<script>
+  const { DAY, fmt } = PD
+  const stuckN = GK.wip.filter(GK.isStuck).length
+  const side = `<section class="panel sum"><h2>오늘 흐름</h2>
+    <div class="pace"><span class="lb">지금 계획 ${fmt(DAY.expected)} 대비</span><b>${fmt(DAY.ok - DAY.expected)}개 앞섬</b><span>양품 출고 ${fmt(DAY.ok)} · 하루 계획 ${fmt(DAY.plan)}</span></div>
+    <div class="sec">투입 ${fmt(DAY.input)}의 행방</div>${GK.flowBar()}
+    <div class="sec">결과</div>${GK.donut(160)}${GK.legend3()}
+    ${stuckN ? `<div class="stuckbox"><b>고장으로 멈춘 제품 ${stuckN}개</b><br>B라인 프레스 3단 (14:08부터)</div>` : ''}</section>`
+  GK.mount('시안 G1 · 왼쪽 요약 열', (tab) => `<main class="page">${side}
+    <section class="panel main"><header>${GK.tabs(tab)}<span class="meta" style="margin-left:12px">${tab === 'live' ? '지금 공정 안에 있는 제품 · 1초마다 갱신' : '끝난 제품을 ID · 기간 · 라인 · 결과로 찾기'}</span></header>
+      ${tab === 'live' ? GK.board(GK.selLive, { load: true }) + GK.gantt(GK.wip.slice(0, 11), GK.selLive) : GK.histBar() + GK.histTable(GK.done.slice(0, 17), GK.selHist)}</section>
+    <aside class="panel detail">${GK.detail(tab === 'live' ? GK.selLive : GK.selHist, tab === 'live' ? '공정 중에서 고름' : '이력에서 고름')}</aside></main>`)
+</script>
+</body>
+</html>

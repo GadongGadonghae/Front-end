@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 A · 표 + 오른쪽 상세</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<style>
+  /* A: 왼쪽 큰 제품 표, 오른쪽에 고른 제품의 상세(여권 + 공정별 기록 세로). 표에 소요 시간 · 지금 위치 열 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; }
+  .top { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .top .aux { margin-left: auto; }
+  .detail .passport { grid-template-columns: repeat(2, auto); gap: 10px 24px; margin: 8px 0 18px; }
+  .detail h3 { font-size: 20px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script>
+  const { products, DAY, RESULT, fmt, hms, hm, dur } = PD
+  const { steps, result, where, J } = PDH
+  const sel = products.find((p) => p.short === 'D-0893')
+  const rows = products.slice(0, 17)
+  if (!rows.includes(sel)) rows.splice(6, 0, sel)
+  document.getElementById('app').innerHTML = PD_SHELL('시안 A · 표 + 오른쪽 상세', '<span class="field muted" style="min-width:240px">제품 ID 검색</span>') + `
+  <main class="page">
+    <section class="panel">
+      <div class="top"><h2 style="font-size:16px">제품</h2>
+        <span class="chips"><span class="chip on">전체 <b>${fmt(DAY.input)}</b></span><span class="chip">양품 출고 <b>${fmt(DAY.ok)}</b></span><span class="chip">불량 제외 <b>${fmt(DAY.ng)}</b></span><span class="chip">진행 중 <b>${DAY.wip}</b></span></span>
+        <span class="aux">투입 최근순 · 행을 누르면 오른쪽에 공정별 기록</span></div>
+      <table class="tbl"><thead><tr><th>제품 ID</th><th>라인</th><th>투입</th><th>완료</th><th style="text-align:right">소요</th><th>거친 공정</th><th>결과 · 지금 위치</th></tr></thead><tbody>
+      ${rows.map((p) => `<tr class="${p === sel ? 'open' : ''}"><td class="id">${p.id}</td><td>${p.line}</td><td>${hms(p.inAt)}</td><td>${p.doneAt ? hms(p.doneAt) : '-'}</td><td style="text-align:right">${dur(p.lead)}</td><td>${steps(p)}</td><td>${p.result === 'wip' ? `<span class="res wip">${where(p)}</span>` : result(p)}</td></tr>`).join('')}
+      </tbody></table>
+    </section>
+    <aside class="panel detail">
+      <span class="aux">고른 제품</span>
+      <h3>${sel.id}</h3>
+      <div class="passport">
+        <div><div class="lb">라인</div><div class="v">${sel.line}라인</div></div>
+        <div><div class="lb">결과</div><div class="v">${result(sel)}</div></div>
+        <div><div class="lb">투입</div><div class="v">${hms(sel.inAt)}</div></div>
+        <div><div class="lb">빠질 때까지</div><div class="v">${dur(sel.lead)}</div></div>
+      </div>
+      <div class="vtrail">${sel.records.map((r) => `
+        <div class="vstep ${r.j ?? (r.from != null ? 'now' : 'todo')}"><span class="dot"></span><div>
+          <div class="p">${r.p}<small>${J(r)}</small></div>
+          ${r.eq ? `<div class="m">${r.eq}</div>` : ''}
+          ${r.from != null ? `<div class="m">${hms(r.from)} → ${r.to ? hms(r.to) : '처리 중'}${r.to ? ` · ${dur(r.to - r.from)}` : ''}</div>` : ''}
+          ${r.reason ? `<div class="why">${r.reason}</div>` : ''}
+        </div></div>`).join('')}</div>
+    </aside>
+  </main>`
+</script>
+</body>
+</html>

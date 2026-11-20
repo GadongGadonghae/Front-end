@@ -2,6 +2,20 @@
   "env": {
     "IMPECCABLE_LIVE_COPY_AGENT": "off"
   },
+  "extraKnownMarketplaces": {
+    "heydamir": {
+      "source": {
+        "source": "github",
+        "repo": "heydamir/unslop"
+      }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
+    }
+  },
   "enabledPlugins": {
     "unslop@heydamir": true,
     "impeccable@impeccable": true,

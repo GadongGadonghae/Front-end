@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>생산 · 제품 시안 G2 · 위 요약 띠 + 쌓임 보드</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="../가동률/common.css">
+<link rel="stylesheet" href="pd.css">
+<link rel="stylesheet" href="gk.css">
+<style>
+  /* G2: 위 = 한 줄 요약 띠 (숫자 + 투입 흐름 막대), 아래 = 탭 + 오른쪽 상세. 보드 칸마다 쌓인 정도 막대, 멈춘 칸 바탕 옅은 빨강 */
+  .page { display: grid; grid-template-columns: minmax(0, 1fr) 380px; grid-template-rows: auto minmax(0, 1fr); gap: 16px; }
+  .strip { grid-column: 1 / 3; flex-direction: row; align-items: center; gap: 32px; padding: 14px 20px; }
+  .strip .k { display: flex; flex-direction: column; }
+  .strip .k span { font-size: 13px; color: var(--ink-2); }
+  .strip .k b { font-size: 20px; font-weight: 600; }
+  .strip .k.pace b { color: #2149c4; }
+  .strip .fl { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .strip .fl .flowbar { height: 18px; }
+  .strip .fl .r3 { flex-direction: row; gap: 24px; font-size: 13px; }
+  .strip .fl .r3 b { margin-left: 4px; }
+  .main .gboard { margin-bottom: 16px; }
+  .main .gcol { min-height: 200px; }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="pd.js"></script>
+<script src="gk.js"></script>
+<script>
+  const { DAY, fmt } = PD
+  const strip = `<section class="panel strip">
+    <div class="k"><span>투입</span><b>${fmt(DAY.input)}</b></div>
+    <div class="k pace"><span>지금 계획 ${fmt(DAY.expected)} 대비</span><b>${fmt(DAY.ok - DAY.expected)}개 앞섬</b></div>
+    <div class="fl">${GK.flowBar()}${GK.legend3()}</div></section>`
+  GK.mount('시안 G2 · 위 요약 띠 + 쌓임 보드', (tab) => `<main class="page">${strip}
+    <section class="panel main"><header>${GK.tabs(tab)}<span class="meta" style="margin-left:12px">${tab === 'live' ? '칸 위 막대 = 그 공정에 쌓인 정도 · 빨강 = 고장으로 멈춤' : '행 빗금 = 불량 제외 · 걸린 시간 막대 = 표준 대비'}</span></header>
+      ${tab === 'live' ? GK.board(GK.selLive, { load: true }) + GK.gantt(GK.wip.slice(0, 8), GK.selLive) : GK.histBar() + GK.histTable(GK.done.slice(0, 15), GK.selHist)}</section>
+    <aside class="panel detail">${GK.detail(tab === 'live' ? GK.selLive : GK.selHist, tab === 'live' ? '공정 중에서 고름' : '이력에서 고름')}</aside></main>`)
+</script>
+</body>
+</html>

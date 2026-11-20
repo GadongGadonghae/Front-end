@@ -1,0 +1,191 @@
+/*
+ * 디자인 토큰. 색·간격·둥글기·글자·크기·움직임 값은 이 파일에만 둔다 (CLAUDE.md, FRONTEND.md 3장).
+ * 색은 DESIGN.md frontmatter와 같은 값. 바꾸면 DESIGN.md도 같이 고친다.
+ */
+:root {
+  /* ── 중립 ── */
+  --c-canvas: #eef0f2;        /* 화면 바탕 */
+  --c-surface: #fff;          /* 패널·카드·표 */
+  --c-surface-sunk: #f5f6f8;  /* hover, 해제된 행, 선택된 항목 */
+  --c-track: #e7e9ec;         /* 막대의 빈 부분 */
+  --c-ink: #16191d;           /* 본문·숫자 */
+  --c-ink-2: #4a515b;         /* 설명·라벨 */
+  --c-ink-3: #626a75;         /* 메타·축 라벨 (canvas 위 4.79:1) */
+  --c-line: rgb(20 24 31 / 9%);         /* 옅은 구분선 */
+  --c-line-strong: rgb(20 24 31 / 18%); /* 입력·탭 테두리, 표 머리줄 아래선 */
+  --c-line-ink: var(--c-ink-3);         /* 연결선, 정지 칸 테두리 */
+
+  /* ── 강조: 하나뿐. 실적·달성률·포커스·링크에만 ── */
+  --c-accent: #2149c4;
+
+  /* ── 상태 (D-77, 의미 색) ── */
+  --c-run: #32864e;           /* R 가동. 흰 글자 4.51:1 */
+  --c-run-ink: #fff;
+  --c-stop: #e3e5e9;          /* S 정지 칸 면. 테두리는 --c-line-ink */
+  --c-stop-ink: #3f454e;
+  --c-stop-solid: #6b717b;    /* 그래프 막대의 정지 */
+  --c-idle: #f1c21b;          /* I 대기 */
+  --c-idle-ink: #1b1600;
+  --c-idle-edge: #a67c00;     /* 대기 칸 테두리, 예지보전 주의 테두리 (흰 바탕 3.82:1) */
+  --c-down: #c62828;          /* D 고장, 예지보전 위험 테두리 */
+  --c-down-ink: #fff;
+  --c-dc: #6b3fa0;            /* DC 통신 끊김 (백엔드 제안 보라). 흰 글자 7.4:1 */
+  --c-dc-ink: #fff;
+  --c-caution-ink: #7a5c00;   /* 예지보전 주의 글자 */
+  --c-down-tint: #fbe9e9;     /* 진행 중 고장·위험 행 바탕 */
+  --c-idle-tint: #fdf3d0;     /* 진행 중 대기 행 바탕 */
+
+  /* ── 가동률·생산 개편 (D-107·D-108): "이상만 색" ── */
+  --c-run-quiet: var(--c-run); /* 타임라인의 가동: 진한 초록 = R 상태색 그대로 (사용자 요청 2026-11-19) */
+  --c-stop-hatch: #9aa1ab;    /* 계획정지 빗금 선 (가동률에서 뺌) */
+  --c-dc-tint: #f0ebf6;       /* 진행 중 통신 끊김 행 바탕 */
+  --c-loss-a: #dde1e6;        /* OEE 다리: 시간 손실 */
+  --c-loss-p: #bcc2ca;        /* 성능 손실 */
+  --c-loss-q: #9aa1ab;        /* 품질 손실 */
+
+  /* 제품 여정: 공정 범주 색 (dataviz 검사: 이웃 공정끼리 일반·색약 구분 통과, 고장 빨강·강조 파랑·상태색과 겹치지 않게) */
+  --c-proc-1: #13968f;        /* 슬리팅 청록 */
+  --c-proc-2: #b8860b;        /* 프레스 황토 */
+  --c-proc-3: #b4519f;        /* 용접 자홍 */
+  --c-proc-4: #2b9fd1;        /* 도장 하늘 */
+  --c-proc-5: #9c5a1a;        /* 출고 갈색 */
+  --c-accent-tint: rgb(33 73 196 / 14%);  /* 지금 처리 중 칸, 진행 중 조각 */
+  --c-ng-hatch: rgb(22 25 29 / 6%);       /* 불량 제외 행 빗금 */
+
+  /* ── 어두운 표면 (고장 토스트) ── */
+  --c-inverse: var(--c-ink);
+  --c-inverse-ink: #fff;
+  --c-inverse-ink-2: #c3c8cf;
+
+  /* ── 3D 공장 모형 (SCR-005). 상태 색은 위 의미 색을 그대로 쓴다 ── */
+  --c-3d-bg: #e9edf1;         /* 장면 바탕 */
+  --c-3d-floor: #f4f6f8;      /* 바닥 */
+  --c-3d-grid: #dde3e9;       /* 바닥 격자 */
+  --c-3d-yard: #e6e0d6;       /* 코일 적재장 */
+  --c-3d-body: #f1f3f5;       /* 설비 몸체 (흰 계열) */
+  --c-3d-frame: #6b7a8c;      /* 프레스 받침·기둥 */
+  --c-3d-metal: #a3afbc;      /* 코일·금속 */
+  --c-3d-dark: #434b57;       /* 설비 바닥판·롤러 */
+  --c-3d-chrome: #d6dce2;     /* 코일·크롬 기둥 */
+  --c-3d-glass: #7fb2d8;      /* 안전 펜스(투명) */
+  --c-3d-wood: #b08a5a;       /* 출하 파렛트 */
+  --c-3d-carton: #c9a574;     /* 출하 상자 */
+  --c-3d-belt: #a9b3be;       /* 컨베이어 */
+  --c-3d-route: #2b6cb0;      /* 도장 경로 (기본) */
+  --c-3d-route-2: #2a9d8f;    /* 도장 경로 2 */
+  --c-3d-route-alt: #e8893d;  /* 기본과 다른 도장으로 전환된 경로 */
+  --c-3d-product: #22b8cf;    /* 제품 점 (상태 색과 겹치지 않는 청록) */
+
+  /* ── 간격: 4px 기준 ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  /* ── 둥글기 ── */
+  --r-1: 4px;   /* 상태 열쇠 칸, 표 안 작은 요소 */
+  --r-2: 6px;   /* 버튼, 입력, 탭, 설비 칸 */
+  --r-3: 8px;   /* 패널 */
+
+  /* ── 글자 ── */
+  --font: pretendard, "Malgun Gothic", system-ui, sans-serif;
+
+  /* 글자 크기 5단계: 보조 · 본문 · 제목·보조 숫자 · 요약 숫자 · 핵심 숫자 */
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-row: 16px;   /* 목록 줄의 이름·값 (가동률 상태 줄, 제품 기록 칸). 시안 G·G4 크기로 (사용자 요청 2026-11-19) */
+  --fs-lg: 20px;   /* 패널 제목 */
+  --fs-xl: 32px;
+  --fs-page: 24px;   /* 화면 제목 (생산 조회·가동률·이동 경로 끝). 패널 제목보다 한 단계 크게 */
+  --fs-figure: 16px; /* 지표 이름과 값 (실적·계획·OEE …). 값이 이름보다 튀지 않게 같은 크기 */
+  --fs-2xl: 44px;
+  --fw-regular: 400;
+  --fw-strong: 600;
+  --fw-code: 700;  /* 상태 코드 글자(R/S/I/D)만 */
+  --lh-tight: 1.15;
+  --lh-body: 1.45;
+
+  /* ── 크기·배치 ── */
+  --nav-h: 60px;
+  --head-h: 44px;
+  --page-gutter: var(--sp-6);
+  --col-summary: clamp(280px, 17vw, 320px);
+  --col-side: clamp(340px, 22vw, 440px);
+  --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
+  --col-detail: clamp(340px, 20vw, 400px); /* 고른 제품 기록 열 (생산 조회) */
+  --ledger-name-w: 96px;                    /* 가동률 상태 줄: 이름 칸 */
+  --ledger-oee-w: 148px;                    /* OEE · 기준 대비 칸 */
+  --ledger-loss-w: 72px;                    /* 손실 시간 칸 (보조 정보라 작게) */
+  --ledger-row-min: 40px;                   /* 상태 줄 최소 높이 */
+  --ledger-row-max: 96px;                   /* 상태 줄 최대 높이 (줄이 적을 때) */
+  --seg-min-w: 6px;                         /* 상태 띠: 이상 구간 최소 폭 (아주 짧아도 보이게) */
+  --track-h-lg: 28px;                       /* 굵은 24시간 띠 · 제품 여정 칸 */
+  --donut-size: 160px;
+  --journey-id-w: 150px;                    /* 제품 여정: 제품 ID 칸 */
+  --journey-where-w: 168px;                 /* 지금 위치 칸 */
+  --doc-w: 920px;                           /* 계획수정 보고서 본문 최대 폭 (읽기 좋은 줄 길이) */
+  --doc-label-w: 9em;                       /* 보고서 절 제목 칸 */
+  --limits-w: 960px;                        /* 관리값 기준 표 최대 폭 (입력 칸이 멀리 흩어지지 않게) */
+  --control-h-sm: 28px;   /* 작은 버튼 */
+  --control-h: 36px;      /* 버튼·탭·선택 */
+  --control-h-lg: 40px;   /* 로그인 같은 넓은 입력 */
+  --key-sm: 22px;
+  --key-md: 26px;
+  --key-lg: 40px;
+  --key-xl: 48px;   /* 라인 대표 상태 (라인 상세 요약 열) */
+  --line-w: 1px;
+  --line-w-strong: 1.5px;
+  --indicator-w: 2px;     /* 선택된 메뉴 밑줄, 포커스 테두리 */
+  --badge-h: 18px;        /* 알림 개수 배지 */
+  --popover-w: 360px;     /* 헤더 알림 팝오버 */
+  --toast-w: 400px;       /* 고장 토스트 */
+  --mark-w: 3px;   /* 예지보전 테두리 굵기 */
+
+  /* ── 공장 배치도 (D-81) ── */
+  --map-grid: var(--sp-6);     /* 모눈 한 칸 */
+  --map-conn: var(--sp-6);     /* 구역 사이 연결선 칸 */
+  --map-lid: 88px;             /* 라인 이름·실적 칸 */
+  --map-end-min: 96px;         /* 입고·도장·비전 칸 최소 폭 */
+  --map-cell-gap: 6px;         /* 배치도 설비 칸 사이 (시안 B) */
+  --map-cell-inset: 10px;      /* 배치도 칸 높이 = 줄 높이 − 이 값 (위아래 숨 쉴 틈, 시안 B) */
+  --map-cell-pad: 6px var(--sp-2);  /* 배치도 설비 칸 안쪽 여백 (시안 B) */
+  --map-inb-h: 72px;           /* 코일입고 칸 최소 높이 (이름 + 수량·재고 두 줄) */
+
+  /* ── 라인 흐름 (SCR-010) ── */
+  --flow-end-w: 72px;          /* 입고에서·도장으로 끝 칸 */
+  --flow-link-w: 72px;         /* 공정 사이 재공 칸 */
+  --flow-cell-min: 128px;      /* 큰 설비 칸 높이 */
+  --flow-cell-max: 280px;
+  --flow-cell-max-w: 320px;    /* 큰 설비 칸 최대 폭 (도장처럼 칸이 적은 라인) */
+
+  /* ── 대시보드·앱 크기 ── */
+  --app-min-w: 1280px;         /* 지원하는 가장 좁은 창. 이보다 좁으면 가로 스크롤 (사무실 PC, D-37) */
+
+  /* ── 차트 ── */
+  --chart-min-h: 140px;        /* 그래프가 이보다 납작해지지 않게 */
+  --chart-stroke: 2px;       /* 주 계열 (실적·측정값) */
+  --chart-stroke-thin: 1.25px;
+  --chart-dot: 4px;          /* 끝점 반지름 */
+  --bar-h: 8px;              /* 가로 막대 두께 */
+  --bar-h-lg: 12px;
+  --chart-label-w: 52px;     /* y축 숫자 칸 */
+  --chart-axis-h: 28px;      /* x축 글자 칸 */
+
+  /* ── 깊이: 토스트만 ── */
+  --shadow-float: 0 8px 24px rgb(20 24 31 / 18%);
+
+  /* ── 움직임: 토스트와 물류 점만 ── */
+  --dur-fast: 150ms;
+  --dur-enter: 240ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-enter: 0ms;
+  }
+}

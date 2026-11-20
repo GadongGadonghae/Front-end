@@ -1,0 +1,43 @@
+/* 생산 · 제품 중심 시안 공용 (가동률 시안 common.css 위에 더함). 구성 확인용 — px 값을 Vue로 옮기지 않는다 */
+.st { display: inline-flex; align-items: center; padding: 1px 6px; border-radius: 4px; font-size: 12px; white-space: nowrap; color: var(--ink-3); }
+.st.done { color: var(--ink-2); background: var(--sunk); }
+.st.now { color: #2149c4; font-weight: 600; box-shadow: inset 0 0 0 1px rgb(33 73 196 / 0.5); }
+.st.stuck { color: #fff; background: var(--down); font-weight: 600; }
+.st.ng { color: #fff; background: var(--ink); font-weight: 600; }
+.st-sep { display: inline-block; width: 8px; height: 1px; margin: 0 2px; vertical-align: middle; background: var(--line-strong); }
+.res { font-weight: 600; white-space: nowrap; }
+.res.ng { text-decoration: underline 2px var(--ink-3); text-underline-offset: 3px; }
+.res.wip { color: #2149c4; font-weight: 400; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { text-align: left; color: var(--ink-3); font-weight: 400; padding: 0 10px 6px 0; border-bottom: 1px solid var(--line-strong); white-space: nowrap; }
+.tbl td { padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+.tbl td.id { font-weight: 600; }
+.tbl tr.open td { background: var(--sunk); }
+.tbl tr.open td:first-child { box-shadow: inset 0 1px 0 var(--line-strong), inset 0 -1px 0 var(--line-strong); }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--surface); font-size: 13px; white-space: nowrap; }
+.chip b { font-weight: 600; }
+.chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+.search { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border: 1.5px solid var(--ink); border-radius: 8px; background: var(--surface); }
+.search b { font-size: 16px; }
+.search .aux { margin-left: auto; }
+/* 제품 여권: 제품 하나의 기본 정보 */
+.passport { display: grid; grid-template-columns: repeat(5, auto); gap: 4px 28px; align-items: end; }
+.passport .lb { color: var(--ink-3); font-size: 12px; }
+.passport .v { font-size: 16px; font-weight: 600; }
+/* 공정별 기록 세로 */
+.vtrail { display: flex; flex-direction: column; }
+.vstep { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 0 12px; padding-bottom: 14px; }
+.vstep::before { content: ""; position: absolute; left: 8px; top: 16px; bottom: 0; border-left: 2px solid var(--line-strong); }
+.vstep:last-child::before { display: none; }
+.vstep .dot { width: 18px; height: 18px; margin-top: 1px; border-radius: 50%; background: var(--surface); box-shadow: inset 0 0 0 2px var(--line-strong); }
+.vstep.ok .dot { box-shadow: inset 0 0 0 5px var(--ink-3); }
+.vstep.ng .dot { background: var(--ink); box-shadow: none; }
+.vstep.now .dot { box-shadow: inset 0 0 0 5px #2149c4; }
+.vstep.stuck .dot { background: var(--down); box-shadow: none; }
+.vstep .p { font-weight: 600; }
+.vstep .p small { margin-left: 6px; color: var(--ink-3); font-weight: 400; font-size: 12px; }
+.vstep .m { color: var(--ink-2); font-size: 13px; }
+.vstep .why { margin-top: 4px; padding: 6px 8px; border-radius: 4px; background: var(--sunk); font-size: 13px; }
+.vstep.todo { color: var(--ink-3); }
+.vstep.todo .p { font-weight: 400; }

@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>가동률 시안 G · 생산 라인 / 입고 / 도장 / 출고 탭</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="common.css">
+<style>
+  /* G (2026-11-19 사용자 요청): F에서 위 "라인별 OEE" 칸을 없애고, 그 비교를 "라인별 상태" 줄 안의 한 열로 합침.
+     줄 = 라인 · OEE · 공장 대비(가운데 기준선 = 공장 OEE, 왼쪽 낮음 / 오른쪽 높음) · 손실 시간 · 24시간 띠 */
+  .page { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .plant .figs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; margin-top: 12px; }
+  /* OEE 다리: 부하시간 100%를 OEE와 세 손실로 나눈 한 줄. 손실은 왼쪽에서부터 빠지는 순서(시간 → 성능 → 품질) */
+  .bridge { margin-top: 14px; }
+  .bridge .bbar { display: flex; height: 14px; border-radius: 3px; overflow: hidden; background: var(--track); }
+  .bridge .bbar i { height: 100%; }
+  .bridge .bbar .boee { background: var(--ink); }
+  .bridge .bbar .lq { background: #9aa1ab; }
+  .bridge .bbar .lp { background: #bcc2ca; }
+  .bridge .bbar .la { background: #dde1e6; }
+  .bridge .scale { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--ink-3); }
+  .bridge dl { display: grid; grid-template-columns: 10px 1fr auto auto; gap: 6px 8px; align-items: center; margin: 10px 0 0; font-size: 13px; }
+  .bridge dt { color: var(--ink-2); }
+  .bridge dd { margin: 0; text-align: right; }
+  .bridge dd.lost { color: var(--ink-3); min-width: 4.5em; }
+  .bridge .sw3 { width: 10px; height: 10px; border-radius: 2px; }
+  .bridge .total { grid-column: 1 / -1; display: flex; justify-content: space-between; padding-top: 6px; border-top: 1px solid var(--line); color: var(--ink-3); }
+  .codes { flex: 1; }
+  .donut { position: relative; width: 168px; height: 168px; margin: 4px auto 12px; }
+  .donut svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .donut .mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .donut .mid b { font-size: 16px; font-weight: 600; line-height: 1.2; }
+  .donut .mid span { color: var(--ink-3); font-size: 12px; }
+  .code .sw2 { width: 10px; height: 10px; border-radius: 2px; }
+  .code { display: grid; grid-template-columns: 10px auto 1fr auto; gap: 4px 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); }
+  .code .k { justify-self: start; }
+  .code:first-of-type { border-top: 0; }
+  .code .cbar { grid-column: 2 / 4; height: 6px; background: var(--track); border-radius: 3px; }
+  .code .cbar i { display: block; height: 100%; border-radius: 3px; }
+  .code b { font-weight: 600; white-space: nowrap; }
+
+  .cols { display: grid; grid-template-columns: 76px 132px 92px minmax(0, 1fr); gap: 0 16px; align-items: center; }
+  .row .loss { white-space: nowrap; }
+  .head-row { padding: 0 0 6px; border-bottom: 1px solid var(--line-strong); color: var(--ink-3); font-size: 13px; }
+  .head-row .vs { display: flex; justify-content: space-between; }
+  .rows { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+  .row { flex: 1; min-height: 36px; border-bottom: 1px solid var(--line); }
+  .row .nm { font-size: 16px; font-weight: 600; }
+  .row .loss { font-size: 16px; font-weight: 600; text-align: right; }
+  .row .shared { font-size: 12px; color: var(--ink-3); }
+  .group { display: flex; align-items: baseline; gap: 8px; padding: 10px 0 4px; font-size: 13px; color: var(--ink-3); border-bottom: 1px solid var(--line-strong); }
+  .group b { color: var(--ink); font-size: 14px; font-weight: 600; }
+  .row.shared-row { flex: 0.8; }
+  .row.sel { background: var(--sunk); box-shadow: inset 0 0 0 1px var(--line-strong); border-radius: 6px; }
+
+  /* OEE 한 열: 숫자 + 공장 대비 ±, 그 아래 가는 막대 (가운데 눈금 = 공장 OEE, 왼쪽 낮음 / 오른쪽 높음) */
+  .oee { display: flex; flex-direction: column; gap: 6px; }
+  .oee .top { display: flex; align-items: baseline; gap: 8px; }
+  .oee .d { font-size: 12px; color: var(--ink-3); }
+  .oee .d.neg { color: var(--ink); font-weight: 600; }
+  .vsbar { position: relative; height: 10px; background: var(--track); border-radius: 3px; }
+  .vsbar .base { position: absolute; left: 50%; top: -4px; bottom: -4px; z-index: 1; border-left: 2px solid var(--ink-2); }
+  .vsbar i { position: absolute; top: 0; bottom: 0; }
+  .vsbar i.down { right: 50%; border-radius: 3px 0 0 3px; }
+  .vsbar i.up { left: 50%; border-radius: 0 3px 3px 0; }
+  .axis-row { padding-top: 6px; }
+  .tabs { display: inline-flex; gap: 2px; margin-left: 8px; padding: 2px; border-radius: 8px; background: var(--sunk); }
+  .tabs button { padding: 5px 14px; border: 0; border-radius: 6px; background: none; color: var(--ink-2); font: inherit; cursor: pointer; }
+  .tabs button small { margin-left: 4px; color: var(--ink-3); font-size: 12px; }
+  .tabs button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--line-strong); }
+  .empty { display: flex; flex-direction: column; justify-content: center; gap: 6px; flex: 1; padding: 0 0 40px 92px; color: var(--ink-2); }
+  .empty b { color: var(--ink); font-size: 16px; }
+  .empty a { color: var(--ink); }
+  .tabnote { padding: 8px 0 4px; font-size: 13px; color: var(--ink-3); border-bottom: 1px solid var(--line-strong); }
+  .rows.few { flex: 0 0 auto; }
+  .rows.few .row { flex: 0 0 64px; }
+  /* 지금 상태를 그 행 바탕에 은은하게 (진행 중인 사건이 있는 행만). 옅은 색 + 이름 아래 상태 글자.
+     패턴은 계획정지만: 타임라인 빗금과 같은 뜻 (가동률 계산에서 뺌) */
+  .row { padding-inline: 8px; margin-inline: -8px; border-radius: 6px; }
+  .row.cur-D { background: rgb(198 40 40 / 7%); }
+  .row.cur-I { background: rgb(241 194 27 / 13%); }
+  .row.cur-S { background: repeating-linear-gradient(135deg, rgb(98 106 117 / 9%) 0 2px, transparent 2px 9px); }
+  .row.cur-DC { background: rgb(107 63 160 / 7%); }
+  .row .now-tag { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .row.cur-D .now-tag { color: var(--down); }
+  .row.cur-I .now-tag { color: #7a5c00; }
+  .row.cur-S .now-tag { color: var(--ink-2); }
+  .row.cur-DC .now-tag { color: var(--dc); }
+  /* 주·월: 24시간 띠 자리에 날짜 칸. 칸 색 = 그날 기준 대비 (높음 파랑 · 낮음 먹색, 차이가 클수록 진하게) */
+  .days { display: grid; gap: 3px; height: 34px; }
+  .days .c { display: grid; place-items: center; border-radius: 3px; font-size: 12px; font-weight: 600; }
+  .days .c.today { outline: 1.5px dashed var(--ink-2); outline-offset: 1px; }
+  .days .c.future { background: var(--sunk); box-shadow: inset 0 0 0 1px var(--line); }
+  .dayhead { display: grid; gap: 3px; font-size: 12px; color: var(--ink-3); text-align: center; }
+  .dayhead .today { color: var(--ink); font-weight: 600; }
+  .crumb { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; }
+  .crumb button { border: 0; background: none; padding: 4px 6px; border-radius: 4px; color: var(--ink-2); font: inherit; cursor: pointer; }
+  .crumb button:hover { background: var(--sunk); color: var(--ink); }
+  .crumb b { font-size: 16px; }
+  .row.click { cursor: pointer; }
+  .row.click:hover .nm { text-decoration: underline; }
+  .bar .seg > *, #sort > * { cursor: pointer; }
+  .scale-note { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); }
+  .scale-note i { display: inline-block; width: 14px; height: 10px; border-radius: 2px; }
+  @media (max-height: 860px) {
+    .bridge { margin-top: 8px; }
+    .bridge dl { gap: 3px 8px; margin-top: 6px; }
+    .plant .key { font-size: 28px; }
+    .donut { width: 104px; height: 104px; margin: 0 auto 2px; }
+    .donut .mid span { display: none; }
+    .donut .mid b { font-size: 14px; }
+    .code { padding: 3px 0; } .row { min-height: 28px; } .group { padding-top: 6px; } }
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script src="data.js"></script>
+<script src="common.js"></script>
+<script>
+  const { LINES, PLANT, CODES, NOW, fmtDur } = UT
+  const { track, axis, legend, key } = UTH
+  const SPAN = 15 // ±15%p = 칸 절반
+  const S = { period: 'day', tab: 'line', line: null, sort: 'line' } // 화면 상태
+  const q = new URLSearchParams(location.search)
+  if (q.get('period')) S.period = q.get('period')
+  if (q.get('tab')) S.tab = q.get('tab')
+  if (q.get('line')) S.line = q.get('line')
+
+  // ── 데모 값: 주(11/13~19)·월(11/1~30). 명세 수치 아님 ──
+  const hash = (str) => { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) } h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return (h >>> 0) / 4294967296 }
+  const BASE = { A: 81, B: 77, C: 80, D: 78, E: 80, F: 81, PT: 84, VI: 90 }
+  const DIP = { 'B-15': -12, 'D-18': -7, 'F-8': -6, 'PT-11': -5, 'C-4': -8 }
+  const TODAY = 19
+  const dayOee = (id, d) => {
+    if (d === TODAY) return LINES.find((l) => l.id === id)?.oee ?? BASE[id]
+    return +(BASE[id] + (hash(id + d) - 0.5) * 6 + (DIP[`${id}-${d}`] ?? 0)).toFixed(1)
+  }
+  const PERIOD = {
+    week: { days: [13, 14, 15, 16, 17, 18, 19], label: '이번 주', basis: '11/13 ~ 11/19 14:20 기준', plant: { oee: 79.6, a: 90.4, p: 92.1, q: 95.6, lineYield: 95.7 }, codeX: 5.2 },
+    month: { days: Array.from({ length: 30 }, (_, i) => i + 1), label: '이번 달', basis: '11/1 ~ 11/19 14:20 기준', plant: { oee: 80.3, a: 91.0, p: 92.2, q: 95.7, lineYield: 95.8 }, codeX: 15.8 },
+  }
+  const WD = ['일', '월', '화', '수', '목', '금', '토']
+  const wd = (d) => WD[(d - 1) % 7] // 2026-11-01 = 일요일
+  const plantDay = (d) => (d === TODAY ? PLANT.oee : +(80 + (hash('P' + d) - 0.5) * 3).toFixed(1))
+  const pastDays = () => PERIOD[S.period].days.filter((d) => d <= TODAY)
+  const periodOee = (id) => { const v = pastDays().map((d) => dayOee(id, d)); return +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(1) }
+  const periodLoss = (id) => pastDays().reduce((a, d) => a + (d === TODAY ? (LINES.find((l) => l.id === id)?.loss ?? 0) : (8 + hash(id + 'L' + d) * 20 + Math.max(0, -(DIP[`${id}-${d}`] ?? 0)) * 6) * 60), 0)
+
+  // ── 설비별 (라인을 눌렀을 때) ──
+  const t = (h, m = 0) => h * 3600 + m * 60
+  const one = (id, name, oee, events) => {
+    const segs = []; let at = 0
+    for (const e of events.slice().sort((a, b) => a.from - b.from)) { if (e.from > at) segs.push({ s: 'R', from: at, to: e.from }); segs.push(e); at = e.to }
+    if (at < NOW) segs.push({ s: 'R', from: at, to: NOW })
+    return { id, name, oee, segs, events, loss: events.reduce((a, e) => a + (e.s === 'S' ? 0 : e.to - e.from), 0) }
+  }
+  const EQ_NAMES = [['슬리팅', '슬리팅'], ['프레스 1단', '1단 성형'], ['프레스 2단', '2단 트림'], ['프레스 3단', '3단 피어싱'], ['프레스 4단', '4단 플랜지'], ['용접', '용접']]
+  const B_DETAIL = {
+    '프레스 3단': [{ s: 'D', from: t(14, 8), to: NOW, code: '알람(관리값 이탈)', eq: '프레스 3단', ongoing: true }],
+    '프레스 4단': [{ s: 'I', from: t(8, 2), to: t(8, 9), code: '재공부족', eq: '프레스 4단' }, { s: 'I', from: t(14, 8), to: NOW, code: '재공부족', eq: '프레스 4단', ongoing: true }],
+    '용접': [{ s: 'I', from: t(14, 9), to: NOW, code: '재공부족', eq: '용접', ongoing: true }],
+  }
+  const equipmentOf = (l) => EQ_NAMES.map(([match, label], i) => {
+    const ev = l.id === 'B' ? (B_DETAIL[match] ?? []) : l.events.filter((e) => e.eq.includes(match))
+    const lossMin = ev.reduce((a, e) => a + (e.s === 'S' ? 0 : (e.to - e.from) / 60), 0)
+    const oee = +Math.min(95, l.oee + 2 + (hash(l.id + i) - 0.5) * 2 - lossMin * 0.3).toFixed(1)
+    return one(`${l.id}-${i}`, label, oee, ev)
+  })
+  const PAINT = [
+    one('PT1', '도장 #1', 86.1, []),
+    one('PT2', '도장 #2', 81.9, [{ s: 'D', from: t(10, 2), to: t(10, 21), code: '알람(관리값 이탈)', eq: '도장 #2' }]),
+  ]
+  const OUT = [one('VI', '비전', 90.0, [])]
+
+  // ── 지금 보는 범위의 종합 · 비가동 ──
+  const lineSel = () => (S.line ? LINES.find((l) => l.id === S.line) : null)
+  const summary = () => {
+    const l = lineSel()
+    if (l) return { title: `${l.name} 종합`, oee: S.period === 'day' ? l.oee : periodOee(l.id), a: l.a, p: l.p, q: l.q, lineYield: null }
+    return S.period === 'day' ? { title: '공장 종합', ...PLANT } : { title: '공장 종합', ...PERIOD[S.period].plant }
+  }
+  const codes = () => {
+    const x = S.period === 'day' ? 1 : PERIOD[S.period].codeX
+    const l = lineSel()
+    if (l) {
+      const evs = l.id === 'B' ? Object.values(B_DETAIL).flat() : l.events
+      const m = {}
+      for (const e of evs) { m[e.code] = m[e.code] ?? { code: e.code, s: e.s, sec: 0, n: 0 }; m[e.code].sec += e.to - e.from; m[e.code].n += 1 }
+      return Object.values(m).map((c) => ({ ...c, sec: c.sec * x, n: Math.max(c.n, Math.round(c.n * x)) })).sort((a, b) => b.sec - a.sec)
+    }
+    return CODES.map((c) => ({ ...c, sec: Math.round(c.sec * x), n: Math.max(c.n, Math.round(c.n * x)) }))
+  }
+
+  // OEE = 시간가동률 × 성능가동률 × 양품률 (D-21). 부하시간 100%에서 차례로 잃은 몫
+  const bridge = (P) => {
+    const a = P.a / 100; const pf = P.p / 100; const qq = P.q / 100
+    const la = (1 - a) * 100; const lp = a * (1 - pf) * 100; const lq = a * pf * (1 - qq) * 100; const oee = a * pf * qq * 100
+    return `<div class="bridge" role="img" aria-label="부하시간 100% 중 OEE ${oee.toFixed(1)}%">
+      <div class="bbar"><i class="boee" style="width:${oee}%"></i><i class="lq" style="width:${lq}%"></i><i class="lp" style="width:${lp}%"></i><i class="la" style="width:${la}%"></i></div>
+      <div class="scale"><span>OEE</span><span>부하시간 100%</span></div>
+      <dl>
+        <i class="sw3" style="background:#dde1e6;box-shadow:inset 0 0 0 1px var(--line-strong)"></i><dt>시간가동률</dt><dd><b>${P.a}%</b></dd><dd class="lost">−${la.toFixed(1)}</dd>
+        <i class="sw3" style="background:#bcc2ca"></i><dt>성능가동률</dt><dd><b>${P.p}%</b></dd><dd class="lost">−${lp.toFixed(1)}</dd>
+        <i class="sw3" style="background:#9aa1ab"></i><dt>양품률</dt><dd><b>${P.q}%</b></dd><dd class="lost">−${lq.toFixed(1)}</dd>
+        ${P.lineYield != null ? `<span class="total"><span>라인 수율 (OEE와 별도)</span><b style="color:var(--ink)">${P.lineYield}%</b></span>` : ''}
+      </dl></div>`
+  }
+  const FILL = { D: ['#c62828', '#e08a8a'], I: ['#f1c21b', '#f7dd85'], S: ['url(#hatch)', 'url(#hatch2)'], DC: ['#6b3fa0', '#a98bd0'] }
+  const donut = (list) => {
+    const total = list.reduce((a, c) => a + c.sec, 0)
+    if (!total) return '<p class="aux" style="padding:24px 0;text-align:center">비가동 없음</p>'
+    const R = 15.9155
+    let at = 0; const seen = {}
+    const arcs = list.map((c) => {
+      const k = seen[c.s] = (seen[c.s] ?? -1) + 1
+      const len = (c.sec / total) * 100
+      const arc = `<circle r="${R}" cx="21" cy="21" fill="none" stroke="${FILL[c.s][Math.min(k, 1)]}" stroke-width="4.5" stroke-dasharray="${Math.max(0, len - 0.6)} ${100 - len + 0.6}" stroke-dashoffset="${-at}"><title>${c.code} ${fmtDur(c.sec)} · ${c.n}건</title></circle>`
+      at += len
+      return arc
+    }).join('')
+    return `<div class="donut" role="img" aria-label="비가동 코드별 시간 비율, 합계 ${fmtDur(total)}">
+      <svg viewBox="0 0 42 42"><defs>
+        <pattern id="hatch" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="2" fill="#c3c8cf"/><rect width="1" height="2" fill="#7d848e"/></pattern>
+        <pattern id="hatch2" width="2" height="2" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="2" fill="#e3e6ea"/><rect width="1" height="2" fill="#a9afb8"/></pattern>
+      </defs><circle r="${R}" cx="21" cy="21" fill="none" stroke="var(--track)" stroke-width="4.5"/>${arcs}</svg>
+      <div class="mid"><b>${fmtDur(total)}</b><span>비가동 합계 · ${list.reduce((a, c) => a + c.n, 0)}건</span></div></div>`
+  }
+  const codeList = (list) => { const seen = {}; return list.map((c) => { const k = seen[c.s] = (seen[c.s] ?? -1) + 1; const f = FILL[c.s][Math.min(k, 1)]; const bg = f.startsWith('url') ? (k ? 'repeating-linear-gradient(135deg,#a9afb8 0 2px,#e3e6ea 2px 4px)' : 'repeating-linear-gradient(135deg,#7d848e 0 2px,#c3c8cf 2px 4px)') : f; return `<div class="code"><i class="sw2" style="background:${bg}"></i>${key(c.s)}<span>${c.code}</span><b>${fmtDur(c.sec)} · ${c.n}건</b></div>` }).join('') }
+
+  // ── 비교 막대 · 색: 차이의 크기만큼 진하게. 높음 = 신호 파랑, 낮음 = 먹색 (빨강·노랑은 고장·대기 뜻) ──
+  const tone = (d) => {
+    const a = 0.3 + Math.min(1, Math.abs(d) / SPAN) * 0.7
+    return d >= 0 ? `rgb(33 73 196 / ${a.toFixed(2)})` : `rgb(22 25 29 / ${a.toFixed(2)})`
+  }
+  const vs = (oee, base, baseLabel) => {
+    const d = oee - base
+    const w = Math.min(50, (Math.abs(d) / SPAN) * 50)
+    const label = `${d > 0 ? '+' : ''}${d.toFixed(1)}`
+    return `<span class="oee" title="${baseLabel} ${base}% 대비 ${label}%p">
+      <span class="top"><span class="num">${oee.toFixed(1)}<small>%</small></span><span class="d ${d < 0 ? 'neg' : ''}" style="color:${d >= 0 ? '#2149c4' : ''}">${label}</span></span>
+      <span class="vsbar"><span class="base"></span><i class="${d < 0 ? 'down' : 'up'}" style="width:${w}%;background:${tone(d)}"></i></span></span>`
+  }
+  const plainOee = (oee) => `<span class="oee"><span class="top"><span class="num">${oee.toFixed(1)}<small>%</small></span></span></span>`
+
+  // 주·월: 날짜 칸 (칸 색 = 그날 기준 대비)
+  const dayCells = (valueOf, baseOf) => {
+    const P = PERIOD[S.period]
+    return `<div class="days" style="grid-template-columns: repeat(${P.days.length}, minmax(0, 1fr))">${P.days.map((d) => {
+      if (d > TODAY) return '<span class="c future" title="아직 오지 않은 날"></span>'
+      const v = valueOf(d); const diff = v - baseOf(d)
+      const a = 0.12 + Math.min(1, Math.abs(diff) / SPAN) * 0.6
+      const bg = diff >= 0 ? `rgb(33 73 196 / ${a.toFixed(2)})` : `rgb(22 25 29 / ${a.toFixed(2)})`
+      return `<span class="c ${d === TODAY ? 'today' : ''}" style="background:${bg};color:${a > 0.45 ? '#fff' : 'var(--ink)'}" title="11/${d} OEE ${v.toFixed(1)}% (기준 대비 ${diff > 0 ? '+' : ''}${diff.toFixed(1)})">${S.period === 'week' ? v.toFixed(1) : ''}</span>`
+    }).join('')}</div>`
+  }
+  const dayHead = () => {
+    const P = PERIOD[S.period]
+    return `<div class="dayhead" style="grid-template-columns: repeat(${P.days.length}, minmax(0, 1fr))">${P.days.map((d) => `<span class="${d === TODAY ? 'today' : ''}">${S.period === 'week' ? `11/${d} ${wd(d)}` : (d === 1 || d % 5 === 0 || d === TODAY ? d : '')}</span>`).join('')}</div>`
+  }
+
+  // ── 표 ──
+  const NOW_NAME = { D: '고장 중', I: '대기 중', S: '계획정지 중', DC: '통신 끊김' }
+  const cur = (l) => { const last = l.segs[l.segs.length - 1]; return last && last.ongoing ? last.s : 'R' }
+  const curClass = (l) => (S.period === 'day' ? `cur-${cur(l)}` : '')
+  const nameCell = (l) => `<span class="nm">${l.name}${S.period === 'day' && cur(l) !== 'R' ? `<span class="now-tag">${NOW_NAME[cur(l)]}</span>` : ''}</span>`
+  const headRow = (first, oeeLabel) => `<div class="cols head-row"><span>${first}</span><span>${oeeLabel}</span><span style="text-align:right">손실</span>${S.period === 'day' ? '<span>상태</span>' : dayHead()}</div>`
+  const foot = () => (S.period === 'day'
+    ? `<div class="cols axis-row"><span></span><span></span><span></span>${axis()}</div>`
+    : `<div class="cols axis-row"><span></span><span></span><span></span><span class="scale-note">칸 = 하루 OEE · <i style="background:rgb(33 73 196 / .5)"></i>${S.line ? '라인' : '공장'}보다 높음 <i style="background:rgb(22 25 29 / .5)"></i>낮음 · 차이가 클수록 진하게 · 점선 = 오늘(진행 중)</span></div>`)
+
+  const lineRows = () => {
+    const base = S.period === 'day' ? PLANT.oee : PERIOD[S.period].plant.oee
+    let list = LINES.filter((l) => l.kind === '생산').map((l) => ({ l, oee: S.period === 'day' ? l.oee : periodOee(l.id), loss: S.period === 'day' ? l.loss : periodLoss(l.id) }))
+    if (S.sort === 'low') list = list.sort((a, b) => a.oee - b.oee)
+    return headRow('라인', `OEE · 공장 ${base}% 대비`) + `<div class="rows">${list.map(({ l, oee, loss }) => `
+        <div class="cols row click ${curClass(l)}" data-line="${l.id}" title="누르면 ${l.name} 설비별로">
+          ${nameCell(l)}
+          ${vs(oee, base, '공장')}
+          <span class="loss">${loss ? fmtDur(loss) : '-'}</span>
+          ${S.period === 'day' ? track(l, { height: 32 }) : dayCells((d) => dayOee(l.id, d), plantDay)}
+        </div>`).join('')}</div>` + foot()
+  }
+  const equipRows = () => {
+    const l = lineSel()
+    const base = S.period === 'day' ? l.oee : periodOee(l.id)
+    return headRow('설비', `OEE · ${l.name} ${base}% 대비`) + `<div class="rows">${equipmentOf(l).map((e, i) => {
+      const slow = l.id === 'B' && i === 3 ? -6 : 0
+      const oee = S.period === 'day' ? e.oee : +(base + 2 + (hash(e.id) - 0.5) * 3 + slow).toFixed(1)
+      return `
+        <div class="cols row ${curClass(e)}">
+          ${nameCell(e)}
+          ${vs(oee, base, l.name)}
+          <span class="loss">${e.loss ? fmtDur(e.loss * (S.period === 'day' ? 1 : PERIOD[S.period].codeX)) : '-'}</span>
+          ${S.period === 'day' ? track(e, { height: 32 }) : dayCells((d) => dayOee(l.id, d) + 2 + (hash(e.id + d) - 0.5) * 3 + slow, (d) => dayOee(l.id, d))}
+        </div>`
+    }).join('')}</div>` + foot()
+  }
+  const plainRows = (list, procId) => headRow('설비', 'OEE') + `<div class="rows few">${list.map((e) => `
+        <div class="cols row ${curClass(e)}">
+          ${nameCell(e)}
+          ${plainOee(S.period === 'day' ? e.oee : periodOee(procId))}
+          <span class="loss">${e.loss ? fmtDur(e.loss) : '-'}</span>
+          ${S.period === 'day' ? track(e, { height: 32 }) : dayCells((d) => dayOee(procId, d), plantDay)}
+        </div>`).join('')}</div>` + foot()
+
+  const body = () => {
+    if (S.tab === 'line') return S.line ? equipRows() : lineRows()
+    if (S.tab === 'inbound') return '<div class="empty"><b>코일입고는 가동률을 재지 않습니다</b><span>설비 없이 수량만 관리하는 곳이라 가동·정지 상태가 없습니다 (D-10, D-55).</span><span>오늘 입고 코일 수와 슬리팅 앞 재고는 <a>코일입고 상세</a>에서 봅니다.</span></div>'
+    if (S.tab === 'paint') return `<div class="tabnote">도장 공정 OEE ${LINES.find((l) => l.id === 'PT').oee}% · A~F 모든 라인의 제품을 두 대가 나눠 받음</div>` + plainRows(PAINT, 'PT')
+    return `<div class="tabnote">출고 OEE ${LINES.find((l) => l.id === 'VI').oee}% · 모든 제품의 최종 검사 (비전 1대)</div>` + plainRows(OUT, 'VI')
+  }
+
+  document.getElementById('app').innerHTML = UT_SHELL('G · 라인별 상태 하나로') + `
+  <main class="page">
+    <aside class="side">
+      <section class="panel plant" id="plant"></section>
+      <section class="panel codes" id="codes"></section>
+    </aside>
+    <section class="panel ledger">
+      <header><h2>상태</h2>
+        <span class="tabs" role="tablist">
+          <button data-tab="line">생산 라인<small>6</small></button>
+          <button data-tab="inbound">코일입고</button>
+          <button data-tab="paint">도장<small>2대</small></button>
+          <button data-tab="out">출고<small>비전 1대</small></button>
+        </span>
+        <span class="crumb" id="crumb"></span>
+        <span class="tools"><span id="legend">${legend()}</span><span class="seg" id="sort"></span></span></header>
+      <div id="body" style="display:flex;flex-direction:column;flex:1;min-height:0"></div>
+    </section>
+  </main>`
+
+  const render = () => {
+    const P = summary()
+    const per = S.period === 'day' ? '오늘' : PERIOD[S.period].label
+    document.getElementById('plant').innerHTML = `<header><h2>${P.title}</h2><span class="meta">OEE · ${per}</span></header><p class="key">${P.oee}<small>%</small></p>${bridge(P)}`
+    const cl = codes()
+    document.getElementById('codes').innerHTML = `<header><h2>비가동 코드별</h2><span class="meta">${S.line ? lineSel().name : '공장 전체'} · ${per}</span></header>${donut(cl)}${codeList(cl)}`
+    document.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('on', b.dataset.tab === S.tab))
+    document.getElementById('crumb').innerHTML = S.line && S.tab === 'line' ? `<button id="back">생산 라인</button>›<b>${lineSel().name}</b><span class="aux">설비별</span>` : ''
+    const sort = document.getElementById('sort')
+    sort.innerHTML = [['line', '라인순'], ['low', 'OEE 낮은 순']].map(([k, n]) => (S.sort === k ? `<b data-sort="${k}">${n}</b>` : `<span data-sort="${k}">${n}</span>`)).join('')
+    sort.style.visibility = S.tab === 'line' && !S.line ? '' : 'hidden'
+    document.getElementById('legend').style.visibility = S.period === 'day' ? '' : 'hidden'
+    document.querySelector('.bar .seg').innerHTML = [['day', '일'], ['week', '주'], ['month', '월']].map(([k, n]) => (S.period === k ? `<b data-p="${k}">${n}</b>` : `<span data-p="${k}">${n}</span>`)).join('')
+    document.querySelector('.bar .basis').textContent = S.period === 'day' ? '00:00 ~ 14:20 기준' : PERIOD[S.period].basis
+    document.getElementById('body').innerHTML = body()
+  }
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-tab],[data-p],[data-line],[data-sort],#back')
+    if (!el) return
+    if (el.dataset.tab) { S.tab = el.dataset.tab; S.line = null }
+    else if (el.dataset.p) S.period = el.dataset.p
+    else if (el.dataset.line) S.line = el.dataset.line
+    else if (el.dataset.sort) S.sort = el.dataset.sort
+    else if (el.id === 'back') S.line = null
+    render()
+  })
+  render()
+</script>
+</body>
+</html>
