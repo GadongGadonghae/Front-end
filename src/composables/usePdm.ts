@@ -71,12 +71,20 @@ export function usePdm(selectedId: Ref<string | null>) {
   const range = ref<TelemetryRange>('8h')
   const item = ref('')
   watch(selectedId, () => { item.value = '' })
-  watch(selected, (s) => { if (s && !s.items.some((i) => i.item === item.value)) item.value = s.item ?? s.items[0]?.item ?? '' }, { immediate: true })
   const series = useTelemetry(selectedId, range)
+  // 고른 항목이 위험도 목록에도 추이에도 없을 때만 가장 높은 항목으로 (센서 카드에서 고른 공정값을 지키려고)
+  watch([selected, series], ([s, ser]) => {
+    if (!s || s.items.some((i) => i.item === item.value) || ser?.items.some((i) => i.item === item.value)) return
+    item.value = s.item ?? s.items[0]?.item ?? ''
+  }, { immediate: true })
 
   const chart = computed(() => {
     const c = telemetryChart(series.value, item.value, range.value, now.value)
     const it = c.item
+    // 하한 없이 상한만 있는 센서(진동): 0에서 상한까지의 80%·90%
+    if (it && it.lower == null && it.upper != null) {
+      return { ...c, refLines: [...c.refLines, { value: it.upper * 0.9, kind: 'danger' as const }, { value: it.upper * 0.8, kind: 'warn' as const }], bands: true }
+    }
     if (!it || it.lower == null || it.upper == null) return { ...c, bands: false }
     // 80%·90% 선: 가운데에서 상·하한 쪽으로 그 비율만큼 간 자리 (양쪽). 이름은 범례에 (선끼리 가까워 글자가 겹친다)
     const mid = (it.lower + it.upper) / 2

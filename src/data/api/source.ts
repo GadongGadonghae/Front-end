@@ -13,12 +13,15 @@ import type { Product, ProductDetail } from '@/types/production'
 import type { ReplanReport } from '@/types/report'
 import { api } from '@/data/api/endpoints'
 import { ApiError, token } from '@/data/api/http'
+import { sensorRisks, sensorTickValues, withSensors } from '@/data/dummy/sensors'
 
 const SNAPSHOT_MS = 1000
 const SUMMARY_MS = 10_000
 /** 알람 발생·해제 확인 주기. 짧을수록 해제 직후 지속시간이 덜 넘어가요 (11/20 5초 → 2초) */
 const ALARM_MS = 2000
 const TELEMETRY_MS = 2000
+/** 예지보전 위험도 5초 (API 명세 3.1 risk) */
+const RISK_MS = 5000
 const LINES = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 // ── 기준정보 중 API에 없는 것 (명세 공통 규칙에서 옮김) ──
@@ -257,6 +260,10 @@ export function createApiSource(): DataSource {
     return { lines: lineList, processes: PROCESSES, equipmentTypes: TYPES, equipment, downtimeCodes: CODES, controlLimits: limits.map((t) => limitOf(t, typeById.get(t.equipmentId) ?? 'press')) }
   }
 
+  /** 기준정보는 한 번만 받아 둔다 (예지보전 더미 위험도용) */
+  let masterCache: Promise<MasterData> | null = null
+  const masterOnce = () => (masterCache ??= master().catch((e) => { masterCache = null; throw e }))
+
   async function snapshot(): Promise<PlantSnapshot> {
     const [status, counts, coil] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M16()])
     return {
@@ -356,7 +363,13 @@ export function createApiSource(): DataSource {
         }
       },
       onRiskChanged: () => () => {},
-      onRisk: (cb) => { cb([]); return () => {} },
+      // 백엔드에 위험도 API가 없다 → 설비 상태 센서 더미로만 위험도를 만든다 (data/dummy/sensors.ts)
+      onRisk(cb) {
+        return poll(RISK_MS, async () => {
+          const m = await masterOnce()
+          cb(sensorRisks(m.equipment, Date.now() / 1000))
+        })
+      },
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
         // after: 그 시각보다 뒤의 점만 (M-03, 11/19 백엔드 추가). 처음은 구독한 시각부터 (그 앞은 getTelemetry가 받음)
         let lastTs = isoLocal(Date.now())
@@ -365,7 +378,7 @@ export function createApiSource(): DataSource {
           const m = await api.M03(equipmentId, { from: today, to: today, after: lastTs })
           const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
           for (const v of values) if (Date.parse(v.t) > Date.parse(lastTs)) lastTs = v.t
-          if (values.length) cb({ equipmentId, values })
+          if (values.length) cb({ equipmentId, values: [...values, ...sensorTickValues(equipmentId, values.map((v) => v.t), Date.now() / 1000)] })
         })
       },
     },
@@ -402,7 +415,8 @@ export function createApiSource(): DataSource {
         const m = await api.M03(equipmentId, { from: dateOf(from), to: dateOf(to), interval: range === '1h' ? 'raw' : '5s' })
         return {
           equipmentId, range,
-          items: m.metrics.map((x) => ({ item: x.metric, unit: x.unit, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })),
+          // 설비 상태 센서(온도·진동·전류)는 더미: 공정 관리값과 같은 시각에 붙인다
+          items: withSensors(equipmentId, m.metrics.map((x) => ({ item: x.metric, unit: x.unit, source: 'process' as const, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })), Date.now() / 1000),
         }
       },
       getStateEvents: async ({ equipmentId }) => todayEvents({ equipmentId }),
@@ -630,7 +644,7 @@ export function createApiSource(): DataSource {
           throw e
         }
       },
-      getRisks: async () => [],
+      getRisks: async () => sensorRisks((await masterOnce()).equipment, Date.now() / 1000),
       getPdmEta: async () => null,
     },
     cmd: {

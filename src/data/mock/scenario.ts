@@ -72,7 +72,12 @@ export const HOURLY_WEIGHT = [48, 50, 51, 47, 52, 50, 49, 53, 51, 46, 52, 50, 54
 export const RISK_EVENTS = [{ equipmentId: 'E-PR2', item: 'pressureLeft', agoSec: 29 * 60 + 37, maxPercent: 92 }]
 
 /** 지금 고장 난 설비의 관리값 이탈: 고장 전 rampSec 동안 값이 올라 고장 시각에 to가 된다 (데모) */
-export const TELEMETRY_RAMPS = [{ equipmentId: 'B-PR3', item: 'pressureLeft', to: 356, rampSec: 15 * 60 }]
+export const TELEMETRY_RAMPS = [
+  { equipmentId: 'B-PR3', item: 'pressureLeft', to: 356, rampSec: 15 * 60 },
+  // 설비 상태 센서 더미: 고장 전에 진동·모터 전류가 먼저 오른다 (예지보전 SCR-004)
+  { equipmentId: 'B-PR3', item: 'vibration', to: 4.3, rampSec: 30 * 60 },
+  { equipmentId: 'B-PR3', item: 'motorCurrent', to: 24, rampSec: 25 * 60 },
+]
 
 /** 지금 고장과 이어진 공정 검사 불량 (데모): 고장 직전 마지막 검사에서 걸린 제품 */
 export const NG_OVERRIDES = [{ lineId: 'B', process: 'PRESS', equipmentId: 'B-PR3', reason: '3단 · 압력(좌) 상한 이탈', beforeFaultSec: 14 }]

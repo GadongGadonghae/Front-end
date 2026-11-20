@@ -1,6 +1,7 @@
 <!-- SCR-004 예지보전 (화면정의서 SCR-004, 시안 B-pdm)
      왼쪽: 등급별 대수 → 위험도 목록 (위험 → 주의 → 정상은 접어 둠, D-61). 지금 고장 난 설비는 따로
-     오른쪽: 고른 설비 이름·등급·상태 → 항목 고르기 · 범례 · 구간 → 관리값 추이(상·하한 점선, 80%·90% 옅은 선) → 상한 도달 예상 [차순위] · 항목별 표
+     오른쪽: 설비 고르기(구역 → 설비) → 고른 설비 이름·등급·상태 + 센서 카드(지금 값·위험도·1시간 미니 그래프)
+            → 고른 센서 추이(상·하한 점선, 80%·90% 옅은 선) · 센서별 오늘 이력. 온도·진동·전류 등 설비 센서는 더미 (data/dummy/sensors.ts)
      예지보전 표시는 칸 바깥 테두리 (DESIGN.md): 주의 = 노랑 실선, 위험 = 빨강 점선, 항상 "주의"·"위험" 글자와 함께 -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
@@ -13,6 +14,10 @@ import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import ChartLine from '@/components/charts/ChartLine.vue'
 import ChartLegend from '@/components/charts/ChartLegend.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
+import SensorTile from '@/components/domain/SensorTile.vue'
+import SensorLanes from '@/components/domain/SensorLanes.vue'
+import { usePdmSensors } from '@/composables/usePdmSensors'
+import { useMaster } from '@/composables/useMaster'
 import { usePdm, DANGER, WARN, type Grade, type RiskRow } from '@/composables/usePdm'
 import { STATE_NAME } from '@/lib/status'
 import { metricLabel } from '@/lib/metrics'
@@ -28,11 +33,31 @@ const p = usePdm(selectedId)
 const { range, item } = p
 const g = computed(() => p.groups.value)
 const sel = computed(() => p.selectedRow.value)
+// 고른 설비의 센서 카드 · 센서별 오늘 이력 (온도·진동·전류 등 설비 센서는 더미)
+const sn = usePdmSensors(selectedId, computed(() => sel.value?.state ?? 'R'), p.now)
 
 const GRADE_WORD: Record<Grade, string> = { danger: '위험', warn: '주의', normal: '정상', unset: '기준 미정' }
+
+// 설비 고르기: 구역(A~F라인 · 도장) → 그 구역 설비. 왼쪽 위험도 목록과 같은 선택(?eq=)을 쓴다
+const { master } = useMaster()
+const area = ref('A')
+const areaOptions = computed(() => (master.value?.lines ?? []).map((l) => ({ value: l.id as string, label: l.kind === 'paint' ? '도장' : l.name })))
+const procOrder = (id: string) => master.value?.processes.find((x) => x.id === id)?.order ?? 9
+const equipOf = (a: string) => (master.value?.equipment ?? []).filter((e) => e.area === a && e.type !== 'vision')
+  .sort((x, y) => procOrder(x.process) - procOrder(y.process) || x.order - y.order)
+watch([selectedId, master], ([id]) => { const e = master.value?.equipment.find((x) => x.id === id); if (e) area.value = e.area }, { immediate: true })
+const pickArea = computed({
+  get: () => area.value,
+  set: (a: string) => { area.value = a; const first = equipOf(a)[0]; if (first) selectedId.value = first.id },
+})
+const pickEquip = computed({ get: () => selectedId.value ?? '', set: (id: string) => { selectedId.value = id } })
+const equipOptions = computed(() => equipOf(area.value).map((e) => {
+  const r = p.rows.value.find((x) => x.id === e.id)
+  const mark = r?.state === 'D' ? ' · 고장' : r?.grade === 'danger' ? ' · 위험' : r?.grade === 'warn' ? ' · 주의' : ''
+  return { value: e.id, label: `${e.shortName}${mark}` }
+}))
 const pct = (v: number | null) => (v == null ? '-' : `${v}%`)
 const meter = (v: number | null) => `${Math.min(100, v ?? 0)}%`
-const itemOptions = computed(() => (p.selected.value?.items ?? []).map((i) => ({ value: i.item, label: i.percent == null ? metricLabel(i.item) : `${metricLabel(i.item)} ${i.percent}%` })))
 const RANGES = [{ value: '1h' as const, label: '1시간' }, { value: '8h' as const, label: '8시간' }, { value: 'today' as const, label: '오늘' }]
 const legend = computed(() => [
   { label: `측정값${p.chart.value.unit ? ` (${p.chart.value.unit.trim()})` : ''}`, kind: 'main' as const },
@@ -104,63 +129,68 @@ const topGroups = computed(() => [
         <BaseEmpty v-else text="불러오는 중" />
       </BasePanel>
 
-      <BasePanel class="detail">
-        <template #head>
-          <div v-if="sel" class="sel">
-            <h2>{{ sel.name }}</h2>
-            <span :class="['tag', sel.grade]">{{ sel.percent != null ? `${GRADE_WORD[sel.grade]} ${sel.percent}%` : GRADE_WORD[sel.grade] }}</span>
-            <StatusKey :state="sel.state" size="sm" :label="`${STATE_NAME[sel.state]} 중`" />
-            <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
-          </div>
-          <h2 v-else>설비를 고르세요</h2>
-        </template>
+      <div class="right">
+        <div class="pick" aria-label="설비">
+          <span class="lab">설비</span>
+          <BaseSegmented v-if="areaOptions.length" v-model="pickArea" label="구역" size="sm" :options="areaOptions" />
+          <BaseSegmented v-if="equipOptions.length" v-model="pickEquip" label="설비" size="sm" :options="equipOptions" />
+        </div>
 
-        <template v-if="p.selected.value">
-          <div class="bar">
-            <BaseSegmented v-if="itemOptions.length > 1" v-model="item" label="관리값 항목" size="sm" :options="itemOptions" />
-            <div class="r">
+        <BasePanel class="sensors">
+          <template #head>
+            <div v-if="sel" class="sel">
+              <h2>{{ sel.name }}</h2>
+              <span :class="['tag', sel.grade]">{{ sel.percent != null ? `${GRADE_WORD[sel.grade]} ${sel.percent}%` : GRADE_WORD[sel.grade] }}</span>
+              <StatusKey :state="sel.state" size="sm" :label="`${STATE_NAME[sel.state]} 중`" />
+              <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
+              <span class="meta">센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 온도·진동·전류 등 설비 센서는 더미 값</span>
+            </div>
+            <h2 v-else>설비를 고르세요</h2>
+          </template>
+          <div v-if="sn.tiles.value.length" class="tiles">
+            <SensorTile v-for="t in sn.tiles.value" :key="t.key" :tile="t" :selected="t.key === item" @select="item = $event" />
+          </div>
+          <BaseEmpty v-else :text="sel ? '데이터 없음' : '왼쪽 목록에서 설비를 고르세요'" />
+        </BasePanel>
+
+        <div class="lower">
+          <BasePanel class="trend">
+            <template #head><h2>{{ item ? `${metricLabel(item)} 추이` : '추이' }}</h2></template>
+            <template #tools>
               <ChartLegend :items="legend" />
               <BaseSegmented v-model="range" label="구간" size="sm" :options="RANGES" />
-            </div>
-          </div>
-          <ChartLine
-            v-if="p.chart.value.points.length"
-            class="chart"
-            :label="`${sel?.name} ${metricLabel(item)} 추이`"
-            :x="p.chart.value.x"
-            :y="p.chart.value.y"
-            :x-ticks="p.chart.value.xTicks"
-            :y-ticks="p.chart.value.yTicks"
-            :y-digits="p.chart.value.yDigits"
-            :series="[{ key: 'v', points: p.chart.value.points }]"
-            :ref-lines="p.chart.value.refLines"
-            :marks="p.chart.value.ngPoints"
-            :now="p.now.value"
-            end-dot
-          />
-          <BaseEmpty v-else class="chart" />
+            </template>
+            <ChartLine
+              v-if="p.chart.value.points.length"
+              class="chart"
+              :label="`${sel?.name} ${metricLabel(item)} 추이`"
+              :x="p.chart.value.x"
+              :y="p.chart.value.y"
+              :x-ticks="p.chart.value.xTicks"
+              :y-ticks="p.chart.value.yTicks"
+              :y-digits="p.chart.value.yDigits"
+              :series="[{ key: 'v', points: p.chart.value.points }]"
+              :ref-lines="p.chart.value.refLines"
+              :marks="p.chart.value.ngPoints"
+              :now="p.now.value"
+              end-dot
+            />
+            <BaseEmpty v-else class="chart" />
+          </BasePanel>
 
-          <div class="under">
-            <div class="eta">
-              <div class="lab">상한 도달 예상 <span class="later">차순위</span></div>
-              <b>{{ p.etaText.value?.main ?? '-' }}</b>
-              <div class="sub">{{ p.etaText.value?.sub ?? '기준이 있는 항목만 계산' }}</div>
-            </div>
-            <table class="items" aria-label="항목별 위험도">
-              <thead><tr><th scope="col">항목</th><th scope="col" class="num">최근 10분 평균</th><th scope="col" class="num">하한 ~ 상한</th><th scope="col" class="num">위험도</th></tr></thead>
-              <tbody>
-                <tr v-for="r in p.itemRows.value" :key="r.key" :class="{ on: r.item === item }" @click="item = r.item">
-                  <td>{{ r.label }}</td>
-                  <td class="num">{{ r.avg }}</td>
-                  <td class="num">{{ r.limit }}</td>
-                  <td class="num"><span v-if="r.grade === 'danger' || r.grade === 'warn'" :class="['tag', r.grade]">{{ GRADE_WORD[r.grade] }}</span><b>{{ pct(r.percent) }}</b></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </template>
-        <BaseEmpty v-else text="왼쪽 목록에서 설비를 고르세요" />
-      </BasePanel>
+          <BasePanel title="센서별 오늘 이력" :meta="sn.lanes.value.rows.length ? `${sn.axis.value[0]} ~ 지금` : undefined">
+            <SensorLanes
+              v-if="sn.lanes.value.rows.length"
+              :rows="sn.lanes.value.rows"
+              :axis="sn.axis.value"
+              :events="sn.lanes.value.events"
+              :selected="item"
+              @select="item = $event"
+            />
+            <BaseEmpty v-else />
+          </BasePanel>
+        </div>
+      </div>
     </div>
   </PageLayout>
 </template>
@@ -360,95 +390,63 @@ const topGroups = computed(() => [
   font-variant-numeric: tabular-nums;
 }
 
-.bar {
+.right {
   display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-3);
-  margin-bottom: var(--sp-3);
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+  min-height: 0;
 }
 
-.bar .r {
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border: var(--line-w) solid var(--c-line);
+  border-radius: var(--r-3);
+  background: var(--c-surface);
+}
+
+.pick .lab {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
+}
+
+.sel .meta {
+  margin-left: auto;
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
+.since + .meta {
+  margin-left: 0;
+}
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--sp-8) * 5), 1fr));
+  gap: var(--sp-2);
+}
+
+.lower {
+  display: grid;
+  flex: 1;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 2fr);
+  gap: var(--sp-4);
+  min-height: 0;
+}
+
+.trend :deep(.tools) {
   display: flex;
   align-items: center;
   gap: var(--sp-5);
-  margin-left: auto;
 }
 
 .chart {
   flex: 1;
   min-height: var(--chart-min-h);
-}
-
-.under {
-  display: grid;
-  flex: none;
-  grid-template-columns: var(--col-summary) minmax(0, 1fr);
-  gap: var(--sp-6);
-  padding-top: var(--sp-4);
-  border-top: var(--line-w) solid var(--c-line);
-}
-
-.eta .lab,
-.eta .sub {
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
-}
-
-.eta b {
-  display: block;
-  margin: var(--sp-1) 0;
-  font-size: var(--fs-md);
-  font-weight: var(--fw-strong);
-}
-
-.later {
-  margin-left: var(--sp-1);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-}
-
-.items {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--fs-md);
-}
-
-.items th {
-  padding: var(--sp-1) var(--sp-3);
-  border-bottom: var(--line-w) solid var(--c-line-strong);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-regular);
-  text-align: left;
-}
-
-.items td {
-  padding: var(--sp-2) var(--sp-3);
-  border-bottom: var(--line-w) solid var(--c-line);
-  font-variant-numeric: tabular-nums;
-}
-
-.items th:first-child,
-.items td:first-child {
-  padding-left: 0;
-}
-
-.items .num {
-  text-align: right;
-}
-
-.items td .tag {
-  margin-right: var(--sp-2);
-}
-
-.items tr {
-  cursor: pointer;
-}
-
-.items tr.on td {
-  background: var(--c-surface-sunk);
 }
 </style>

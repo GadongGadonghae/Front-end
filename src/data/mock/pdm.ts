@@ -3,12 +3,13 @@
 import type { EquipmentLive } from '@/types/live'
 import type { EquipmentRisk, PdmEta, RiskItem } from '@/types/pdm'
 import { MASTER } from '@/data/mock/master'
+import { riskPercentOf } from '@/data/dummy/sensors'
 
 interface Ctx {
   now: () => number
   live: Map<string, EquipmentLive>
   valueOf: (equipmentId: string, item: string, t: number) => number | null
-  itemsOf: (equipmentId: string) => { item: string; unit: string; lower: number | null; upper: number | null }[]
+  itemsOf: (equipmentId: string) => { item: string; unit: string; lower: number | null; upper: number | null; source?: RiskItem['source'] }[]
 }
 
 /** 관리값이 있는 설비 (비전 제외 38대, D-61) */
@@ -33,10 +34,8 @@ export function createPdm(ctx: Ctx) {
     return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null
   }
 
-  const pctOf = (avg: number | null, lower: number | null, upper: number | null) => {
-    if (avg == null || lower == null || upper == null || upper <= lower) return null
-    return Math.round((Math.abs(avg - (lower + upper) / 2) / ((upper - lower) / 2)) * 100)
-  }
+  // 하한 없이 상한만 있는 센서(진동)는 0에서 상한까지 간 비율
+  const pctOf = riskPercentOf
 
   function risks(): EquipmentRisk[] {
     return TARGETS.map((e) => {
