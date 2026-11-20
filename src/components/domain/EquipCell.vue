@@ -18,6 +18,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
         <span class="name">{{ large.name }}</span>
         <span v-if="large.pdm" class="pdm">{{ large.pdm.text }}</span>
       </div>
+      <p class="eid">{{ large.id }}</p>
       <p v-if="large.reason" class="why"><b>{{ large.reason.code }}</b><span v-if="large.reason.detail">{{ large.reason.detail }}</span></p>
       <p v-if="large.note" class="note">{{ large.note }}</p>
       <dl v-if="large.info.length" class="info">
@@ -74,6 +75,12 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   font-weight: var(--fw-strong);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.eid {
+  margin-top: calc(var(--sp-1) * -1);
+  font-size: var(--fs-sm);
+  opacity: 0.8;
 }
 
 .pdm {

@@ -41,7 +41,7 @@ const chart = computed(() => {
     <template #head-right>
       <BaseFigureRow>
         <BaseFigure label="오늘 입고" :value="figures.today" unit="코일" size="sm" />
-        <BaseFigure label="슬리팅 앞 재고 (6개 라인 합)" :value="figures.stock" unit="롤" size="sm" />
+        <BaseFigure label="슬리팅 앞 재고 (6개 라인 합)" :value="figures.stock" :digits="Number.isInteger(figures.stock) ? 0 : 1" unit="롤" size="sm" />
         <BaseFigure label="오늘 투입 (제품 ID 발급)" :value="figures.input" size="sm" />
       </BaseFigureRow>
     </template>

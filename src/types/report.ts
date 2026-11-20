@@ -31,6 +31,8 @@ export interface ReplanSummary {
   createdAt: string
   equipmentId: string
   code: DowntimeCode
+  /** 만든 고장 건 (상태 이력 ID = 비가동 번호). 데모 목록엔 없을 수 있음 */
+  stateEventId?: string
 }
 
 /** 라인(또는 같은 공정 다른 설비)별 추가 배정 */
@@ -68,6 +70,33 @@ export interface ReplanReport extends ReplanSummary {
   /** 목표 미달 예상 (0이면 달성 가능) */
   unmet: number
   target: number | null
+  /** 표시용 문서번호 (실서버 AI-RPT-yyyyMMdd-NNN). 데모는 없음 */
+  documentNo?: string
+  /** AI 보고서 문장 (실서버 R-02). 없으면 화면에서 뺀다 */
+  ai?: ReplanAi | null
+}
+
+/** AI 추가 요청 해석 결과 (제외·정지 라인, 우선 기준) */
+export interface ReplanInterpretation {
+  excludedLines: string[]
+  stoppedLines: string[]
+  /** BALANCED 잔여 능력 · DUE_DATE 납기 · SAFETY 안전·품질 */
+  priority: string
+  appliedRules: string[]
+}
+
+/** AI 보고서 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
+export interface ReplanAi {
+  title: string
+  summary: string
+  actions: string[]
+  risks: string[]
+  model: string
+  mock: boolean
+  fallbackReason: string | null
+  /** 화면에서 넣은 AI 추가 요청 */
+  additionalRequest: string | null
+  interpretation: ReplanInterpretation | null
 }
 
 /** API-090 날짜별 목표 한 줄 */

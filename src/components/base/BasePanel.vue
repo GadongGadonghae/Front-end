@@ -39,7 +39,7 @@ withDefaults(defineProps<{ title?: string; meta?: string; flush?: boolean }>(), 
 }
 
 h2 {
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

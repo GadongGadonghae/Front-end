@@ -19,7 +19,7 @@ const MENU = [
   { name: '가동률', to: '/utilization' },
   { name: '예지보전', to: '/pdm' },
   { name: '알람이력', to: '/alarms' },
-  { name: '리포트', to: '/reports/daily' },
+  { name: 'AI 리포트', to: '/reports/daily' },
   { name: '설정', to: '/settings/target' },
 ] as const
 
@@ -47,7 +47,7 @@ function viewFault() {
 <template>
   <div class="shell print-flow">
     <header class="top no-print">
-      <RouterLink class="brand" to="/"><BaseIcon name="factory" :size="20" />라인가동현황</RouterLink>
+      <RouterLink class="brand" to="/"><BaseIcon name="factory" :size="24" />라인가동현황</RouterLink>
       <nav aria-label="메뉴">
         <RouterLink
           v-for="m in MENU"
@@ -61,8 +61,8 @@ function viewFault() {
         <span v-if="demo" class="demo">데모 데이터</span>
         <span class="clock">{{ formatDate(nowIso) }}<b>{{ formatTime(nowIso) }}</b></span>
         <HeaderAlerts />
-        <span class="user"><BaseIcon name="user" />{{ userName }}</span>
-        <button class="logout" type="button" aria-label="로그아웃" title="로그아웃" @click="onLogout"><BaseIcon name="log-out" /></button>
+        <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}</span>
+        <button class="logout" type="button" aria-label="로그아웃" title="로그아웃" @click="onLogout"><BaseIcon name="log-out" :size="20" /></button>
       </div>
     </header>
 
@@ -96,13 +96,14 @@ function viewFault() {
   padding: 0 var(--page-gutter);
   border-bottom: var(--line-w) solid var(--c-line-strong);
   background: var(--c-surface);
+  font-size: var(--fs-figure);
 }
 
 .brand {
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  font-size: var(--fs-md);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   text-decoration: none;
 }

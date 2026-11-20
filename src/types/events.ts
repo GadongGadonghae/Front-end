@@ -76,8 +76,8 @@ export interface HistorySummary {
   todo: Record<HistoryTodo, number>
 }
 
-/** 요약 조회 조건: 상태 · 코드 · 진행 중 · 손볼 건은 요약 안에서 나누므로 받지 않는다 */
-export type HistorySummaryQuery = Pick<HistoryQuery, 'from' | 'to' | 'lineId' | 'process'>
+/** 요약 조회 조건: 상태 · 코드 · 진행 중 · 손볼 건은 요약 안에서 나누므로 받지 않는다. minMinutes는 표와 같은 값을 준다 */
+export type HistorySummaryQuery = Pick<HistoryQuery, 'from' | 'to' | 'lineId' | 'process' | 'minMinutes'>
 
 /** API-071 예지보전 위험 탭 조회 조건 */
 export interface RiskQuery {

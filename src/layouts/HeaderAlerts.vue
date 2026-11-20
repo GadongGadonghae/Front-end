@@ -26,7 +26,7 @@ onBeforeUnmount(() => {
 <template>
   <div ref="root" class="alerts">
     <button class="bell" type="button" :aria-expanded="open" :aria-label="`알림, 진행 중 ${ongoingCount}건`" @click="open = !open">
-      <BaseIcon name="bell" />
+      <BaseIcon name="bell" :size="20" />
       <span v-if="ongoingCount > 0" class="count">{{ ongoingCount }}</span>
     </button>
     <div v-if="open" class="pop" role="dialog" aria-label="최근 알림">

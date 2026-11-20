@@ -102,6 +102,16 @@ export function useAlarmHistory() {
     else if (span() >= MAX_DAYS) from.value = toDateStr(Date.parse(to.value) - (MAX_DAYS - 1) * DAY)
   })
 
+  /** 대시보드 팝업 "조치 가기"(?eq=설비ID): 그 설비의 라인·공정, 진행 중 건으로 필터를 맞춘다 */
+  const focusEquipment = (id: string) => {
+    const e = equipmentById.value.get(id)
+    if (!e) return
+    tab.value = 'alarm'
+    lineId.value = e.area
+    process.value = e.process
+    ongoing.value = true
+  }
+
   // ── 고를 것 ──
   const scoped = computed(() => (master.value?.equipment ?? []).filter((e) => e.process !== 'COIL' && (!lineId.value || e.area === lineId.value)))
   const lineOptions = [{ value: '', label: '전체' }, ...AREAS]
@@ -122,8 +132,11 @@ export function useAlarmHistory() {
   const alarmQuery = computed<HistoryQuery>(() => ({
     from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined,
     states: pickedStates.value, code: code.value || undefined, ongoing: ongoing.value || undefined, todo: todo.value || undefined, page: page.value,
+    // 짧은 건도 모두 남긴다 (1분 미만으로 끝난 대기도 해제 시각과 함께, 11/20)
+    minMinutes: 0,
   }))
-  const summaryQuery = computed<HistorySummaryQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined }))
+  // 요약은 표와 같은 기준으로 센다 (1분 미만 포함)
+  const summaryQuery = computed<HistorySummaryQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, process: process.value || undefined, minMinutes: 0 }))
   const riskQuery = computed<RiskQuery>(() => ({ from: from.value, to: to.value, lineId: lineId.value || undefined, page: page.value }))
   watch([tab, from, to, lineId, process, pickedStates, code, ongoing, todo], () => { page.value = 1 })
 
@@ -236,7 +249,7 @@ export function useAlarmHistory() {
   }
 
   return {
-    tab, from, to, lineId, process, states, code, ongoing, todo, page, today,
+    tab, from, to, lineId, process, states, code, ongoing, todo, page, today, focusEquipment, equipmentById,
     lineOptions, processOptions, codeOptions,
     alarmRows, riskRows, total, size, loading, saveMemo,
     summaryView, pickAlarm, pickTodo, showState, todoLabel: (k: HistoryTodo) => TODO_LABEL[k], codeLabel: (c: DowntimeCode) => DOWNTIME_NAME[c],

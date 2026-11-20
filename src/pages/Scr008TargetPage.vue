@@ -89,7 +89,7 @@ const COLS: TableColumn[] = [
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

@@ -3,6 +3,7 @@ import { computed, ref, shallowRef, watch, type Ref } from 'vue'
 import { source } from '@/data'
 import type { StopState } from '@/types/state'
 import type { ReplanReport, ReplanSummary } from '@/types/report'
+import type { HistoryEvent } from '@/types/events'
 import type { BarRowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
 import { usePoll } from '@/composables/usePoll'
@@ -12,8 +13,8 @@ import { josa } from '@/lib/josa'
 
 /** 오늘 리포트는 1분마다 다시 (지난 날은 마감 값이라 한 번) */
 const POLL_MS = 60_000
-/** 보고서 목록 기간: 최근 31일 */
-const LIST_DAYS = 31
+/** 보고서 목록 기간: 최근 1년 (화면에서 기간 검색으로 거름) */
+const LIST_DAYS = 366
 const DAY = 86_400_000
 const TONE: Record<StopState, BarRowView['tone']> = { S: 'stop', I: 'idle', D: 'down' }
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
@@ -88,10 +89,21 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return out
   })
 
-  /** 고장 건으로 보고서 만들기 (D-68). 만든 보고서 ID */
-  async function create(stateEventId: string) {
-    const r = await source.cmd.createReplanReport(stateEventId)
-    await loadList()
+  // ── 현재 트러블 슈팅: 오늘 고장(D) 건. 진행 중이 위, 최근 순 ──
+  const troubles = shallowRef<HistoryEvent[] | null>(null)
+  const loadTroubles = () => source.q.getHistory({ from: today, to: today, states: ['D'], minMinutes: 0, page: 1 })
+    .then((p) => {
+      troubles.value = [...p.items].sort((a, b) => Number(b.end === null) - Number(a.end === null) || b.start.localeCompare(a.start))
+    })
+    .catch(() => { troubles.value = [] })
+  loadTroubles()
+  /** 고장 건별 이미 만든 보고서 (최근 것이 앞) */
+  const reportsOf = (eventId: string) => (list.value ?? []).filter((r) => r.stateEventId === eventId)
+
+  /** 고장 건으로 AI 보고서 만들기 (D-68). 누를 때마다 새 보고서. 만든 보고서 ID */
+  async function create(stateEventId: string, additionalRequest?: string) {
+    const r = await source.cmd.createReplanReport(stateEventId, additionalRequest)
+    await Promise.all([loadList(), loadTroubles()])
     return r.id
   }
 
@@ -149,5 +161,5 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     }
   })
 
-  return { list, groups, report, view, missing, create, reload: loadList }
+  return { list, groups, report, view, missing, create, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
 }

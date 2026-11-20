@@ -2,7 +2,7 @@
 // 화면은 이 인터페이스만 안다. 지금 구현은 mock, 나중에 api가 같은 계약으로 들어온다.
 // 조회·저장 함수는 화면을 만들 때 그 화면에 필요한 것만 추가한다.
 import type { LineId, MasterData } from '@/types/plant'
-import type { PlantSnapshot, PlantSummary, ProductMove } from '@/types/live'
+import type { PlantSnapshot, PlantSummary, ProductMove, FlowPositions } from '@/types/live'
 import type { AlarmEvent, HistoryEvent, HistoryQuery, HistorySummary, HistorySummaryQuery, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
 import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
@@ -24,6 +24,8 @@ export interface LiveChannel {
   onSummary(cb: (summary: PlantSummary) => void): Unsubscribe
   /** product.move 이벤트 (물류 점, D-81) */
   onProductMove(cb: (move: ProductMove) => void): Unsubscribe
+  /** 백엔드 없음 (제안: GET /production/flow/positions): 공장 안 제품 위치, 1초. 구독하자마자 한 번 준다 (3D 물류) */
+  onFlowPositions(cb: (flow: FlowPositions) => void): Unsubscribe
   /** alarm.raised / alarm.cleared 이벤트 */
   onAlarm(cb: (alarm: AlarmEvent) => void): Unsubscribe
   /** risk.changed 이벤트: 예지보전 위험(90%) 진입·해제 */
@@ -92,14 +94,14 @@ export interface Queries {
 
 /** 저장 (REST) */
 export interface Commands {
-  /** C-01 로그인. 실패하면 ok=false */
+  /** C-01 로그인. 아이디·비밀번호가 틀리면 ok=false, 서버에 닿지 못하면 오류를 던진다 */
   login(userId: string, password: string): Promise<{ ok: true; name: string } | { ok: false }>
   /** 토큰 삭제 (백엔드 호출 없음) 로그아웃 */
   logout(): Promise<void>
   /** U-09 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
   saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
   /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
-  createReplanReport(stateEventId: string): Promise<ReplanReport>
+  createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */

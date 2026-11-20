@@ -10,7 +10,8 @@
 .rep { grid-template-rows: auto minmax(0, 1fr); }
 .head { display: flex; align-items: center; gap: var(--sp-6); }
 .head h1 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
-.body { display: grid; grid-template-columns: clamp(300px, 22vw, 380px) minmax(0, 1fr); gap: var(--sp-4); min-height: 0; }
+.body { display: grid; grid-template-columns: clamp(300px, 22vw, 380px) minmax(0, 1fr); gap: var(--sp-4); min-width: 0; min-height: 0; }
+.body > * { min-width: 0; }
 
 /* 목록 */
 .list { list-style: none; margin: 0 calc(var(--sp-5) * -1); padding: 0; overflow: auto; }
@@ -19,32 +20,122 @@
 .list a:hover { background: var(--surface-2); }
 .list a.on { background: var(--surface-2); border-left-color: var(--text); }
 .list a b { font-weight: 600; }
-.list a span { color: var(--text-2); font-size: var(--fs-sm); }
+.list a span { grid-column: 1 / -1; color: var(--text-2); font-size: var(--fs-sm); }
 .list a time { color: var(--text-3); font-size: var(--fs-sm); }
+.list-section { margin: 0; padding: 10px var(--sp-5) 7px; border-top: 1px solid var(--line-2); color: var(--text-2); font-size: 12px; font-weight: 700; }
+.list-section:first-child { border-top: 0; }
+.trouble-card { margin: 0 var(--sp-3) 10px; padding: 11px 12px; border: 1px solid #e5b8b8; border-radius: 7px; background: #fff8f8; animation: trouble-alert 1.25s ease-in-out infinite; }
+@keyframes trouble-alert {
+  0%, 100% { background: #fff8f8; border-color: #e5b8b8; box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+  50% { background: #fee2e2; border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, .12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trouble-card { animation: none; }
+}
+.trouble-card { cursor: pointer; }
+.trouble-card:focus-visible { outline: 2px solid #dc2626; outline-offset: 2px; }
+.trouble-card .trouble-top { display: flex; align-items: center; gap: 7px; }
+.trouble-card b { font-size: 13px; }
+.trouble-card time { margin-left: auto; color: var(--text-3); font-size: 11px; }
+.trouble-card p { margin: 5px 0 7px; color: var(--text-2); font-size: 11px; line-height: 1.35; }
+.trouble-badge { display: inline-flex; padding: 3px 7px; border-radius: 999px; background: #fee2e2; color: #991b1b; font-size: 10px; font-weight: 700; }
+.trouble-badge.created { background: #dcfce7; color: #166534; }
+.previous-reports .d { border-top: 1px solid var(--line-2); }
+.previous-reports > .list-section { border-top: 1px solid var(--line-2); }
 
 /* 보고서 */
-.doc { overflow: auto; padding: var(--sp-6) var(--sp-6) var(--sp-5); }
-.doc-head { display: flex; align-items: flex-start; gap: var(--sp-4); padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line-2); }
+.doc { overflow: auto; min-width: 0; padding: var(--sp-4); background: #e4e6e9; }
+.doc-head { display: flex; align-items: flex-start; gap: var(--sp-4); min-height: 52px; box-sizing: border-box; padding-bottom: var(--sp-4); border-bottom: 1px solid var(--line-2); }
 .doc-head h2 { margin: 0; font-size: var(--fs-xl); font-weight: 600; }
 .doc-head p { margin: 4px 0 0; color: var(--text-3); font-size: var(--fs-sm); }
 .doc-head .btn { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.doc-head .btn + .btn { margin-left: 0; }
+.btn.primary { background: var(--text); color: var(--surface); border-color: var(--text); }
+.btn.primary:disabled { opacity: .55; cursor: wait; }
+.ai-state { color: var(--text-3); font-size: var(--fs-xs); margin-left: auto; }
 .doc-head .btn svg { width: 16px; height: 16px; }
-.doc section { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: var(--sp-5); padding: var(--sp-4) 0; border-bottom: 1px solid var(--line); }
-.doc section:last-child { border-bottom: 0; }
-.doc h3 { margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-2); }
-.doc p { margin: 0; max-width: 72ch; }
-.facts { display: grid; grid-template-columns: repeat(4, auto); justify-content: start; gap: var(--sp-1) var(--sp-6); margin-top: var(--sp-3); }
-.facts dt { color: var(--text-3); font-size: var(--fs-sm); } .facts dd { margin: 0; font-weight: 600; }
-.calc { display: flex; gap: var(--sp-6); margin-top: var(--sp-3); }
-.calc .st-v { font-size: var(--fs-2xl); }
-.tbl { max-width: 760px; margin-top: var(--sp-3); }
+.report-tools { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 10px; align-items: end; margin-top: 10px; padding: 10px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); }
+.request-box label, .status-box label { display: block; margin-bottom: 4px; color: var(--text-2); font-size: var(--fs-xs); font-weight: 600; }
+.request-box textarea { box-sizing: border-box; width: 100%; min-height: 42px; resize: vertical; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; font: inherit; color: var(--text); }
+.tool-actions { display: flex; align-items: end; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.status-box select { height: 34px; padding: 0 28px 0 9px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; color: var(--text); }
+.status-pill { display: inline-flex; align-items: center; height: 25px; margin-left: 8px; padding: 0 9px; border-radius: 999px; background: #fff3cd; color: #795d00; font-size: 11px; font-weight: 700; vertical-align: middle; }
+.status-pill.approved { background: #dff4e7; color: #176b3a; }
+.btn.success { background: #176b3a; border-color: #176b3a; color: #fff; }
+.btn:disabled { opacity: .48; cursor: not-allowed; }
+.info-panel { display: none; grid-column: 1 / -1; padding: 10px 12px; border-top: 1px solid var(--line-2); background: #fff; font-size: 12px; }
+.info-panel.on { display: block; }
+.info-panel h4 { margin: 0 0 7px; font-size: 13px; }
+.info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.info-grid div { padding: 7px 9px; border: 1px solid var(--line-2); border-radius: 5px; }
+.info-grid b { display: block; margin-bottom: 2px; }
+.report-editable.editing { outline: 2px solid #2563eb; outline-offset: 1px; background: #eff6ff !important; cursor: text; }
+.report-paper.editing-all { box-shadow: 0 0 0 3px #2563eb, 0 3px 14px rgba(0,0,0,.09); cursor: text; }
+.report-paper.editing-all * { cursor: text; }
+.report-paper.editing-all p:hover, .report-paper.editing-all td:hover, .report-paper.editing-all h1:hover, .report-paper.editing-all h3:hover, .report-paper.editing-all li:hover, .report-paper.editing-all span:hover, .report-paper.editing-all b:hover { background: #eff6ff !important; outline: 1px dashed #60a5fa; }
+.report-paper.awaiting { display: none; }
+.report-empty { width: 794px; height: 420px; box-sizing: border-box; margin: var(--sp-4) auto 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; border: 1px dashed #b8bdc5; border-radius: 8px; background: rgba(255,255,255,.55); color: var(--text-2); text-align: center; }
+.report-empty svg { width: 28px; height: 28px; }
+.report-empty b { color: var(--text); font-size: 15px; }
+.report-paper { box-sizing: border-box; flex: none; width: 794px; height: 1123px; margin: var(--sp-4) auto 0; padding: 16px 21px; overflow: hidden; background: #fff; color: #000; border: 1px solid #cfd2d6; box-shadow: 0 3px 14px rgba(0,0,0,.09); font-family: "Malgun Gothic", "맑은 고딕", sans-serif; font-size: 12px; line-height: 1.35; }
+.report-paper * { color: #000 !important; }
+.formal-head { height: 165px; box-sizing: border-box; text-align: left; padding: 0; border: 0; }
+.formal-head h1 { margin: 0; text-align: center; font-size: 24px; line-height: 1.45; letter-spacing: 0; }
+.formal-head .document-class { margin: 0 0 5px; text-align: center; font-size: 12px; line-height: 1.25; letter-spacing: 0; font-weight: 400; }
+.doc-info { width: 100%; margin: 0; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
+.doc-info th, .doc-info td { height: 27px; box-sizing: border-box; padding: 2px 4px; border: 1px solid #000; text-align: left; vertical-align: middle; line-height: 1.2; }
+.doc-info th { width: 70px; background: #eee; text-align: center; font-size: 13px; font-weight: 700; }
+.summary-grid { display: table; width: 100%; table-layout: fixed; margin: 0; border: 1px solid #000; border-top: 0; }
+.summary-item { display: table-cell; width: 25%; height: 42px; box-sizing: border-box; padding: 4px; border-left: 1px solid #000; vertical-align: middle; }
+.summary-item:first-child { border-left: 0; }
+.summary-item span { display: block; margin: 0; font-size: 12px; font-weight: 700; }
+.summary-item b { font-size: 12px; line-height: 1.2; font-weight: 400; }
+.summary-item small { margin-left: 2px; font-size: 12px; font-weight: 400; }
+.doc section { display: block; box-sizing: border-box; margin: 7px 0 0; padding: 0 0 8px; border: 0; page-break-inside: avoid; }
+.doc section:nth-of-type(1) { height: 110px; }
+.doc section:nth-of-type(2) { height: 100px; }
+.doc section:nth-of-type(3) { height: 244px; }
+.doc section:nth-of-type(4) { height: 92px; }
+.doc section:nth-of-type(5) { height: 116px; }
+.doc section:nth-of-type(6) { height: 116px; }
+.doc h3 { display: block; width: auto; margin: 0 0 6px; padding: 3px 4px; font-size: 12px; line-height: 1.35; font-weight: 700; background: #eee; border-left: 3px solid #000; }
+.doc section > div, .doc section > ol, .doc section > ul { width: auto; margin-top: 0; }
+.doc p { margin: 0 0 5px; max-width: none; font-size: 12px; line-height: 1.35; }
+.facts { display: block; margin: 2px 0 0; }
+.facts dt, .facts dd { display: inline-block; margin: 0 6px 0 0; font-size: 12px; } .facts dd { font-weight: 400; }
+.calc { display: block; margin: 0; white-space: nowrap; }
+.calc > div { display: inline-block; width: 46%; vertical-align: top; }
+.calc .st-v { font-size: 12px; line-height: 1.35; }
+.st-l, .st-sub { font-size: 12px; }
+.tbl { max-width: none; margin-top: 2px; }
+.report-paper .tbl th, .report-paper .tbl td { position: static; height: 24px; padding: 2px 4px; border: 1px solid #000; background: #fff; font-size: 12px; line-height: 1.2; }
+.report-paper .tbl th { background: #eee; font-weight: 600; }
+.report-paper .tbl tr.stopped td { background: #f3f3f3; color: #777 !important; }
+.report-paper .tbl tr.excluded td { background: #fff6e5; }
 .tbl tfoot td { font-weight: 600; border-bottom: 0; border-top: 1px solid var(--line-2); }
 .tbl td.add { font-weight: 600; }
 .result { display: flex; align-items: center; gap: var(--sp-3); }
 .result .grade { height: 28px; }
 .note2 { color: var(--text-3); font-size: var(--fs-xs); margin-top: var(--sp-2); }
+.report-list { margin: 0; padding-left: 16px; }
+.report-list li { margin: 0 0 3px; font-size: 11px; line-height: 1.3; }
+.report-paper p, .report-paper li, .report-paper td, .report-paper th { word-break: keep-all; overflow-wrap: break-word; }
+.result { margin: 0; gap: 6px; }
+.approval { height: 63px; box-sizing: border-box; margin-top: 8px; padding-top: 0; }
+.approval table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.approval th, .approval td { height: 22px; padding: 2px 4px; border: 1px solid #000; text-align: center; font-size: 10px; }
+.approval th { background: #eee; }
+.approval td { height: 30px; }
+.report-paper .note2 { height: auto; margin: 5px 0 0; padding: 0; font-size: 10px; }
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { display: block; min-width: 0; height: auto; background: #fff; }
+  .top, .head, .body > .panel:first-child, .doc-head, .report-tools { display: none !important; }
+  .page, .body, .doc { display: block; padding: 0; border: 0; background: #fff; overflow: visible; }
+  .report-paper { width: 100%; margin: 0; padding: 0; border: 0; box-shadow: none; }
+}
 @media (max-height: 860px) {
-  .doc { padding: var(--sp-5); } .doc section { padding: var(--sp-3) 0; } .tbl td { padding: 5px var(--sp-3); }
+  .doc { padding: var(--sp-4); }
 }
 </style>
 </head>
@@ -53,66 +144,143 @@
 
 <main class="page rep">
   <div class="head">
-    <h1>리포트</h1>
+    <h1>AI 리포트</h1>
     <div class="tabs"><a href="B-daily.html">일일 생산 리포트</a><a class="on" href="#">계획수정 보고서</a></div>
   </div>
 
   <div class="body">
     <section class="panel">
-      <div class="ph"><h2>보고서 목록</h2><span class="meta">날짜별</span></div>
-      <div class="list">
-        <div class="d">2026-11-16 (월)</div>
-        <a class="on" href="#"><b>L2 프레스 3단</b><time>14:24:31</time><span>장비고장(알람)</span></a>
-        <div class="d">2026-11-14 (토)</div>
-        <a href="#"><b>L4 프레스 2단</b><time>16:40:05</time><span>장비고장</span></a>
-        <div class="d">2026-11-12 (목)</div>
-        <a href="#"><b>도장 #1</b><time>09:12:44</time><span>장비고장(알람)</span></a>
-        <a href="#"><b>L6 슬리팅</b><time>03:05:18</time><span>안전문제</span></a>
+      <div class="ph"><h2>계획수정 보고서</h2><span class="meta">현재·이력</span></div>
+      <div class="list" id="reportList">
+        <h3 class="list-section">현재 트러블 슈팅</h3>
+        <div class="trouble-card" id="currentTrouble" data-downtime-id="5001" role="button" tabindex="0">
+          <div class="trouble-top"><b>B라인 프레스 3호기</b><time>14:20:12 발생</time></div>
+          <p>압력 차(좌-우) 상한 초과 · 알람(관리값 이탈) · 현재 조치 중</p>
+          <span class="trouble-badge" id="troubleReportState">보고서 미작성</span>
+        </div>
+        <div class="previous-reports" id="previousReports">
+          <h3 class="list-section" id="previousHeading">이전에 작성한 보고서</h3>
+          <div class="d" data-date="2026-11-14">2026-11-14 (토)</div>
+          <a href="#" data-archive-id="report-1114"><b>D라인 프레스 2호기</b><time>16:40:05</time><span>AI 계획수정 보고서</span></a>
+          <a href="#" data-archive-id="report-1114-0758"><b>B라인 용접 1호기</b><time>07:58:30</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-13">2026-11-13 (금)</div>
+          <a href="#" data-archive-id="report-1113-2241"><b>C라인 용접 2호기</b><time>22:41:07</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-12">2026-11-12 (목)</div>
+          <a href="#" data-archive-id="report-1112-paint"><b>도장 1호기</b><time>09:12:44</time><span>AI 계획수정 보고서</span></a>
+          <a href="#" data-archive-id="report-1112-l6"><b>F라인 슬리팅 1호기</b><time>03:05:18</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-11">2026-11-11 (수)</div>
+          <a href="#" data-archive-id="report-1111-1405"><b>E라인 프레스 1호기</b><time>14:05:32</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-10">2026-11-10 (화)</div>
+          <a href="#" data-archive-id="report-1110-1018"><b>A라인 슬리팅 2호기</b><time>10:18:09</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-07">2026-11-07 (토)</div>
+          <a href="#" data-archive-id="report-1107-1952"><b>B라인 검사기 1호기</b><time>19:52:47</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-06">2026-11-06 (금)</div>
+          <a href="#" data-archive-id="report-1106-0833"><b>D라인 용접 1호기</b><time>08:33:21</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-04">2026-11-04 (수)</div>
+          <a href="#" data-archive-id="report-1104-1347"><b>F라인 프레스 2호기</b><time>13:47:02</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-11-02">2026-11-02 (월)</div>
+          <a href="#" data-archive-id="report-1102-0615"><b>C라인 슬리팅 1호기</b><time>06:15:44</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-10-30">2026-10-30 (금)</div>
+          <a href="#" data-archive-id="report-1030-1609"><b>E라인 이송 컨베이어</b><time>16:09:58</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-10-28">2026-10-28 (수)</div>
+          <a href="#" data-archive-id="report-1028-1126"><b>A라인 프레스 3호기</b><time>11:26:13</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-10-24">2026-10-24 (토)</div>
+          <a href="#" data-archive-id="report-1024-2103"><b>D라인 검사기 2호기</b><time>21:03:36</time><span>AI 계획수정 보고서</span></a>
+          <div class="d" data-date="2026-10-21">2026-10-21 (수)</div>
+          <a href="#" data-archive-id="report-1021-1537"><b>F라인 용접 2호기</b><time>15:37:49</time><span>AI 계획수정 보고서</span></a>
+        </div>
       </div>
     </section>
 
     <section class="panel doc">
       <div class="doc-head">
-        <div><h2>계획수정 보고서 · L2 프레스 3단</h2><p>2026-11-16 14:24:31 생성 · 김현수 · 제안만 하며 목표와 설비 계획은 바꾸지 않음</p></div>
-        <button class="btn"><i data-lucide="download"></i>PDF 다운로드</button>
+        <div><h2 id="reportTitle">계획수정 보고서 · B라인 프레스 3호기</h2><p id="reportMeta">현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
+        <button class="btn primary" id="generateBtn"><i data-lucide="sparkles"></i>AI 보고서 생성</button>
+        <button class="btn" id="docBtn" disabled><i data-lucide="file-text"></i>Google Docs(.doc)</button>
+        <button class="btn" id="pdfBtn" disabled><i data-lucide="download"></i>PDF 다운로드</button>
       </div>
 
+      <div class="report-tools">
+        <div class="request-box">
+          <label for="additionalRequest">AI 추가 요청</label>
+          <textarea id="additionalRequest" placeholder="예: A라인은 긴급 주문 생산 중이므로 재배정 대상에서 제외하고 납기 준수를 우선해줘."></textarea>
+        </div>
+        <div class="tool-actions">
+          <button class="btn" id="editBtn" disabled><i data-lucide="pencil"></i>값 수정</button>
+          <button class="btn success" id="applyBtn" disabled><i data-lucide="check-circle"></i>생산계획 반영</button>
+        </div>
+        <div class="info-panel" id="requestResultPanel"><h4>AI 추가 요청 반영 결과</h4><div class="info-grid" id="requestResultGrid"></div></div>
+      </div>
+
+      <div class="report-empty" id="reportEmpty"><i data-lucide="file-plus-2"></i><b>생성된 AI 보고서가 없습니다</b><span>추가 요청을 입력한 뒤 ‘AI 보고서 생성’을 눌러주세요.</span></div>
+      <article class="report-paper awaiting" id="reportDocument">
+      <header class="formal-head">
+        <h1>생산계획 수정 검토 보고서</h1>
+        <p class="document-class">PRODUCTION PLAN REVISION REPORT</p>
+        <table class="doc-info">
+          <tr><th>문서번호</th><td id="documentNo">AI-RPT-20261116-001</td><th>작성일시</th><td id="generatedAt">2026-11-16 14:24:31</td></tr>
+          <tr><th>대상 라인</th><td id="targetLine" class="report-editable">B</td><th>작성 구분</th><td id="modelName">AI 분석 초안</td></tr>
+          <tr><th>작성자</th><td id="authorName" class="report-editable">김현수</td><th>문서 상태</th><td id="documentStatus">검토 대기</td></tr>
+        </table>
+        <div class="summary-grid">
+          <div class="summary-item"><span>생산 계획</span><b id="planQty" class="report-editable">200</b><small>개</small></div>
+          <div class="summary-item"><span>현재 실적</span><b id="actualQty" class="report-editable">108</b><small>개</small></div>
+          <div class="summary-item"><span>예상 부족</span><b id="summaryShortage">92<small>개</small></b></div>
+          <div class="summary-item"><span>정지 지속</span><b id="stopDuration">11:56</b></div>
+        </div>
+      </header>
+
       <section>
-        <h3>발생</h3>
+        <h3>1. 발생 현황</h3>
         <div>
-          <p>L2 프레스 3단이 14:20:12에 장비고장(알람)으로 멈췄습니다. 라인 안 설비는 한 줄로 이어져 있어 L2 전체가 멈춘 것으로 보고 계산했습니다.</p>
-          <dl class="facts"><dt>라인</dt><dt>설비</dt><dt>발생</dt><dt>원인</dt><dd>L2</dd><dd>L2 프레스 3단</dd><dd>14:20:12</dd><dd>Pressure 1 상한 초과 (356 / 상한 350)</dd></dl>
+          <p id="incidentText" class="report-editable">B라인 프레스 3호기가 14:20:12에 알람(관리값 이탈)으로 멈췄습니다. 라인 안 설비는 한 줄로 이어져 있어 B라인 전체가 멈춘 것으로 보고 계산했습니다.</p>
+          <dl class="facts"><dt>라인</dt><dt>설비</dt><dt>발생</dt><dt>원인</dt><dd id="factLine">B</dd><dd id="factEquipment">B라인 프레스 3호기</dd><dd id="factStart">14:20:12</dd><dd id="factCause">압력 차(좌-우) 상한 초과 (13.4 / 상한 12.5)</dd></dl>
         </div>
       </section>
 
       <section>
-        <h3>부족 수량</h3>
+        <h3>2. 생산 영향</h3>
         <div>
-          <p>L2가 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.</p>
+          <p><span class="impact-line">B</span>라인이 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.</p>
           <div class="calc">
-            <div><div class="st-l">남은 시간</div><div class="st-v">9:35:29</div><div class="st-sub">14:24:31 ~ 24:00</div></div>
-            <div><div class="st-l">L2 남은 라인 계획</div><div class="st-v">92<small>개</small></div><div class="st-sub">라인 계획 200 − 실적 108</div></div>
+            <div><div class="st-l">남은 시간</div><div class="st-v" id="remainingTime">9:35:29</div><div class="st-sub" id="remainingRange">14:24:31 ~ 24:00</div></div>
+            <div><div class="st-l"><span class="impact-line">B</span>라인 남은 라인 계획</div><div class="st-v"><span id="shortageQty">92</span><small>개</small></div><div class="st-sub" id="planDiffText">라인 계획 200 − 실적 108</div></div>
           </div>
         </div>
       </section>
 
       <section>
-        <h3>다른 라인 추가 배정</h3>
+        <h3>3. 생산 재배정안</h3>
         <div>
-          <p>정상 라인 5개의 남은 능력 비율대로 92개를 나눴습니다. 남은 능력 = 남은 시간 ÷ 라인 CT 120초 − 남은 라인 계획.</p>
+          <p id="allocationText" class="report-editable">정상 라인 5개의 남은 능력 비율대로 92개를 나눴습니다. 남은 능력 = 남은 시간 ÷ 라인 처리 시간 17초(시간당 약 211개) − 남은 라인 계획.</p>
           <table class="tbl">
             <thead><tr><th>라인</th><th class="num">남은 라인 계획</th><th class="num">남은 능력</th><th class="num">비율</th><th class="num">추가 배정</th></tr></thead>
             <tbody id="alloc"></tbody>
-            <tfoot><tr><td>합계</td><td class="num">366</td><td class="num">1,069</td><td class="num">100%</td><td class="num">92</td></tr></tfoot>
+            <tfoot><tr><td>합계</td><td class="num" id="totalPlan">458</td><td class="num" id="totalCapacity">1,069</td><td class="num">100%</td><td class="num" id="totalAllocation">92</td></tr></tfoot>
           </table>
         </div>
       </section>
 
       <section>
-        <h3>결과</h3>
-        <div class="result"><span class="grade ok">목표 달성 가능</span><p>남은 능력 합 1,069개가 부족 수량 92개보다 많아 오늘 목표 1,200개를 맞출 수 있을 것으로 예상합니다.</p></div>
+        <h3>4. 종합 검토</h3>
+        <div class="result"><span class="grade ok" id="resultGrade">목표 달성 가능</span><p id="resultText" class="report-editable">남은 능력 합 1,069개가 부족 수량 92개보다 많아 오늘 목표 1,200개를 맞출 수 있을 것으로 예상합니다.</p></div>
       </section>
-      <p class="note2">값은 데모 값</p>
+
+      <section>
+        <h3>5. 권장 조치</h3>
+        <ol class="report-list" id="actionList"><li>정지 설비의 안전 상태와 압력 상한 초과 원인을 확인합니다.</li><li>재배정 대상 라인의 자재와 작업자 준비 상태를 확인합니다.</li></ol>
+      </section>
+
+      <section>
+        <h3>6. 위험 및 확인사항</h3>
+        <ul class="report-list" id="riskList"><li>실제 복구시간에 따라 부족 수량을 다시 계산해야 합니다.</li><li>본 보고서는 생산계획을 자동 변경하지 않습니다.</li></ul>
+      </section>
+
+      <div class="approval">
+        <table><thead><tr><th>작성</th><th>생산관리 팀장</th></tr></thead><tbody><tr><td>김현수</td><td></td></tr></tbody></table>
+      </div>
+      <p class="note2">※ 본 문서는 AI 기반 의사결정 지원 초안이며, 담당자 검토 및 승인 후 생산계획에 반영합니다.</p>
+      </article>
     </section>
   </div>
 </main>
@@ -121,10 +289,434 @@
 <script src="b.js"></script>
 <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 <script>
-  renderTop('리포트')
-  // 데모 값: 남은 시간 34,529초 ÷ 120 = 287개
-  const A = [['L1', 69, 218, 19], ['L3', 73, 214, 18], ['L4', 81, 206, 18], ['L5', 70, 217, 19], ['L6', 73, 214, 18]]
-  alloc.innerHTML = A.map(([l, rp, cap, add]) => `<tr><td>${l}</td><td class="num">${rp}</td><td class="num">${cap}</td><td class="num">${(cap / 1069 * 100).toFixed(1)}%</td><td class="num add">+${add}</td></tr>`).join('')
+  renderTop('AI 리포트')
+  // ── 현재 트러블 (데모 값, 연동 후 U-08 진행 중 비가동 + M-04 알람으로 대체) ──
+  const CURRENT_TROUBLE = {
+    downtimeId: 5001, lineId: 'B', equipmentId: 'B-PR3', equipmentName: 'B라인 프레스 3호기',
+    faultReason: '압력 차(좌-우) 상한 초과 (13.4 / 상한 12.5)', faultStartedAt: '2026-11-16T14:20:12+09:00'
+  }
+
+  // ── 라인 생산 능력: 명세서·seed.sql 기준 (연동 후 process.cycle_time_sec 에서 읽음) ──
+  // 라인 능력은 가장 느린 라인 공정 기준: 슬리팅 16 · 프레스 17 · 용접 17초 → 17초, 시간당 약 211개
+  const LINE_CYCLE_SEC = 17
+  const REMAINING_SEC = 34529                                   // 보고서 기준 14:24:31 ~ 24:00
+  const LINE_MAX_QTY = Math.floor(REMAINING_SEC / LINE_CYCLE_SEC)  // 남은 시간 동안 라인 최대 생산 2,031개
+  // 재배정 후보 상태 (백엔드 ai.report.allocatable-statuses 와 같게): D 고장 · S 계획정지는 제외
+  const ALLOCATABLE = ['R', 'DC', 'I']
+  const STATUS_LABEL = { D: '고장', S: '계획정지', I: '대기', DC: '통신 끊김' }
+
+  // [라인, 남은 라인 계획, 상태(R/S/I/D/DC)] → 남은 능력 = 라인 최대 생산 − 남은 라인 계획 (불가 상태면 0)
+  const A = [['A', 69, 'R'], ['B', 92, 'D'], ['C', 73, 'R'], ['D', 81, 'R'], ['E', 70, 'R'], ['F', 73, 'R']]
+    .map(([lineId, currentPlan, status]) => [lineId, currentPlan, ALLOCATABLE.includes(status) ? Math.max(0, LINE_MAX_QTY - currentPlan) : 0, 0, status])
+
+  // statusByLine: 이전 보고서처럼 그때의 라인 상태로 다시 그릴 때 덮어쓸 상태
+  const renderAllocationRows = (allocationByLine = {}, excludedLines = [], requestedStops = [], statusByLine = {}) => {
+    const rows = A.map(([lineId, currentPlan, availableCapacity, defaultAdd, baseStatus]) => {
+      const status = statusByLine[lineId] ?? baseStatus
+      const blocked = !ALLOCATABLE.includes(status)
+      const capacity = blocked ? 0 : availableCapacity
+      // 비율·합계는 실제로 배정받을 수 있는 라인만 (고장·계획정지·요청 정지·제외 라인은 0%)
+      const usable = !blocked && !requestedStops.includes(lineId) && !excludedLines.includes(lineId)
+      return { lineId, currentPlan, capacity, defaultAdd, status, blocked, usable }
+    })
+    const totalCapacity = rows.reduce((sum, row) => sum + (row.usable ? row.capacity : 0), 0)
+    alloc.innerHTML = rows.map(({ lineId, currentPlan, capacity, defaultAdd, status, blocked, usable }) => {
+      const add = usable ? (allocationByLine[lineId] ?? defaultAdd) : 0
+      const share = usable && totalCapacity ? capacity / totalCapacity * 100 : 0
+      const rowClass = blocked || requestedStops.includes(lineId) ? 'stopped' : excludedLines.includes(lineId) ? 'excluded' : ''
+      const label = blocked ? `${lineId} (${STATUS_LABEL[status] || status})` : requestedStops.includes(lineId) ? `${lineId} (요청 정지)` : excludedLines.includes(lineId) ? `${lineId} (제외)` : lineId
+      return `<tr class="${rowClass}"><td>${label}</td><td class="num">${currentPlan}</td><td class="num">${capacity.toLocaleString('ko-KR')}</td><td class="num">${share.toFixed(1)}%</td><td class="num add">${add > 0 ? '+' : ''}${add}</td></tr>`
+    }).join('')
+    return totalCapacity
+  }
+  renderAllocationRows()
+  const conditions = A.map(([lineId, currentPlan, availableCapacity, , status]) => ({
+    lineId, status, availableCapacity, currentPlan,
+    constraint: ALLOCATABLE.includes(status) ? '동일 제품 생산 가능' : `${STATUS_LABEL[status] || status} 상태`
+  }))
+
+  const archivedReports = {
+    'report-1114': {
+      documentNo: 'AI-RPT-20261114-004', generatedAt: '2026-11-14 16:40:05', line: 'D', equipment: 'D라인 프레스 2호기',
+      start: '16:40:05', cause: '금형 위치 센서 이상 (장비고장)', stop: '0:48:20', remaining: '7:19:55',
+      plan: 240, actual: 151, shortage: 89, status: '승인 완료',
+      incident: 'D라인 프레스 2호기에서 금형 위치 센서 이상이 발생하여 16:40:05부터 라인이 정지되었습니다. 미생산 예정 수량 89개를 정상 가동 라인에 재배정했습니다.',
+      allocation: { A: 23, B: 0, C: 22, D: 0, E: 22, F: 22 }, stopped: ['B', 'D'],
+      result: '정상 가동 중인 4개 라인에 89개를 재배정하여 당일 납기 수량을 확보했습니다.',
+      actions: ['D라인 금형 위치 센서와 배선 상태를 점검합니다.', 'A·C·E·F라인에 재배정 수량과 작업 순서를 전달합니다.', '시험 생산 5개 확인 후 D라인 재가동 여부를 결정합니다.'],
+      risks: ['D라인 복구가 지연되면 다음 교대조 작업 순서를 다시 조정해야 합니다.', '재배정 라인의 금형 교체시간과 자재 투입 상태를 확인해야 합니다.']
+    },
+    'report-1112-paint': {
+      documentNo: 'AI-RPT-20261112-002', generatedAt: '2026-11-12 09:12:44', line: 'A·B·C', equipment: '도장 1호기',
+      start: '09:12:44', cause: '온도 하한 미달 (17.9 / 하한 18.54℃)', stop: '0:35:10', remaining: '14:47:16',
+      plan: 180, actual: 64, shortage: 116, status: '승인 완료',
+      incident: '도장 1호기(PT1) 온도가 관리 하한 아래로 내려가 09:12:44부터 투입을 중지했습니다. 품질 확인 전까지 도장 1호기 생산계획을 도장 2호기(PT2)와 후속 가능 라인으로 전환했습니다.',
+      allocation: { A: 28, B: 0, C: 30, D: 29, E: 29, F: 0 }, stopped: ['B', 'F'],
+      result: '대체 공정에 116개를 재배정하고 품질 검사 대기 물량을 분리하여 납기 영향을 최소화했습니다.',
+      actions: ['도장 1호기 온도센서와 히터 출력을 점검합니다.', '대체 라인에 116개 생산 순서를 반영합니다.', '도장 품질 확인 결과에 따라 재투입 물량을 확정합니다.'],
+      risks: ['도장 경로 전환(PT1 → PT2)으로 도장 2호기 부하가 늘어날 수 있습니다.', '품질 검사 결과에 따라 일부 물량의 재작업이 발생할 수 있습니다.']
+    },
+    'report-1112-l6': {
+      documentNo: 'AI-RPT-20261112-001', generatedAt: '2026-11-12 03:05:18', line: 'F', equipment: 'F라인 슬리팅 1호기',
+      start: '03:05:18', cause: '장력 제어 알람 (장비고장)', stop: '0:52:40', remaining: '20:54:42',
+      plan: 160, actual: 87, shortage: 73, status: '승인 완료',
+      incident: 'F라인 슬리팅 1호기 장력 제어 알람으로 03:05:18부터 설비가 정지되었습니다. F라인 잔여 계획 73개는 A·C·D·E라인으로 분산했습니다.',
+      allocation: { A: 19, B: 0, C: 18, D: 18, E: 18, F: 0 }, stopped: ['B', 'F'],
+      result: '정지 라인 추가 배정을 0개로 유지하고 정상 라인에 73개를 배정하여 계획 수량을 확보했습니다.',
+      actions: ['F라인 장력 센서와 롤러 정렬 상태를 확인합니다.', '정상 4개 라인에 재배정 수량을 반영합니다.', 'F라인 복구 후 시험 가동 결과를 생산관리 팀장에게 보고합니다.'],
+      risks: ['소재 폭 사양에 따라 일부 라인에서 생산이 제한될 수 있습니다.', '복구 후 최초 생산품의 치수 검사가 필요합니다.']
+    },
+    'report-1114-0758': {"documentNo": "AI-RPT-20261114-003", "generatedAt": "2026-11-14 07:58:30", "line": "B", "equipment": "B라인 용접 1호기", "start": "07:58:30", "cause": "용접 토치 냉각 불량 (장비고장)", "stop": "0:41:10", "remaining": "16:01:30", "plan": 220, "actual": 40, "shortage": 180, "status": "승인 완료", "incident": "B라인 용접 1호기에서 '용접 토치 냉각 불량' 이상이 발생하여 07:58:30부터 라인이 정지되었습니다. 미생산 예정 수량 180개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 0, "B": 0, "C": 45, "D": 45, "E": 45, "F": 45}, "stopped": ["B", "A"], "result": "정상 가동 중인 4개 라인(C·D·E·F)에 180개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["토치 냉각수 라인과 펌프 압력을 점검합니다.", "C·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "B라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["용접 품질 확인 전 생산품은 비드 외관 검사가 필요합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1113-2241': {"documentNo": "AI-RPT-20261113-001", "generatedAt": "2026-11-13 22:41:07", "line": "C", "equipment": "C라인 용접 2호기", "start": "22:41:07", "cause": "용접 전류 상한 초과 (장비고장)", "stop": "0:27:15", "remaining": "1:18:53", "plan": 200, "actual": 81, "shortage": 119, "status": "승인 완료", "incident": "C라인 용접 2호기에서 '용접 전류 상한 초과' 이상이 발생하여 22:41:07부터 라인이 정지되었습니다. 미생산 예정 수량 119개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 24, "B": 24, "C": 0, "D": 24, "E": 24, "F": 23}, "stopped": ["C"], "result": "정상 가동 중인 5개 라인(A·B·D·E·F)에 119개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["용접 전원 장치와 케이블 접촉 상태를 점검합니다.", "A·B·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "C라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["야간조 인원이 적어 재배정 라인의 작업 전환이 늦어질 수 있습니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1111-1405': {"documentNo": "AI-RPT-20261111-001", "generatedAt": "2026-11-11 14:05:32", "line": "E", "equipment": "E라인 프레스 1호기", "start": "14:05:32", "cause": "유압 저하 알람 (장비고장)", "stop": "1:05:40", "remaining": "9:54:28", "plan": 160, "actual": 20, "shortage": 140, "status": "승인 완료", "incident": "E라인 프레스 1호기에서 '유압 저하 알람' 이상이 발생하여 14:05:32부터 라인이 정지되었습니다. 미생산 예정 수량 140개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 28, "B": 28, "C": 28, "D": 28, "E": 0, "F": 28}, "stopped": ["E"], "result": "정상 가동 중인 5개 라인(A·B·C·D·F)에 140개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["유압 펌프와 작동유 누유 여부를 확인합니다.", "A·B·C·D·F라인에 재배정 수량과 작업 순서를 전달합니다.", "E라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["유압 부품 교체가 필요하면 복구가 다음 근무조로 넘어갈 수 있습니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1110-1018': {"documentNo": "AI-RPT-20261110-001", "generatedAt": "2026-11-10 10:18:09", "line": "A", "equipment": "A라인 슬리팅 2호기", "start": "10:18:09", "cause": "소재 사행 감지 (품질이상)", "stop": "0:21:30", "remaining": "13:41:51", "plan": 180, "actual": 93, "shortage": 87, "status": "승인 완료", "incident": "A라인 슬리팅 2호기에서 '소재 사행 감지' 이상이 발생하여 10:18:09부터 라인이 정지되었습니다. 미생산 예정 수량 87개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 0, "B": 18, "C": 18, "D": 17, "E": 17, "F": 17}, "stopped": ["A"], "result": "정상 가동 중인 5개 라인(B·C·D·E·F)에 87개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["소재 코일 정렬과 가이드 롤러 위치를 조정합니다.", "B·C·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "A라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["사행 구간 소재는 폭 치수 재검사가 필요합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1107-1952': {"documentNo": "AI-RPT-20261107-001", "generatedAt": "2026-11-07 19:52:47", "line": "B", "equipment": "B라인 검사기 1호기", "start": "19:52:47", "cause": "비전 카메라 통신 끊김", "stop": "0:39:05", "remaining": "4:07:13", "plan": 240, "actual": 82, "shortage": 158, "status": "승인 완료", "incident": "B라인 검사기 1호기에서 '비전 카메라 통신 끊김' 이상이 발생하여 19:52:47부터 라인이 정지되었습니다. 미생산 예정 수량 158개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 32, "B": 0, "C": 32, "D": 32, "E": 31, "F": 31}, "stopped": ["B"], "result": "정상 가동 중인 5개 라인(A·C·D·E·F)에 158개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["카메라 케이블과 검사 PC 네트워크 연결을 확인합니다.", "A·C·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "B라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["통신 끊김 구간 생산품은 수동 검사로 대체해야 합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1106-0833': {"documentNo": "AI-RPT-20261106-001", "generatedAt": "2026-11-06 08:33:21", "line": "D", "equipment": "D라인 용접 1호기", "start": "08:33:21", "cause": "냉각수 유량 하한 미달", "stop": "0:44:50", "remaining": "15:26:39", "plan": 160, "actual": 20, "shortage": 140, "status": "승인 완료", "incident": "D라인 용접 1호기에서 '냉각수 유량 하한 미달' 이상이 발생하여 08:33:21부터 라인이 정지되었습니다. 미생산 예정 수량 140개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 28, "B": 28, "C": 28, "D": 0, "E": 28, "F": 28}, "stopped": ["D"], "result": "정상 가동 중인 5개 라인(A·B·C·E·F)에 140개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["냉각수 필터 막힘과 유량계 값을 확인합니다.", "A·B·C·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "D라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["냉각 부족이 재발하면 용접 품질 저하가 우려됩니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1104-1347': {"documentNo": "AI-RPT-20261104-001", "generatedAt": "2026-11-04 13:47:02", "line": "F", "equipment": "F라인 프레스 2호기", "start": "13:47:02", "cause": "금형 파손 감지 (장비고장)", "stop": "2:10:15", "remaining": "10:12:58", "plan": 180, "actual": 20, "shortage": 160, "status": "승인 완료", "incident": "F라인 프레스 2호기에서 '금형 파손 감지' 이상이 발생하여 13:47:02부터 라인이 정지되었습니다. 미생산 예정 수량 160개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 32, "B": 32, "C": 32, "D": 32, "E": 32, "F": 0}, "stopped": ["F"], "result": "정상 가동 중인 5개 라인(A·B·C·D·E)에 160개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["파손 금형을 예비 금형으로 교체하고 초도품을 검사합니다.", "A·B·C·D·E라인에 재배정 수량과 작업 순서를 전달합니다.", "F라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["예비 금형 수명이 짧아 정식 금형 수리 일정을 잡아야 합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1102-0615': {"documentNo": "AI-RPT-20261102-001", "generatedAt": "2026-11-02 06:15:44", "line": "C", "equipment": "C라인 슬리팅 1호기", "start": "06:15:44", "cause": "칼날 마모 경고 (계획 외 교체)", "stop": "0:33:00", "remaining": "17:44:16", "plan": 160, "actual": 29, "shortage": 131, "status": "승인 완료", "incident": "C라인 슬리팅 1호기에서 '칼날 마모 경고' 이상이 발생하여 06:15:44부터 라인이 정지되었습니다. 미생산 예정 수량 131개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 33, "B": 0, "C": 0, "D": 33, "E": 33, "F": 32}, "stopped": ["C", "B"], "result": "정상 가동 중인 4개 라인(A·D·E·F)에 131개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["슬리팅 칼날을 교체하고 절단면 버(burr)를 확인합니다.", "A·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "C라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["칼날 예비품 재고가 1세트만 남아 추가 발주가 필요합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1030-1609': {"documentNo": "AI-RPT-20261030-001", "generatedAt": "2026-10-30 16:09:58", "line": "E", "equipment": "E라인 이송 컨베이어", "start": "16:09:58", "cause": "컨베이어 모터 과부하", "stop": "0:58:25", "remaining": "7:50:02", "plan": 240, "actual": 20, "shortage": 220, "status": "승인 완료", "incident": "E라인 이송 컨베이어에서 '컨베이어 모터 과부하' 이상이 발생하여 16:09:58부터 라인이 정지되었습니다. 미생산 예정 수량 220개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 44, "B": 44, "C": 44, "D": 44, "E": 0, "F": 44}, "stopped": ["E"], "result": "정상 가동 중인 5개 라인(A·B·C·D·F)에 220개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["모터 전류와 감속기 윤활 상태를 점검합니다.", "A·B·C·D·F라인에 재배정 수량과 작업 순서를 전달합니다.", "E라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["과부하 원인이 적재 불균형이면 작업 표준 보완이 필요합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1028-1126': {"documentNo": "AI-RPT-20261028-001", "generatedAt": "2026-10-28 11:26:13", "line": "A", "equipment": "A라인 프레스 3호기", "start": "11:26:13", "cause": "압력 차(좌-우) 상한 초과", "stop": "0:36:40", "remaining": "12:33:47", "plan": 220, "actual": 64, "shortage": 156, "status": "승인 완료", "incident": "A라인 프레스 3호기에서 '압력 차(좌-우) 상한 초과' 이상이 발생하여 11:26:13부터 라인이 정지되었습니다. 미생산 예정 수량 156개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 0, "B": 32, "C": 31, "D": 31, "E": 31, "F": 31}, "stopped": ["A"], "result": "정상 가동 중인 5개 라인(B·C·D·E·F)에 156개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["좌·우 압력 센서 보정값과 슬라이드 평행도를 점검합니다.", "B·C·D·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "A라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["압력 편차 구간 생산품의 치수 검사가 필요합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1024-2103': {"documentNo": "AI-RPT-20261024-001", "generatedAt": "2026-10-24 21:03:36", "line": "D", "equipment": "D라인 검사기 2호기", "start": "21:03:36", "cause": "치수 측정값 편차 누적 (품질이상)", "stop": "0:25:10", "remaining": "2:56:24", "plan": 160, "actual": 40, "shortage": 120, "status": "승인 완료", "incident": "D라인 검사기 2호기에서 '치수 측정값 편차 누적' 이상이 발생하여 21:03:36부터 라인이 정지되었습니다. 미생산 예정 수량 120개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 24, "B": 24, "C": 24, "D": 0, "E": 24, "F": 24}, "stopped": ["D"], "result": "정상 가동 중인 5개 라인(A·B·C·E·F)에 120개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["측정 지그 영점과 기준 시편 측정값을 확인합니다.", "A·B·C·E·F라인에 재배정 수량과 작업 순서를 전달합니다.", "D라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["측정 오류 구간 출하품은 재측정 전까지 출하를 보류합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]},
+    'report-1021-1537': {"documentNo": "AI-RPT-20261021-001", "generatedAt": "2026-10-21 15:37:49", "line": "F", "equipment": "F라인 용접 2호기", "start": "15:37:49", "cause": "로봇 원점 이탈 알람", "stop": "0:47:35", "remaining": "8:22:11", "plan": 180, "actual": 20, "shortage": 160, "status": "승인 완료", "incident": "F라인 용접 2호기에서 '로봇 원점 이탈 알람' 이상이 발생하여 15:37:49부터 라인이 정지되었습니다. 미생산 예정 수량 160개를 정상 가동 라인에 재배정했습니다.", "allocation": {"A": 0, "B": 40, "C": 40, "D": 40, "E": 40, "F": 0}, "stopped": ["F", "A"], "result": "정상 가동 중인 4개 라인(B·C·D·E)에 160개를 재배정하여 당일 계획 수량을 확보했습니다.", "actions": ["용접 로봇 원점 복귀와 티칭 위치를 재확인합니다.", "B·C·D·E라인에 재배정 수량과 작업 순서를 전달합니다.", "F라인 복구 후 시험 생산 결과를 생산관리 팀장에게 보고합니다."], "risks": ["원점 이탈 원인이 충돌이면 지그 손상 여부를 함께 확인해야 합니다.", "재배정 라인의 자재 투입과 작업자 배치 상태를 확인해야 합니다."]}
+  }
+
+  // 1. 발생 현황 표, 정지 지속, 2. 생산 영향(남은 시간·라인 계획)을 보고서 대상에 맞춰 채운다
+  const setTroubleFacts = facts => {
+    factLine.textContent = facts.line
+    factEquipment.textContent = facts.equipment
+    factStart.textContent = facts.start
+    factCause.textContent = facts.cause
+    stopDuration.textContent = facts.stop
+    remainingTime.textContent = facts.remaining
+    remainingRange.textContent = facts.range
+    planDiffText.textContent = `라인 계획 ${facts.plan} − 실적 ${facts.actual}`
+    document.querySelectorAll('.impact-line').forEach(el => { el.textContent = facts.line })
+  }
+
+  const showArchivedReport = report => {
+    reportTitle.firstChild.textContent = `계획수정 보고서 · ${report.equipment} `
+    reportMeta.textContent = `${report.generatedAt} 작성 · 이전 작성 보고서 예시`
+    documentNo.textContent = report.documentNo
+    generatedAt.textContent = report.generatedAt
+    targetLine.textContent = report.line
+    modelName.textContent = 'AI 분석 보고서'
+    documentStatus.textContent = report.status
+    planQty.textContent = report.plan
+    actualQty.textContent = report.actual
+    summaryShortage.childNodes[0].textContent = report.shortage
+    shortageQty.textContent = report.shortage
+    incidentText.textContent = report.incident
+    setTroubleFacts({ line: report.line, equipment: report.equipment, start: report.start, cause: report.cause, stop: report.stop,
+      remaining: report.remaining, range: `${report.generatedAt.slice(11)} ~ 24:00`, plan: report.plan, actual: report.actual })
+    allocationText.textContent = `${report.line}라인 정지로 발생한 부족 수량 ${report.shortage}개를 가동 가능한 라인에 재배정했습니다. 정지 라인의 추가 배정은 0개입니다.`
+    const archivedCapacity = renderAllocationRows(report.allocation, [], [], Object.fromEntries(report.stopped.map(line => [line, 'D'])))
+    totalPlan.textContent = A.reduce((sum, [, plan]) => sum + plan, 0).toLocaleString('ko-KR')
+    totalCapacity.textContent = archivedCapacity.toLocaleString('ko-KR')
+    totalAllocation.textContent = Object.values(report.allocation).reduce((sum, qty) => sum + qty, 0).toLocaleString('ko-KR')
+    resultGrade.textContent = '계획 반영 완료'
+    resultGrade.className = 'grade ok'
+    resultText.textContent = report.result
+    actionList.innerHTML = report.actions.map(x => `<li>${x}</li>`).join('')
+    riskList.innerHTML = report.risks.map(x => `<li>${x}</li>`).join('')
+    reportEmpty.style.display = 'none'
+    reportDocument.classList.remove('awaiting')
+    requestResultPanel.classList.remove('on')
+    editBtn.disabled = false
+    applyBtn.disabled = true
+    docBtn.disabled = false
+    pdfBtn.disabled = false
+    lucide.createIcons()
+  }
+
+  // 현재 트러블 화면(생성 전 빈 화면 또는 생성·수정한 보고서)을 저장해 두었다가 다시 보여준다
+  let viewingCurrent = true
+  let currentSnapshot = null
+  const generatedSnapshots = {}
+  const actionButtons = () => [editBtn, applyBtn, docBtn, pdfBtn]
+  const takeSnapshot = () => ({
+    title: reportTitle.innerHTML, meta: reportMeta.textContent,
+    doc: reportDocument.innerHTML, docClass: reportDocument.className, empty: reportEmpty.style.display,
+    panelOn: requestResultPanel.classList.contains('on'), grid: requestResultGrid.innerHTML,
+    buttons: actionButtons().map(b => [b.disabled, b.innerHTML])
+  })
+  const restoreSnapshot = s => {
+    reportTitle.innerHTML = s.title
+    reportMeta.textContent = s.meta
+    reportDocument.innerHTML = s.doc
+    reportDocument.className = s.docClass
+    reportEmpty.style.display = s.empty
+    requestResultPanel.classList.toggle('on', s.panelOn)
+    requestResultGrid.innerHTML = s.grid
+    actionButtons().forEach((b, i) => { [b.disabled, b.innerHTML] = s.buttons[i] })
+    lucide.createIcons()
+  }
+  const finishEditing = () => { if (editing) editBtn.click() }
+  const leaveCurrent = () => {
+    finishEditing()
+    if (viewingCurrent) currentSnapshot = takeSnapshot()
+    viewingCurrent = false
+  }
+  const showCurrent = () => {
+    finishEditing()
+    reportList.querySelectorAll('a').forEach(x => x.classList.toggle('on', x.dataset.current === 'true'))
+    if (!viewingCurrent && currentSnapshot) restoreSnapshot(currentSnapshot)
+    viewingCurrent = true
+  }
+
+  currentTrouble.addEventListener('click', showCurrent)
+  currentTrouble.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); showCurrent() }
+  })
+
+  const applyPeriodFilter = initPeriodFilter(previousReports, previousHeading)
+
+  previousReports.addEventListener('click', event => {
+    const link = event.target.closest('a')
+    if (!link) return
+    event.preventDefault()
+    if (link.dataset.current === 'true') return showCurrent()
+    const snapshot = generatedSnapshots[link.dataset.snapshotId]
+    const archived = archivedReports[link.dataset.archiveId]
+    if (!snapshot && !archived) return
+    leaveCurrent()
+    reportList.querySelectorAll('a').forEach(x => x.classList.remove('on'))
+    link.classList.add('on')
+    if (snapshot) restoreSnapshot(snapshot)
+    else showArchivedReport(archived)
+  })
+
+  const numberValue = element => Number(String(element.textContent).replace(/[^0-9.-]/g, '')) || 0
+  const refreshCalculatedValues = () => {
+    const shortage = Math.max(0, numberValue(planQty) - numberValue(actualQty))
+    shortageQty.textContent = String(shortage)
+    summaryShortage.innerHTML = `${shortage}<small>개</small>`
+    planDiffText.textContent = `라인 계획 ${numberValue(planQty)} − 실적 ${numberValue(actualQty)}`
+  }
+
+  let editing = false
+  editBtn.addEventListener('click', () => {
+    editing = !editing
+    reportDocument.contentEditable = String(editing)
+    reportDocument.classList.toggle('editing-all', editing)
+    editBtn.innerHTML = editing ? '<i data-lucide="save"></i>수정 저장' : '<i data-lucide="pencil"></i>값 수정'
+    if (!editing) refreshCalculatedValues()
+    lucide.createIcons()
+  })
+
+  applyBtn.addEventListener('click', () => {
+    if (!confirm(`${targetLine.textContent.trim()} 생산계획에 재배정 수량 ${totalAllocation.textContent}개를 반영하시겠습니까?`)) return
+    documentStatus.textContent = '계획 반영 완료'
+    applyBtn.innerHTML = '<i data-lucide="check"></i>반영 완료'
+    reportMeta.textContent = `${new Date().toLocaleString('ko-KR')} 생산계획 반영 완료 · 데모 처리`
+    alert('생산계획 반영이 완료되었습니다. 현재 데모에서는 화면 상태와 이력만 변경됩니다.')
+    lucide.createIcons()
+  })
+
+  generateBtn.addEventListener('click', async () => {
+    showCurrent()
+    // 이미 생성한 보고서가 있으면 그 화면을 보관해 두고, 목록에서 다시 열 수 있게 한다
+    const previousCurrent = previousReports.querySelector('a[data-current="true"]')
+    if (previousCurrent) {
+      const id = `generated-${Object.keys(generatedSnapshots).length + 1}`
+      generatedSnapshots[id] = takeSnapshot()
+      previousCurrent.dataset.current = 'false'
+      previousCurrent.dataset.snapshotId = id
+    }
+    generateBtn.disabled = true
+    generateBtn.innerHTML = '<i data-lucide="loader-circle"></i>작성 중…'
+    lucide.createIcons()
+    try {
+      // 팀 백엔드: /api 기준, 로그인 토큰(JWT) 필요. 토큰은 Vue 앱 로그인 때 저장되는 sfaas.accessToken 을 같이 쓴다
+      let accessToken = null
+      try { accessToken = localStorage.getItem('sfaas.accessToken') } catch { /* 저장소를 못 쓰면 토큰 없음 */ }
+      const res = await fetch('/api/ai-reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}) },
+        body: JSON.stringify({
+          ...CURRENT_TROUBLE,
+          downtimeId: Number(currentTrouble.dataset.downtimeId),
+          targetQty: 200, completedQty: 108, dueQty: 200, dueAt: '2026-11-16 24:00',
+          lineConditions: conditions,
+          operatorNote: '품질 확인 후 재가동 필요',
+          additionalRequest: additionalRequest.value.trim()
+        })
+      })
+      if (!res.ok) {
+        // 백엔드 공통 오류 형식 { status, code, message, timestamp }
+        if (res.status === 401) throw new Error('로그인이 필요합니다. 앱에서 로그인한 뒤 다시 시도해 주세요')
+        const error = await res.json().catch(() => null)
+        throw new Error(error?.message || `서버 오류 ${res.status}`)
+      }
+      const report = await res.json()
+      const assigned = report.allocations.reduce((sum, x) => sum + x.quantity, 0)
+      reportTitle.firstChild.textContent = `계획수정 보고서 · ${report.title} `
+      reportMeta.textContent = `${new Date(report.generatedAt).toLocaleString('ko-KR')} 생성 · AI 초안 · 제안만 하며 목표와 설비 계획은 바꾸지 않음`
+      if (additionalRequest.value.trim()) reportMeta.textContent += ` · 추가 요청 반영: ${additionalRequest.value.trim()}`
+      if (report.fallbackReason) reportMeta.textContent += ` · AI 연결 실패로 템플릿 문장 사용 (${report.fallbackReason})`
+      // generatedAt 은 KST(+09:00) ISO 문자열이라 앞부분을 그대로 쓰면 브라우저 시간대와 관계없이 한국 시각이 된다
+      const generatedKst = report.generatedAt.slice(0, 19).replace('T', ' ')
+      documentNo.textContent = `AI-RPT-${generatedKst.slice(0, 10).replaceAll('-', '')}-${report.reportId.slice(0, 6).toUpperCase()}`
+      generatedAt.textContent = generatedKst
+      modelName.textContent = report.fallbackReason ? 'AI 분석 초안(템플릿 대체)' : report.mock ? 'AI 분석 초안(데모)' : `AI 분석 초안(${report.model})`
+      incidentText.textContent = report.summary
+      const calculatedShortage = report.calculatedShortage ?? (numberValue(planQty) - numberValue(actualQty))
+      shortageQty.textContent = String(calculatedShortage)
+      summaryShortage.innerHTML = `${calculatedShortage}<small>개</small>`
+      const interpretation = report.requestInterpretation || { excludedLines: [], stoppedLines: [], priority: 'BALANCED', appliedRules: ['기본 조건 적용'] }
+      requestResultGrid.innerHTML = `
+        <div><b>정지·제외 라인</b>${interpretation.excludedLines.length ? interpretation.excludedLines.join(', ') : '없음'}</div>
+        <div><b>우선 기준</b>${interpretation.priority === 'DUE_DATE' ? '납기 준수' : interpretation.priority === 'SAFETY' ? '안전·품질' : '잔여 생산능력'}</div>
+        <div><b>적용 규칙</b>${interpretation.appliedRules.join(' · ')}</div>`
+      requestResultPanel.classList.add('on')
+      const allocationByLine = Object.fromEntries(report.allocations.map(x => [x.lineId, x.quantity]))
+      const capacity = renderAllocationRows(allocationByLine, interpretation.excludedLines, interpretation.stoppedLines || [])
+      const activeAllocationLines = report.allocations.filter(x => x.quantity > 0).map(x => x.lineId).join(', ')
+      allocationText.textContent = `총 ${calculatedShortage}개를 잔여 생산능력 비율에 따라 ${activeAllocationLines || '배정 가능한 라인 없음'}에 재배정합니다. 정지·제외 라인에는 추가 배정하지 않습니다.`
+      totalPlan.textContent = conditions.reduce((sum, x) => sum + x.currentPlan, 0).toLocaleString('ko-KR')
+      totalCapacity.textContent = capacity.toLocaleString('ko-KR')
+      totalAllocation.textContent = assigned.toLocaleString('ko-KR')
+      resultGrade.textContent = assigned >= calculatedShortage ? '목표 달성 가능' : '추가 조정 필요'
+      resultGrade.className = `grade ${assigned >= calculatedShortage ? 'ok' : 'danger'}`
+      const unresolved = Math.max(0, calculatedShortage - assigned)
+      resultText.textContent = unresolved === 0
+        ? `재배정 필요 수량 ${calculatedShortage}개 전량을 정상 라인에 배정할 수 있어 계산상 목표 달성이 가능합니다.`
+        : `재배정 필요 수량 중 ${unresolved}개가 미배정되어 추가 생산계획 조정 또는 납기 협의가 필요합니다.`
+      const allocationAction = report.allocations.filter(x => x.quantity > 0)
+        .map(x => `${x.lineId}라인 ${x.quantity}개`).join(', ')
+      actionList.innerHTML = [
+        `${CURRENT_TROUBLE.equipmentName}의 안전 상태와 고장 원인을 확인합니다.`,
+        `재배정안을 적용합니다: ${allocationAction || '배정 가능한 라인 없음'}.`,
+        '생산관리자와 품질담당자의 검토·승인 후 계획에 반영합니다.'
+      ].map(x => `<li>${x}</li>`).join('')
+      riskList.innerHTML = [
+        report.risks[0] || '재배정 라인의 준비 상태를 확인해야 합니다.',
+        unresolved > 0 ? `미배정 ${unresolved}개에 대한 납기 협의가 필요합니다.` : '실제 복구시간에 따라 수량을 다시 계산해야 합니다.',
+        '담당자 승인 전에는 생산계획과 설비 설정을 변경하지 않습니다.'
+      ].map(x => `<li>${x}</li>`).join('')
+      reportEmpty.style.display = 'none'
+      reportDocument.classList.remove('awaiting')
+      editBtn.disabled = false
+      applyBtn.disabled = false
+      docBtn.disabled = false
+      pdfBtn.disabled = false
+      documentStatus.textContent = '검토 대기'
+      const history = document.createElement('a')
+      history.href = '#'
+      history.className = 'on'
+      history.dataset.current = 'true'
+      history.innerHTML = `<b>${CURRENT_TROUBLE.equipmentName}</b><time>${generatedKst.slice(11)}</time><span>AI 계획수정 보고서</span>`
+      reportList.querySelectorAll('a').forEach(x => x.classList.remove('on'))
+      let todayGroup = previousReports.querySelector('[data-generated-date]')
+      if (!todayGroup) {
+        const generatedDate = new Date(report.generatedAt)
+        todayGroup = document.createElement('div')
+        todayGroup.className = 'd'
+        todayGroup.dataset.generatedDate = generatedKst.slice(0, 10)
+        todayGroup.dataset.date = generatedKst.slice(0, 10)
+        todayGroup.textContent = generatedDate.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' })
+        previousReports.insertBefore(todayGroup, previousReports.querySelector('[data-date]'))
+      }
+      previousReports.insertBefore(history, todayGroup.nextSibling)
+      applyPeriodFilter()
+      troubleReportState.textContent = '보고서 작성 완료'
+      troubleReportState.classList.add('created')
+      generateBtn.innerHTML = '<i data-lucide="check"></i>생성 완료'
+    } catch (error) {
+      generateBtn.innerHTML = '<i data-lucide="triangle-alert"></i>생성 실패'
+      resultText.textContent = `${error.message}. 백엔드 서버 상태를 확인해 주세요.`
+      reportMeta.textContent = `보고서 생성 실패: ${error.message}`
+    } finally {
+      generateBtn.disabled = false
+      lucide.createIcons()
+    }
+  })
+
+  docBtn.addEventListener('click', async () => {
+    docBtn.disabled = true
+    try {
+      const response = await fetch('/templates/production-plan-report-template.doc')
+      if (!response.ok) throw new Error(`템플릿을 불러오지 못했습니다 (${response.status})`)
+      const sourceBytes = await response.arrayBuffer()
+      let template = new TextDecoder('utf-16le').decode(sourceBytes)
+      // "1:02:03" → "1시간 2분 3초", "11:56" → "11분 56초"
+      const durationText = el => {
+        const parts = el.textContent.trim().split(':').map(Number)
+        const [h, m, s] = parts.length === 3 ? parts : [0, ...parts]
+        return `${h ? `${h}시간 ` : ''}${m}분 ${s}초`
+      }
+      const values = [
+        documentNo.textContent,
+        generatedAt.textContent,
+        targetLine.textContent.trim(),
+        `${numberValue(planQty)}개`,
+        `${numberValue(actualQty)}개`,
+        `${shortageQty.textContent}개`,
+        durationText(stopDuration),
+        factLine.textContent.trim(),
+        factEquipment.textContent.trim(),
+        factStart.textContent.trim(),
+        factCause.textContent.trim(),
+        durationText(remainingTime),
+        `${shortageQty.textContent}개`,
+        `${numberValue(planQty)}개`,
+        `${numberValue(actualQty)}개`
+      ]
+      const escapeValue = value => String(value)
+        .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+      values.forEach(value => { template = template.replace('빈칸', escapeValue(value)) })
+      if (template.includes('빈칸')) throw new Error('템플릿 값 치환이 완료되지 않았습니다')
+
+      // 3~6번 항목은 화면 보고서 내용 그대로 채운다
+      const font = 'font-size:9.0pt;font-family:"맑은 고딕";color:black'
+      const text = el => escapeValue(el.textContent.trim())
+      const cellFirst = 'border:solid black 1.0pt;border-top:none;mso-border-top-alt:solid black .75pt;mso-border-alt:solid black .75pt;padding:1.5pt 3.0pt 1.5pt 3.0pt'
+      const cellRest = 'border-top:none;border-left:none;border-bottom:solid black 1.0pt;border-right:solid black 1.0pt;mso-border-top-alt:solid black .75pt;mso-border-left-alt:solid black .75pt;mso-border-alt:solid black .75pt;padding:1.5pt 3.0pt 1.5pt 3.0pt'
+      const allocationRows = [...alloc.querySelectorAll('tr')].map(row => '<tr>' + [...row.cells].map((cell, i) =>
+        `<td style='${i === 0 ? cellFirst : cellRest}'><p class=MsoNormal${i === 0 ? '' : " align=right style='text-align:right'"}><span style='${font}'>${text(cell)}<o:p></o:p></span></p></td>`
+      ).join('') + '</tr>').join('\n')
+      const actions = [...actionList.children].map((li, i) =>
+        `<p class=MsoNormal style='margin-top:0cm;margin-right:0cm;margin-bottom:1.0pt;margin-left:36.0pt;text-indent:-18.0pt;mso-list:l1 level1 lfo1;tab-stops:list 36.0pt'><![if !supportLists]><span style='${font}'><span style='mso-list:Ignore'>${i + 1}.<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;&nbsp;&nbsp; </span></span></span><![endif]><span style='${font}'>${text(li)}<o:p></o:p></span></p>`
+      ).join('\n')
+      const risks = [...riskList.children].map(li =>
+        `<li class=MsoNormal style='color:black;margin-bottom:1.0pt;mso-list:l0 level1 lfo2;tab-stops:list 36.0pt'><span style='font-size:9.0pt;font-family:"맑은 고딕"'>${text(li)}<o:p></o:p></span></li>`
+      ).join('\n')
+      const sections = {
+        TARGET_LINE: text(factLine),
+        MODEL_NAME: text(modelName),
+        DOC_STATUS: text(documentStatus),
+        AUTHOR: text(authorName),
+        ALLOCATION_TEXT: text(allocationText),
+        ALLOCATION_ROWS: allocationRows,
+        TOTAL_PLAN: text(totalPlan),
+        TOTAL_CAPACITY: text(totalCapacity),
+        TOTAL_ALLOCATION: text(totalAllocation),
+        RESULT_GRADE: text(resultGrade),
+        RESULT_TEXT: text(resultText),
+        ACTIONS: actions,
+        RISKS: risks
+      }
+      Object.entries(sections).forEach(([key, html]) => { template = template.split(`{{${key}}}`).join(html) })
+      if (/\{\{[A-Z_]+\}\}/.test(template)) throw new Error('템플릿 항목 치환이 완료되지 않았습니다')
+
+      const outputBytes = new Uint8Array(2 + template.length * 2)
+      outputBytes[0] = 0xff
+      outputBytes[1] = 0xfe
+      const outputView = new DataView(outputBytes.buffer)
+      for (let i = 0; i < template.length; i += 1) outputView.setUint16(2 + i * 2, template.charCodeAt(i), true)
+      const blob = new Blob([outputBytes], { type: 'application/msword;charset=utf-16le' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `생산계획_수정_보고서_${documentNo.textContent}.doc`
+      link.click()
+      setTimeout(() => URL.revokeObjectURL(link.href), 1000)
+    } catch (error) {
+      alert(error.message)
+    } finally {
+      docBtn.disabled = false
+    }
+  })
+
+  pdfBtn.addEventListener('click', () => window.print())
   lucide.createIcons()
 </script>
 </body>

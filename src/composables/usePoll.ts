@@ -15,6 +15,9 @@ export function usePoll<T>(load: () => Promise<T>, everyMs: number | null, key?:
       if (!alive || n !== seq) return
       data.value = v
       loading.value = false
+    }).catch(() => {
+      // 실패하면 값은 그대로 두고 다음 주기에 다시 (계속 "불러오는 중"으로 남지 않게)
+      if (alive && n === seq) loading.value = false
     })
   }
 

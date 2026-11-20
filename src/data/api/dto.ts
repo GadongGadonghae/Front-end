@@ -150,6 +150,31 @@ export interface WipDto {
   wipQty: number
 }
 
+/** M-17 공장 안 제품 위치 (3D 물류, 11/19 추가). equipmentId(설비 안)와 pile(공정 사이) 중 하나만 값이 있다 */
+export interface FlowPositionsDto {
+  at: string
+  products: {
+    productId: string
+    lineId: string
+    equipmentId: string | null
+    /** SL-PR · PR-WD · WD-PT (라인 안, 라인 접두어 없음) · PT1:PT-VI · PT2:PT-VI */
+    pile: string | null
+  }[]
+}
+
+/** M-16 코일 입고 현황 (1롤 = 제품 20개, 11/18 추가) */
+export interface CoilTodayDto {
+  date: string
+  receivedRolls: number
+  receivedQty: number
+  /** 슬리팅 앞 코일 재고 (제품 수) */
+  stockQty: number
+  /** 코일 재고 (롤, 소수 1자리. 예: 74개 → 3.7) */
+  stockRolls: number
+  inputQty: number
+  receipts: { materialId: string; receivedAt: string; productQty: number }[]
+}
+
 // ── 가동률 (U) ──
 
 /** U-01 (v3.2: lineYield 추가) */
@@ -206,7 +231,7 @@ export interface DowntimeSummaryDto {
   byGroup: ({ key: string; totalMin: number } & Partial<Record<ReasonCode, number>>)[]
 }
 
-/** U-08 */
+/** U-08 items[] · U-09 응답 (11/19부터 바뀐 뒤의 1건 전체) */
 export interface DowntimeEventDto {
   eventId: number
   lineId: string | null
@@ -223,14 +248,6 @@ export interface DowntimeEventDto {
   actionUserName: string | null
   actionAt: string | null
   memo: string
-}
-
-/** U-09 응답 */
-export interface DowntimeEventUpdatedDto {
-  eventId: number
-  reasonCode: ReasonCode
-  actionUserId: number | null
-  actionUserName: string | null
 }
 
 /** U-11 */
@@ -267,6 +284,40 @@ export interface ProductionPlanDto {
   planQty: number
 }
 
+// ── 제품 추적 (P) ──
+
+/** P-01 제품 목록 한 줄. finalResult = OK(비전 OK) / NG(공정 NG 또는 비전 NG) / IN_PROGRESS */
+export interface ProductDto {
+  productId: string
+  lineId: string
+  inputAt: string
+  finalResult: 'OK' | 'NG' | 'IN_PROGRESS'
+  scrappedProcess: string | null
+  scrappedEquipmentId: string | null
+  finishedAt: string | null
+}
+
+/** P-02 제품 이력. 프레스는 PR1~PR4가 단계 4개. 처리 중이면 endedAt·result가 null */
+export interface ProductDetailDto {
+  productId: string
+  lineId: string
+  finalResult: 'OK' | 'NG' | 'IN_PROGRESS'
+  scrappedProcess: string | null
+  scrappedEquipmentId: string | null
+  steps: { process: string; equipmentId: string; at: string | null; startedAt: string | null; endedAt: string | null; values: Record<string, unknown>; result: 'OK' | 'NG' | null }[]
+}
+
+/** P-03 공정 불량 제품 한 줄 */
+export interface ProcessNgDto {
+  productId: string
+  lineId: string
+  process: string
+  equipmentId: string
+  at: string
+  itemName: string | null
+  reason: string | null
+}
+
 // ── 재배정 (R) ──
 
 /** R-01 */
@@ -278,15 +329,42 @@ export interface ReassignmentSummaryDto {
   stopMin: number
   lossQty: number
   createdAt: string
+  /** 고장 사유 코드 (11/19 추가) */
+  code: ReasonCode
 }
 
-/** R-02 */
+/** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */
 export interface ReassignmentDetailDto {
   reportId: number
   downtimeId: number
-  sourceLineId: string
+  sourceLineId: string | null
+  /** 부족 수량 */
   lossQty: number
-  details: { targetLineId: string; spareCapacity: number; addQty: number }[]
+  /** targetLineId: 라인 ID, 도장 보고서면 설비 ID(PT1·PT2). share: 남은 능력 비율(%) */
+  details: { targetLineId: string; spareCapacity: number; addQty: number; remainingPlan: number | null; share: number }[]
+  /** 표시용 문서번호 AI-RPT-yyyyMMdd-NNN */
+  documentNo: string
+  equipmentId: string
+  code: ReasonCode
+  detail: string | null
+  startedAt: string
+  createdAt: string
+  createdBy: string | null
+  kind: 'line' | 'paint' | 'vision' | null
+  baseAt: string | null
+  remainingSec: number | null
+  ctSec: number | null
+  stoppedPlan: number | null
+  stoppedDone: number | null
+  targetQty: number | null
+  unmetQty: number | null
+  /** AI 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
+  ai: {
+    title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null
+    /** AI 추가 요청과 그 해석 (제외·정지 라인, 우선 기준 BALANCED·DUE_DATE·SAFETY) */
+    additionalRequest: string | null
+    requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[] } | null
+  } | null
 }
 
 // ── 관리·공통 (C) ──

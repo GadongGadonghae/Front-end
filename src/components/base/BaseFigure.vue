@@ -3,7 +3,8 @@
 import BaseNumber from '@/components/base/BaseNumber.vue'
 
 withDefaults(defineProps<{
-  label: string
+  /** 패널 제목·설명에 이미 같은 말이 있으면 생략 (대시보드 카드) */
+  label?: string
   value: number | null | undefined
   digits?: number
   unit?: string
@@ -18,7 +19,7 @@ withDefaults(defineProps<{
 
 <template>
   <div class="fig" :class="size">
-    <div class="label">{{ label }}</div>
+    <div v-if="label" class="label">{{ label }}</div>
     <div class="value"><template v-if="text != null">{{ text }}</template><BaseNumber v-else :value="value" :digits="digits" :unit="unit" :suffix="suffix" /></div>
     <div v-if="sub || $slots.sub" class="sub"><slot name="sub">{{ sub }}</slot></div>
   </div>
@@ -27,21 +28,19 @@ withDefaults(defineProps<{
 <style scoped>
 .label {
   color: var(--c-ink-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-figure);
 }
 
+/* 값은 이름과 같은 크기, 굵기·진한 색으로만 구분한다 (sm·md) */
 .value {
-  font-size: var(--fs-xl);
+  font-size: var(--fs-figure);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }
 
-.sm .value {
-  font-size: var(--fs-lg);
-}
-
+/* 화면·카드의 대표 숫자(lg)만 이름보다 한 단계 크게 (대시보드 기준, 모든 화면) */
 .lg .value {
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-lg);
 }
 
 .sub {

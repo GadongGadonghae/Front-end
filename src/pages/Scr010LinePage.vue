@@ -1,5 +1,5 @@
 <!-- SCR-010 라인 상세 (화면정의서 3장 SCR-010, DESIGN.md Layout "라인 상세")
-     왼쪽 열 전체: 라인 요약. 오른쪽 위: 라인 흐름(주인공). 아래 가운데: 시간대별 라인 생산, 아래 오른쪽: 라인 오늘 알림 -->
+     위: 고장 알림 띠 + 요약 카드 3장(실적 도넛 · OEE · 불량 도넛). 아래 왼쪽: 라인 흐름(주인공), 아래 오른쪽: 오늘 알람 이력 · 비가동 누적 -->
 <script setup lang="ts">
 import { PROCESS_NAME, lineName } from '@/lib/status'
 import { computed } from 'vue'
@@ -10,26 +10,21 @@ import BaseTabs from '@/components/base/BaseTabs.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
-import ChartLine from '@/components/charts/ChartLine.vue'
-import ChartLegend from '@/components/charts/ChartLegend.vue'
-import ChartProgress from '@/components/charts/ChartProgress.vue'
-import SummaryColumn from '@/components/domain/SummaryColumn.vue'
-import SummaryBlock from '@/components/domain/SummaryBlock.vue'
+import ChartBarList from '@/components/charts/ChartBarList.vue'
+import ChartDonutValue from '@/components/charts/ChartDonutValue.vue'
+import BaseButton from '@/components/base/BaseButton.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
-import StatusCounts from '@/components/domain/StatusCounts.vue'
 import StateLegend from '@/components/domain/StateLegend.vue'
 import LineFlow from '@/components/domain/LineFlow.vue'
 import AlertList from '@/components/domain/AlertList.vue'
 import { useLineDetail } from '@/composables/useLineDetail'
-import { useTodayProduction } from '@/composables/useTodayProduction'
 import { useTodayAlerts } from '@/composables/useTodayAlerts'
 import { useMaster } from '@/composables/useMaster'
-import { equipmentPath, processPath } from '@/lib/routes'
+import { equipmentPath, lineTabs, processPath } from '@/lib/routes'
 import { formatNumber } from '@/lib/format'
 import type { LineId, ProcessId } from '@/types/plant'
 import type { AlertRowView } from '@/types/view'
 
-const LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F', 'PT']
 const lineLabel = (id: LineId) => lineName(id)
 
 const route = useRoute()
@@ -38,16 +33,37 @@ const router = useRouter()
 const lineId = route.params.lineId as LineId
 const name = lineLabel(lineId)
 
-const { flow, now } = useLineDetail(lineId)
-const production = useTodayProduction(lineId)
+const { flow, now, oeeRows } = useLineDetail(lineId)
 const { rows: alerts, ongoingCount } = useTodayAlerts({ area: lineId })
 const { equipmentById } = useMaster()
 
-const tabs = LINES.map((id) => ({ key: id, label: lineLabel(id), to: `/lines/${id}` }))
+const tabs = lineTabs(lineLabel)
 
-const yMax = computed(() => production.target.value ?? Math.max(10, ...production.actual.value.map((p) => p[1])))
-const yTicks = computed(() => [0, 1, 2, 3, 4].map((i) => Math.round((yMax.value * i) / 4)))
-const xTicks = [0, 6, 12, 18, 24].map((h) => ({ value: h, label: `${String(h).padStart(2, '0')}시` }))
+// 진행 중인 고장 (맨 위 알림 띠)
+const fault = computed(() => alerts.value.find((r) => r.kind === 'D' && r.ongoing) ?? null)
+const faultCount = computed(() => alerts.value.filter((r) => r.kind === 'D' && r.ongoing).length)
+
+const NG_COLORS = ['var(--c-3d-route-alt)', 'var(--c-3d-route-2)', 'var(--c-3d-route)']
+const ngParts = computed(() => now.value.ngRows.map((r, i) => ({ value: r.value, color: NG_COLORS[i % NG_COLORS.length], name: PROCESS_NAME[r.process] })))
+const ngRate = computed(() => (now.value.ngTotal != null && now.value.done ? Math.round((now.value.ngTotal / now.value.done) * 1000) / 10 : null))
+const behind = computed(() => (now.value.plan != null && now.value.done != null ? now.value.plan - now.value.done : null))
+
+// 비가동 사유별 누적 (오늘 알림의 지속시간 합): 고장 D · 대기 I · 정지 S
+const secOf = (d: string) => {
+  const m = /(\d+):(\d+)(?::(\d+))?/.exec(d)
+  if (!m) return 0
+  return m[3] ? +m[1] * 3600 + +m[2] * 60 + +m[3] : +m[1] * 60 + +m[2]
+}
+const downtime = computed(() => {
+  const rows = [
+    { key: 'D', label: '고장', color: 'var(--c-down)' },
+    { key: 'I', label: '대기', color: 'var(--c-idle)' },
+    { key: 'S', label: '정지(계획)', color: 'var(--c-stop-solid)' },
+  ].map((r) => ({ ...r, sec: alerts.value.filter((a) => a.kind === r.key).reduce((n, a) => n + secOf(a.duration), 0) }))
+  const max = Math.max(1, ...rows.map((r) => r.sec))
+  return { total: rows.reduce((n, r) => n + r.sec, 0), rows: rows.map((r) => ({ ...r, width: (r.sec / max) * 100 })) }
+})
+const minutes = (sec: number) => (sec >= 3600 ? `${Math.floor(sec / 3600)}시간 ${Math.floor((sec % 3600) / 60)}분` : `${Math.floor(sec / 60)}분`)
 
 function openEquipment(id: string) {
   const e = equipmentById.value.get(id)
@@ -55,7 +71,7 @@ function openEquipment(id: string) {
 }
 const openGroup = (p: ProcessId) => router.push(processPath(lineId, p))
 const openAlert = (r: AlertRowView) => (r.kind === 'risk' ? router.push({ path: '/pdm', query: { eq: r.equipmentId } }) : openEquipment(r.equipmentId))
-const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
+const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?event=${r.id}`)
 </script>
 
 <template>
@@ -64,38 +80,50 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
       <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: name }]" />
       <BaseTabs :items="tabs" :active="lineId" label="라인" />
     </template>
+    <!-- 진행 중 고장이 있을 때만: 제목 줄 오른쪽에 한 줄로 (본문 위에 끼우면 알람이 생길 때마다 아래 내용이 밀린다) -->
+    <template v-if="fault" #head-right>
+      <div class="fault" role="alert">
+        <StatusKey state="D" size="sm" />
+        <b>{{ fault.title }} 고장<template v-if="faultCount > 1"> 외 {{ faultCount - 1 }}건</template></b>
+        <span class="why">{{ fault.message }} · 지속 {{ fault.duration }}</span>
+        <BaseButton size="sm" @click="openAlert(fault)">조치 가기 ›</BaseButton>
+      </div>
+    </template>
 
     <div class="layout">
-      <SummaryColumn class="sum" :title="`${name} 지금`" :meta="`설비 ${now.equipmentCount}대 · 오늘 누적`" spread>
-        <!-- 대표 상태 + 상태별 대수 (시안 B-line): 큰 열쇠 칸과 명칭, 오른쪽에 흐린 이름표. 아래 2×2 대수 -->
-        <SummaryBlock class="now">
-          <div class="rep">
-            <StatusKey :state="now.state" size="xl" label />
-            <span class="cap">라인 대표 상태</span>
+      <div class="cards">
+        <BasePanel title="오늘 라인 실적 / 계획">
+          <div class="donutrow">
+            <ChartDonutValue
+              :parts="[{ value: now.rate ?? 0, color: 'var(--c-accent)' }, { value: Math.max(0, 100 - (now.rate ?? 0)), color: 'var(--c-track)' }]"
+              :center="now.rate != null ? `${formatNumber(now.rate, 1)}%` : '-'"
+              sub="달성률"
+              :label="`달성률 ${formatNumber(now.rate, 1)}%`"
+            />
+            <div>
+              <BaseFigure class="big" label="" :value="now.done" :suffix="now.plan != null ? `/ ${formatNumber(now.plan)}` : undefined" size="lg" />
+              <span v-if="behind != null && behind > 0" class="late">목표 대비 -{{ formatNumber(behind) }}개</span>
+              <span v-else-if="now.plan == null" class="unset">목표 미설정</span>
+            </div>
           </div>
-          <StatusCounts :counts="now.counts" big />
-        </SummaryBlock>
-        <SummaryBlock>
-          <BaseFigure label="오늘 라인 실적 / 라인 계획" :value="now.done" :suffix="now.plan != null ? `/ ${formatNumber(now.plan)}` : undefined" size="lg" />
-          <template v-if="now.plan != null">
-            <ChartProgress :percent="now.rate" :label="`달성률 ${formatNumber(now.rate, 1)}%`" />
-            <span class="sub">달성률 {{ formatNumber(now.rate, 1) }}%</span>
-          </template>
-          <span v-else class="unset">목표 미설정</span>
-        </SummaryBlock>
-        <SummaryBlock>
-          <BaseFigure label="라인 OEE" :value="now.oee" :digits="1" unit="%" />
-        </SummaryBlock>
-        <SummaryBlock>
-          <!-- 숫자 옆에 공정별 개수 (검사 위치 설명은 마우스를 올리면) -->
-          <div class="ngrow">
-            <BaseFigure label="오늘 불량 제외" :value="now.ngTotal" />
+        </BasePanel>
+
+        <BasePanel title="라인 OEE">
+          <div class="oeerow">
+            <BaseFigure class="big" label="" :value="now.oee" :digits="1" unit="%" size="lg" />
+            <div class="oee-parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
+          </div>
+        </BasePanel>
+
+        <BasePanel :title="`오늘 불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
+          <div class="donutrow">
+            <ChartDonutValue :parts="ngParts" :center="ngRate != null ? `${formatNumber(ngRate, 1)}%` : '-'" sub="불량률" :label="`불량률 ${formatNumber(ngRate, 1)}%`" />
             <ul class="ng" aria-label="공정별 불량 제외">
-              <li v-for="r in now.ngRows" :key="r.process" :title="r.label"><span>{{ PROCESS_NAME[r.process] }}</span><b>{{ r.value }}</b></li>
+              <li v-for="r in ngParts" :key="r.name"><i :style="{ background: r.color }"></i><span>{{ r.name }}</span><b>{{ r.value }}</b></li>
             </ul>
           </div>
-        </SummaryBlock>
-      </SummaryColumn>
+        </BasePanel>
+      </div>
 
       <BasePanel class="flowp" title="라인 흐름" meta="공정 이름이나 설비 칸을 누르면 공정 상세">
         <template #tools><StateLegend pdm /></template>
@@ -103,83 +131,97 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
         <BaseEmpty v-else />
       </BasePanel>
 
-      <BasePanel class="chartp" title="시간대별 라인 생산" meta="00시~24시 누적">
-        <template #tools>
-          <ChartLegend :items="[{ label: '라인 실적', kind: 'main' }, { label: production.target.value != null ? `라인 계획 ${formatNumber(production.target.value)}` : '라인 계획', kind: 'ref' }]" />
-        </template>
-        <ChartLine
-          v-if="production.loaded.value"
-          :label="`${name} 시간대별 누적 실적과 라인 계획`"
-          :x="[0, 24]"
-          :y="[0, yMax]"
-          :x-ticks="xTicks"
-          :y-ticks="yTicks"
-          :series="[{ key: 'actual', points: production.actual.value }, { key: 'plan', kind: 'ref', points: production.plan.value }]"
-          :now="production.nowHour.value"
-          end-dot
-        />
-        <BaseEmpty v-else />
-      </BasePanel>
-
-      <BasePanel class="alerts" :title="`${name} 오늘 알림`" :meta="`${alerts.length}건 · 진행 중 ${ongoingCount}`" flush>
-        <AlertList :rows="alerts" @open="openAlert" @report="openReport" />
-      </BasePanel>
+      <div class="side">
+        <BasePanel class="alerts" title="오늘 알람 이력" :meta="`${alerts.length}건 · 진행 중 ${ongoingCount}`" flush>
+          <AlertList :rows="alerts" @open="openAlert" @report="openReport" />
+        </BasePanel>
+        <BasePanel class="down" title="비가동 사유별 누적">
+          <p class="total">오늘 비가동 합계 <b>{{ minutes(downtime.total) }}</b></p>
+          <ul class="bars">
+            <li v-for="r in downtime.rows" :key="r.key">
+              <span>{{ r.label }}</span>
+              <div class="bar"><i :style="{ width: `${r.width}%`, background: r.color }"></i></div>
+              <b>{{ minutes(r.sec) }}</b>
+            </li>
+          </ul>
+        </BasePanel>
+      </div>
     </div>
   </PageLayout>
 </template>
 
 <style scoped>
-/* 요약 열 | 가운데 | 오른쪽 열. 위 줄(라인 흐름)이 아래 줄보다 크다 */
+/* 요약 카드의 대표 숫자(라인 실적·라인 OEE)는 카드 안에서 가장 크게 */
+.big :deep(.value) {
+  font-size: var(--fs-xl);
+}
+
+/* 라인 OEE: 숫자는 왼쪽, 3요소 막대는 오른쪽 */
+.oeerow {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--sp-5);
+  min-height: 0;
+}
+
+.oee-parts {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+  padding-left: var(--sp-5);
+  border-left: var(--line-w) solid var(--c-line);
+}
+
+/* 위: 고장 띠 → 카드 3장. 아래: 라인 흐름(남는 폭) | 오른쪽 열(알람 이력 · 비가동 누적) */
 .layout {
   display: grid;
-  grid-template-columns: var(--col-summary) minmax(0, 1fr) var(--col-side);
-
-  /* 위 줄(라인 흐름)은 내용만큼, 다만 화면의 62%까지. 큰 화면에서 흐름 상자가 빈 모눈으로 길어지지 않고 남는 높이는 아래 줄로 */
-  grid-template-rows: fit-content(62%) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) var(--col-side);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--sp-4);
   height: 100%;
   min-height: 0;
 }
 
-.sum {
-  grid-row: 1 / 3;
-  grid-column: 1;
-}
-
-.flowp {
-  grid-row: 1;
-  grid-column: 2 / 4;
-}
-
-.chartp {
-  grid-row: 2;
-  grid-column: 2;
-}
-
-.alerts {
-  grid-row: 2;
-  grid-column: 3;
-}
-
-.now {
-  gap: var(--sp-5);
-}
-
-.rep {
+.fault {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
+  min-width: 0;
+  padding: var(--sp-1) var(--sp-1) var(--sp-1) var(--sp-3);
+  border: var(--line-w) solid var(--c-down);
+  border-radius: var(--r-2);
+  background: var(--c-down-tint);
+  font-size: var(--fs-md);
+  white-space: nowrap;
 }
 
-.cap {
-  margin-left: auto;
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+/* 좁으면 원인·지속 글을 줄인다 (전체는 조치 가기 → 알람 이력) */
+.fault .why {
+  overflow: hidden;
+  min-width: 0;
+  color: var(--c-ink-2);
+  text-overflow: ellipsis;
 }
 
-.sub {
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
+.cards {
+  display: grid;
+  grid-column: 1 / 3;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: var(--sp-4);
+}
+
+.donutrow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+}
+
+.late {
+  color: var(--c-down);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-strong);
 }
 
 .unset {
@@ -187,11 +229,46 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   font-size: var(--fs-md);
 }
 
+.flowp {
+  grid-row: 2;
+  grid-column: 1;
+}
+
+.side {
+  display: flex;
+  grid-row: 2;
+  grid-column: 2;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-height: 0;
+}
+
+.alerts {
+  flex: 1;
+}
+
+.down {
+  flex: none;
+}
+
+/* 합계는 아래 막대 숫자와 같은 줄 크기로 (칸을 낮춰 위 알람 이력에 자리를 준다) */
+.total {
+  margin: 0 0 var(--sp-2);
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
+}
+
+.total b {
+  margin-left: var(--sp-2);
+  color: var(--c-ink);
+  font-size: var(--fs-figure);
+  font-weight: var(--fw-strong);
+}
+
+.bars,
 .ng {
   display: grid;
-  flex: 1;
-  gap: var(--sp-1);
-  max-width: 10em;
+  gap: var(--sp-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -199,28 +276,54 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
   font-size: var(--fs-md);
 }
 
-.ngrow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-5);
+.ng {
+  flex: 1;
 }
 
 .ng li {
   display: flex;
-  justify-content: space-between;
-  gap: var(--sp-3);
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.ng i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
 }
 
 .ng b {
+  margin-left: auto;
   color: var(--c-ink);
   font-weight: var(--fw-strong);
 }
 
-/* 낮은 창 (1440×810, 1536×730 등): 요약 열 큰 숫자를 한 단계 줄여 열 안 스크롤이 생기지 않게. 라인 흐름 칸은 칸 안에서 줄인다 (EquipCell) */
-@media (height <= 860px) {
-  .sum :deep(.fig.lg .value) {
-    font-size: var(--fs-xl);
-  }
+.bars {
+  gap: var(--sp-1);
+}
+
+.bars li {
+  display: grid;
+  grid-template-columns: 6em minmax(0, 1fr) 4.5em;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.bars b {
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
+  text-align: right;
+}
+
+.bar {
+  height: var(--bar-h);
+  overflow: hidden;
+  border-radius: var(--r-1);
+  background: var(--c-track);
+}
+
+.bar i {
+  display: block;
+  height: 100%;
 }
 </style>

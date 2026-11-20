@@ -34,6 +34,7 @@
 }
 
 .head-right {
+  min-width: 0;
   margin-left: auto;
   display: flex;
   align-items: center;

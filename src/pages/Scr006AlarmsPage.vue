@@ -35,6 +35,8 @@ const { tab, from, to, lineId, process, states, code, ongoing, todo, page } = h
 // 탭은 주소 쿼리 (?tab=risk). 같은 화면이라 필터는 그대로 둔다
 const tabOf = (v: unknown): HistoryTab => (v === 'risk' ? 'risk' : 'alarm')
 watch(() => route.query.tab, (v) => { tab.value = tabOf(v) }, { immediate: true })
+// 대시보드 팝업 "조치 가기" (?eq=설비ID): 기준정보가 오면 그 설비 건으로 필터를 맞춘다
+watch([() => route.query.eq, () => h.equipmentById.value.size], ([eq]) => { if (typeof eq === 'string') h.focusEquipment(eq) }, { immediate: true })
 const TABS = [
   { key: 'alarm', label: '알람·비가동', to: '/alarms' },
   { key: 'risk', label: '예지보전 위험', to: '/alarms?tab=risk' },
@@ -67,28 +69,17 @@ const riskTone = (r: RiskRow) => (r.ongoing ? 'down' : null)
 // 조치 메모: 한 번에 한 건만, 그 행 아래로 펼친다. 열면 입력에 초점, 닫으면 연 버튼으로. 저장하면 그 행에 "저장됨"
 const memo = useInlineEdit('alarm-memo')
 const { draft } = memo
-const saving = ref(false)
 const savedId = ref<string | null>(null)
-const saveError = ref('')
 function openMemo(r: AlarmRow) {
   savedId.value = null
-  saveError.value = ''
   if (memo.editing.value === r.id) memo.close()
   else memo.open(r.id, r.memo ?? '')
 }
-async function save(id: string) {
-  saving.value = true
-  saveError.value = ''
-  try {
-    await h.saveMemo(id, draft.value)
-    savedId.value = id
-    memo.close()
-  } catch {
-    saveError.value = '저장하지 못했습니다. 쓴 글은 그대로 있으니 다시 저장해 보세요'
-  } finally {
-    saving.value = false
-  }
-}
+/** 저장: 끝나면 닫고 "저장됨", 실패하면 열어 둔 채 문구 (useInlineEdit.submit) */
+const save = (id: string) => memo.submit(async () => {
+  await h.saveMemo(id, draft.value)
+  savedId.value = id
+})
 const subjectOf = (r: AlarmRow) => `${r.line === r.equipment ? r.equipment : `${r.line} ${r.equipment}`} · ${r.start} · ${r.code}`
 
 // 왼쪽 요약 열: 기간 이름 (오늘이면 "오늘")
@@ -101,7 +92,7 @@ const picked = computed(() => [
   ...(todo.value ? [{ key: 'todo', label: h.todoLabel(todo.value), clear: () => { todo.value = '' } }] : []),
 ])
 
-const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
+const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?event=${r.id}`)
 const noState = computed(() => !states.value.D && !states.value.I && !states.value.S)
 </script>
 
@@ -211,8 +202,8 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
                 :ongoing="row.ongoing"
                 :notify="row.notify"
                 :last-saved="row.memoBy ? `${row.memoBy} · ${row.memoAt}` : null"
-                :saving="saving"
-                :error="saveError"
+                :saving="memo.busy.value"
+                :error="memo.error.value"
                 @save="save(row.id)"
                 @cancel="memo.close()"
               />
@@ -244,7 +235,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -390,6 +381,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
   color: var(--c-accent);
   font-size: var(--fs-sm);
 }
+
 
 .link {
   flex: none;

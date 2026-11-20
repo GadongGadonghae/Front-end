@@ -1,7 +1,7 @@
 // 데모 데이터 공급기: contracts.ts의 DataSource를 프론트 안에서 흉내 낸다 (주기는 API 명세 3.1).
 // Vue를 모르는 순수 TypeScript (FRONTEND.md 2장). 타이머는 구독자가 있을 때만 돈다.
 import type { DataSource, Unsubscribe } from '@/data/contracts'
-import type { EquipmentLive, LineSummary, PlantSnapshot, PlantSummary, ProductMove } from '@/types/live'
+import type { EquipmentLive, LineSummary, PlantSnapshot, PlantSummary, ProductMove, FlowPositions } from '@/types/live'
 import type { AlarmEvent, RiskEvent, StateEvent } from '@/types/events'
 import type { HourlyOutput, ProductDetail, ProductionQuery, ProductionSummary, StepResult } from '@/types/production'
 import type { InboundToday, InspectionToday, ProcessToday, TelemetryTick } from '@/types/process'
@@ -17,6 +17,7 @@ import { createAnalysis } from '@/data/mock/analysis'
 import { createHistory } from '@/data/mock/history'
 import { createReports } from '@/data/mock/reports'
 import { createPdm } from '@/data/mock/pdm'
+import { createFlow } from '@/data/mock/flow'
 import { addDays, dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
 const SNAPSHOT_MS = 1000 // snapshot 1초
@@ -327,11 +328,21 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     snapshot: new Set<(s: PlantSnapshot) => void>(),
     summary: new Set<(s: PlantSummary) => void>(),
     move: new Set<(m: ProductMove) => void>(),
+    flow: new Set<(f: FlowPositions) => void>(),
     alarm: new Set<(a: AlarmEvent) => void>(),
     risk: new Set<(r: RiskEvent) => void>(),
   }
   let snapTimer: ReturnType<typeof setInterval> | null = null
   let sumTimer: ReturnType<typeof setInterval> | null = null
+
+  // 데모 물류: 화면을 열자마자 공장이 비어 보이지 않게 10분을 미리 돌려 둔다 [데모]
+  const flow = createFlow(
+    () => live.values(),
+    (l) => MASTER.lines.find((x) => x.id === l)?.currentPaintId ?? 'PT1',
+    today().replaceAll('-', ''),
+    () => iso(now()),
+  )
+  flow.advance(600)
 
   const tickSnapshot = () => {
     for (const lineId of Object.keys(lineDone)) {
@@ -341,6 +352,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     }
     const s = snapshot()
     subs.snapshot.forEach((cb) => cb(s))
+    if (subs.flow.size) {
+      flow.advance(SNAPSHOT_MS / 1000)
+      const f = flow.positions()
+      subs.flow.forEach((cb) => cb(f))
+    }
   }
   const tickSummary = () => {
     const s = summary()
@@ -371,6 +387,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       onSnapshot(cb) { const off = subscribe(subs.snapshot, cb); cb(snapshot()); return off },
       onSummary(cb) { const off = subscribe(subs.summary, cb); cb(summary()); return off },
       onProductMove: (cb) => subscribe(subs.move, cb),
+      onFlowPositions(cb) { const off = subscribe(subs.flow, cb); cb(flow.positions()); return off },
       onAlarm: (cb) => subscribe(subs.alarm, cb),
       onRiskChanged: (cb) => subscribe(subs.risk, cb),
       // 예지보전 위험도 5초 (API 명세 3.1). 위험도는 최근 10분 평균이라 자주 바뀌지 않는다

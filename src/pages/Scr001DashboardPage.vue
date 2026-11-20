@@ -1,42 +1,29 @@
-<!-- SCR-001 메인 대시보드 (화면정의서 3장 SCR-001, DESIGN.md Layout "대시보드")
-     왼쪽: 공장 배치도(가장 큼) → 오늘 생산 · 종합 가동률 · 품질 3칸. 오른쪽 세로 열 전체: 알림 (D-46)
+<!-- SCR-001 메인 대시보드 (화면정의서 3장 SCR-001)
+     11/18 변경: 첫 화면은 3D 공장만 크게. 오늘 생산 · 종합 가동률 · 품질은 왼쪽 카드 열.
+     알림 열(D-46)은 뺐다 (고장은 토스트·헤더 알림으로). 2D 전환은 없앰 (3D 탑뷰로 대신)
      설비 대수는 배치도 범례에 함께 적는다. 화면은 조립만 하고 값은 composable이 만든다 -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import BasePanel from '@/components/base/BasePanel.vue'
-import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
-import ChartLine from '@/components/charts/ChartLine.vue'
-import ChartLegend from '@/components/charts/ChartLegend.vue'
 import ChartBarList, { type BarRow } from '@/components/charts/ChartBarList.vue'
 import StateLegend from '@/components/domain/StateLegend.vue'
-import FactoryMap from '@/components/domain/FactoryMap.vue'
-import AlertList from '@/components/domain/AlertList.vue'
 import { useFactoryMap } from '@/composables/useFactoryMap'
+import { useFactory3d } from '@/composables/useFactory3d'
 import { useLiveSummary } from '@/composables/useLiveSummary'
-import { useTodayProduction } from '@/composables/useTodayProduction'
-import { useTodayAlerts } from '@/composables/useTodayAlerts'
-import { useMaster } from '@/composables/useMaster'
-import { equipmentPath, linePath } from '@/lib/routes'
+import { linePath } from '@/lib/routes'
 import { formatNumber } from '@/lib/format'
-import type { AlertRowView } from '@/types/view'
 
 const router = useRouter()
-const { view: map, counts } = useFactoryMap()
+const { counts } = useFactoryMap()
 const summary = useLiveSummary()
-const production = useTodayProduction()
-const { rows: alerts, ongoingCount } = useTodayAlerts()
-const { equipmentById } = useMaster()
+const f3d = useFactory3d()
+// 3D(three.js)는 무거워서 3D를 고를 때만 받는다
+const Factory3D = defineAsyncComponent(() => import('@/components/domain/Factory3D.vue'))
 
-const mode = ref<'2d' | '3d'>('2d')
 const plant = computed(() => summary.value?.plant ?? null)
-
-// 오늘 생산: 계획선 기준 y 눈금
-const yMax = computed(() => production.target.value ?? Math.max(10, ...production.actual.value.map((p) => p[1])))
-const yTicks = computed(() => [0, 1, 2, 3].map((i) => Math.round((yMax.value * i) / 3)))
-const xTicks = [0, 6, 12, 18, 24].map((h) => ({ value: h, label: `${String(h).padStart(2, '0')}시` }))
 
 // 종합 가동률 3요소 (OEE = 시간 × 성능 × 양품, D-21)
 const oeeRows = computed<BarRow[]>(() => {
@@ -53,111 +40,69 @@ const ngRows = computed<BarRow[]>(() =>
     .sort((a, b) => (b.value ?? 0) - (a.value ?? 0)),
 )
 
-function openAlert(r: AlertRowView) {
-  // 예지보전 위험 건은 예지보전 화면에서 그 설비를 골라 연다
-  if (r.kind === 'risk') { router.push({ path: '/pdm', query: { eq: r.equipmentId } }); return }
-  const e = equipmentById.value.get(r.equipmentId)
-  if (e) router.push(equipmentPath(e))
-}
-function openReport(r: AlertRowView) {
-  router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
-}
 </script>
 
 <template>
   <div class="dash">
     <h1 class="sr-only">대시보드</h1>
-    <div class="main">
-      <BasePanel title="공장 배치도" meta="설비 39대">
-        <template #tools>
-          <StateLegend :counts="counts" pdm />
-          <BaseSegmented v-model="mode" label="보기" size="sm" :options="[{ value: '2d', label: '2D' }, { value: '3d', label: '3D' }]" />
-        </template>
-        <FactoryMap
-          v-if="mode === '2d' && map"
-          :view="map"
-          @open-line="(id) => router.push(linePath(id))"
-          @open-inbound="router.push('/inbound')"
-          @open-outbound="router.push('/outbound')"
-        />
-        <BaseEmpty v-else-if="mode === '3d'" text="3D 공장은 나중에 설계합니다 (D-62)" />
-        <BaseEmpty v-else />
+    <div class="cards">
+      <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
+        <div class="lead">
+          <BaseFigure label="실적" :value="plant?.done" size="lg" />
+          <div v-if="plant && plant.target != null" class="figs-sub">
+          <BaseFigure label="목표" :value="plant.target" size="sm" />
+          <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
+          </div>
+        </div>
+        <p v-if="plant && plant.target == null" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
       </BasePanel>
 
-      <div class="lower">
-        <BasePanel class="go" @click="router.push('/production')">
-          <!-- 패널 전체는 마우스로, 제목 링크는 키보드로 생산 조회에 간다 -->
-          <template #head>
-            <h2><RouterLink class="title-link" to="/production" @click.stop>오늘 생산</RouterLink></h2>
-            <span class="meta">실적 = 출고 양품</span>
-          </template>
-          <template #tools><ChartLegend :items="[{ label: '실적', kind: 'main' }, { label: '목표', kind: 'ref' }]" /></template>
-          <!-- 숫자는 왼쪽 세로 열, 그래프는 오른쪽: 그래프가 칸 높이를 거의 다 쓴다 (숫자 아래 쌓으면 낮은 창에서 납작해짐) -->
-          <div class="prod">
-            <div class="figs">
-              <BaseFigure label="실적" :value="plant?.done" size="lg" />
-              <div v-if="plant && plant.target != null" class="figs-sub">
-                <BaseFigure label="목표" :value="plant.target" size="sm" />
-                <BaseFigure label="달성률" :value="plant.rate" :digits="1" unit="%" size="sm" />
-              </div>
-              <p v-else-if="plant" class="unset">목표 미설정 <RouterLink to="/settings/target" @click.stop>목표 입력</RouterLink></p>
-            </div>
-            <ChartLine
-              label="오늘 시간대별 누적 실적과 목표선"
-              :x="[0, 24]"
-              :y="[0, yMax]"
-              :x-ticks="xTicks"
-              :y-ticks="yTicks"
-              :series="[{ key: 'actual', points: production.actual.value }, { key: 'plan', kind: 'ref', points: production.plan.value }]"
-              :now="production.nowHour.value"
-              end-dot
-            />
-          </div>
-        </BasePanel>
+      <BasePanel class="go" title="종합 가동률" meta="오늘 · OEE" @click="router.push('/utilization')">
+        <BaseFigure :value="plant?.oee.oee" :digits="1" unit="%" size="lg" />
+        <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
+      </BasePanel>
 
-        <BasePanel title="종합 가동률" meta="오늘 · OEE">
-          <BaseFigure label="OEE" :value="plant?.oee.oee" :digits="1" unit="%" size="lg" />
-          <div class="parts"><ChartBarList label="OEE 3요소" :rows="oeeRows" :max="100" /></div>
-        </BasePanel>
-
-        <BasePanel title="품질" meta="오늘 · 출고 불량률">
-          <!-- 양품·불량은 큰 숫자 옆에 붙여 한 줄을 아낀다 -->
-          <div class="lead">
-            <BaseFigure label="출고 불량률" :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
-            <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
-          </div>
-          <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
-        </BasePanel>
-      </div>
+      <BasePanel class="go" title="품질" meta="오늘 · 출고 불량률" @click="router.push('/outbound')">
+        <div class="lead">
+          <BaseFigure :value="plant?.quality.outbound.rate" :digits="1" unit="%" size="lg" />
+          <span v-if="plant" class="lead-sub">양품 {{ formatNumber(plant.quality.outbound.ok) }}<br>불량 {{ formatNumber(plant.quality.outbound.ng) }}</span>
+        </div>
+        <div class="parts"><ChartBarList label="공정별 불량 수" :rows="ngRows" /></div>
+      </BasePanel>
     </div>
 
-    <BasePanel class="alerts" title="알림" :meta="`오늘 ${alerts.length}건 · 진행 중 ${ongoingCount}`" flush>
-      <AlertList :rows="alerts" @open="openAlert" @report="openReport" />
+    <BasePanel title="공장 배치도" meta="설비 39대">
+      <template #tools>
+        <StateLegend :counts="counts" pdm />
+      </template>
+      <Factory3D
+        v-if="f3d.view.value"
+        v-bind="f3d.view.value"
+        :flow="f3d.flow.value"
+        :now="f3d.now.value"
+        @open-line="(id) => router.push(linePath(id))"
+        @open-outbound="router.push('/outbound')"
+        @open-inbound="router.push('/inbound')"
+        @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
+      />
+      <BaseEmpty v-else />
     </BasePanel>
   </div>
 </template>
 
 <style scoped>
+/* 왼쪽 카드 열(고정) | 공장 배치도(3D) */
 .dash {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--col-side);
+  grid-template-columns: var(--col-side) minmax(0, 1fr);
   gap: var(--sp-4);
   height: 100%;
   min-height: 0;
 }
 
-/* 배치도 : 아래 3칸 = 1.75 : 1. 아래 칸은 낮아져도 들어가도록 칸 안 배치를 옆으로 놓는다 */
-.main {
+.cards {
   display: grid;
-  grid-template-rows: minmax(0, 1.75fr) minmax(0, 1fr);
-  gap: var(--sp-4);
-  min-width: 0;
-  min-height: 0;
-}
-
-.lower {
-  display: grid;
-  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--sp-4);
   min-height: 0;
 }
@@ -166,61 +111,19 @@ function openReport(r: AlertRowView) {
   cursor: pointer;
 }
 
-.go h2 {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-strong);
-  white-space: nowrap;
-}
-
-.go .meta {
-  color: var(--c-ink-3);
-  font-size: var(--fs-md);
-  white-space: nowrap;
-}
-
-/* 누르는 높이 24px 이상 (WCAG 2.5.8) */
-.title-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--sp-6);
-  text-decoration: none;
-}
-
-.title-link:hover {
-  text-decoration: underline;
-}
-
-/* 오늘 생산: 왼쪽 숫자 열 | 오른쪽 그래프 */
-.prod {
-  display: grid;
-  flex: 1;
-  grid-template-columns: max-content minmax(0, 1fr);
-  gap: var(--sp-6);
-  min-height: 0;
-}
-
-.figs {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: var(--sp-3);
-}
-
+/* 큰 숫자 오른쪽에 보조 숫자를 둔다: 세로로 쌓지 않아 좁은 화면(1536×730)에서도 스크롤이 생기지 않게 */
 .figs-sub {
   display: flex;
   gap: var(--sp-5);
+  padding-bottom: var(--sp-1);
 }
 
-.prod :deep(.chart) {
-  min-height: 0;
-}
-
-/* 품질: 큰 숫자 + 옆에 양품·불량 */
 .lead {
   display: flex;
   flex: none;
+  flex-wrap: wrap;
   align-items: flex-end;
-  gap: var(--sp-4);
+  gap: var(--sp-4) var(--sp-6);
 }
 
 .lead-sub {
@@ -235,29 +138,13 @@ function openReport(r: AlertRowView) {
   font-size: var(--fs-md);
 }
 
-/* 큰 숫자 아래 구분선 + 세 요소·공정별 막대를 남은 높이에 펼침 */
 .parts {
   display: flex;
   flex: 1;
   min-height: 0;
-  margin-top: var(--sp-4);
+  margin-top: var(--sp-3);
   padding-top: var(--sp-3);
   border-top: var(--line-w) solid var(--c-line);
 }
 
-/* 낮은 창(1440×810 등): 아래 3칸이 낮아지므로 큰 숫자와 간격을 한 단계 줄인다 */
-@media (height <= 860px) {
-  .lower :deep(.fig.lg .value) {
-    font-size: var(--fs-xl);
-  }
-
-  .parts {
-    margin-top: var(--sp-2);
-    padding-top: var(--sp-2);
-  }
-
-  .parts :deep(.bars) {
-    gap: 0 var(--sp-3);
-  }
-}
 </style>

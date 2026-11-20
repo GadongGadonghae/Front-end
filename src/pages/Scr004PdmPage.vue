@@ -167,7 +167,7 @@ const topGroups = computed(() => [
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }
@@ -198,12 +198,12 @@ const topGroups = computed(() => [
 
 .counts dt {
   color: var(--c-ink-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-figure);
 }
 
 .counts dd {
   margin: 0;
-  font-size: var(--fs-lg);
+  font-size: var(--fs-figure);
   font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
 }

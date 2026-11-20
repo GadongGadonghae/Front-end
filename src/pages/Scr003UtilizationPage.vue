@@ -89,7 +89,7 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
 
 <style scoped>
 .title {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   white-space: nowrap;
 }

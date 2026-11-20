@@ -50,7 +50,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         </BasePanel>
       </div>
       <BasePanel title="비가동 이력" :meta="`${card?.name ?? '비전'} · 오늘`">
-        <DowntimeHistory :rows="history.rows.value" @save="history.saveMemo" />
+        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
       </BasePanel>
     </div>
   </PageLayout>
