@@ -2,6 +2,8 @@
      왼쪽: 새 사용자 등록 (아이디 · 비밀번호 · 이름 · 역할 · 이메일 · 메모). 오른쪽: 사용자 목록 (최근 로그인 포함)
      수정·삭제 API는 아직 없어서 등록만 해요 -->
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+import { PERM_OWNER } from '@/lib/access'
 import { computed, ref, shallowRef } from 'vue'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -86,6 +88,7 @@ async function save() {
   memo.value = ''
   load()
 }
+const { can } = useAuth()
 </script>
 
 <template>
@@ -97,7 +100,8 @@ async function save() {
 
     <div class="layout">
       <BasePanel title="새 사용자 등록" meta="로그인 계정">
-        <form class="form" autocomplete="off" @submit.prevent="save">
+        <p v-if="!can('users')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.users }}만 바꿀 수 있습니다</p>
+        <form class="form" autocomplete="off" :inert="!can('users')" @submit.prevent="can('users') && save()">
           <BaseInput v-model="loginId" label="아이디" size="md" autocomplete="off" />
           <BaseInput v-model="password" label="비밀번호" type="password" size="md" autocomplete="new-password" />
           <BaseInput v-model="name" label="이름" size="md" />
@@ -131,6 +135,12 @@ async function save() {
 </template>
 
 <style scoped>
+.perm-note {
+  margin-bottom: var(--sp-3);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);

@@ -2,6 +2,8 @@
      왼쪽: 하루 목표 입력 (날짜 · 수량 · 라인 계획 자동 안내, D-87). 오른쪽: 최근 목표 목록 (날짜 · 목표 · 라인 계획 · 실적 · 달성률)
      오늘과 앞으로의 날짜만, 지난 날짜는 잠김. 같은 날짜는 덮어씀 (D-71). 목표 없는 날은 "목표 미설정" (D-72) -->
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+import { PERM_OWNER } from '@/lib/access'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -30,6 +32,7 @@ const COLS: TableColumn[] = [
   { key: 'by', label: '수정자' },
   { key: 'act', label: '', align: 'right', width: '6em' },
 ]
+const { can } = useAuth()
 </script>
 
 <template>
@@ -41,7 +44,8 @@ const COLS: TableColumn[] = [
 
     <div class="layout">
       <BasePanel title="하루 목표 입력" meta="공장 전체 · 하루 1건">
-        <form class="form" @submit.prevent="t.save">
+        <p v-if="!can('target')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.target }}만 바꿀 수 있습니다</p>
+        <form class="form" :inert="!can('target')" @submit.prevent="can('target') && t.save()">
           <BaseDateField v-model="date" label="날짜" :min="t.today" />
           <div class="qty">
             <BaseInput v-model="quantity" label="목표 수량" size="md" :invalid="!!t.error.value" inputmode="numeric" />
@@ -91,6 +95,12 @@ const COLS: TableColumn[] = [
 </template>
 
 <style scoped>
+.perm-note {
+  margin-bottom: var(--sp-3);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
