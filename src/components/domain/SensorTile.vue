@@ -72,7 +72,7 @@ defineEmits<{ select: [key: string] }>()
 
 .nm {
   overflow: hidden;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-row);
   font-weight: var(--fw-strong);
   text-overflow: ellipsis;
   white-space: nowrap;

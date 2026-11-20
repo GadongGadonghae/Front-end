@@ -19,7 +19,6 @@ import SensorLanes from '@/components/domain/SensorLanes.vue'
 import { usePdmSensors } from '@/composables/usePdmSensors'
 import { useMaster } from '@/composables/useMaster'
 import { usePdm, DANGER, WARN, type Grade, type RiskRow } from '@/composables/usePdm'
-import { STATE_NAME } from '@/lib/status'
 import { metricLabel } from '@/lib/metrics'
 
 const route = useRoute()
@@ -140,8 +139,8 @@ const topGroups = computed(() => [
           <template #head>
             <div v-if="sel" class="sel">
               <h2>{{ sel.name }}</h2>
-              <span :class="['tag', sel.grade]">{{ sel.percent != null ? `${GRADE_WORD[sel.grade]} ${sel.percent}%` : GRADE_WORD[sel.grade] }}</span>
-              <StatusKey :state="sel.state" size="sm" :label="`${STATE_NAME[sel.state]} 중`" />
+              <StatusKey :state="sel.state" size="sm" />
+              <span :class="['tag', sel.grade]">{{ GRADE_WORD[sel.grade] }}</span>
               <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
               <span class="meta">센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 온도·진동·전류 등 설비 센서는 더미 값</span>
             </div>
@@ -219,11 +218,28 @@ const topGroups = computed(() => [
 }
 
 /* ── 왼쪽 목록 ── */
+
+/* 등급별 대수: 위험 · 주의 · 정상 세 칸, 글자·숫자 가운데 */
 .counts {
-  display: flex;
+  display: grid;
   flex: none;
-  gap: var(--sp-6);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0 0 var(--sp-3);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+}
+
+.counts > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-1);
+  text-align: center;
+}
+
+.counts > div + div {
+  border-left: var(--line-w) solid var(--c-line-strong);
 }
 
 .counts dt {
