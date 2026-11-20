@@ -57,6 +57,13 @@
   --c-inverse-ink: #fff;
   --c-inverse-ink-2: #c3c8cf;
 
+  /* ── 보고서 종이 (SCR-007 계획수정 보고서 A4). 인쇄물처럼 흰 종이에 검정 글·선 ── */
+  --c-paper: #fff;
+  --c-paper-ink: #000;
+  --c-paper-ink-2: #555;      /* 보조 글 (점수 내역·출처) */
+  --c-paper-head: #eee;       /* 표 머리·제목 띠 */
+  --c-paper-mark: #fff6e5;    /* 고른 근거 줄·검증 안 된 문장 */
+
   /* ── 3D 공장 모형 (SCR-005). 상태 색은 위 의미 색을 그대로 쓴다 ── */
   --c-3d-bg: #e9edf1;         /* 장면 바탕 */
   --c-3d-floor: #f4f6f8;      /* 바닥 */

@@ -146,8 +146,9 @@ function productDetailOf(d: ProductDetailDto): ProductDetail {
 
 /** R-02·R-03 → 계획수정 보고서 화면. 예전 보고서(계산 칸 없음)는 0·null로 채운다 */
 const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
+  // 고장 건 없는 보고서: target(생산 목표 변경) = 'TARGET', order(추가 주문 배정) = '' (설비·고장 번호가 비어 있다)
   id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
-  createdBy: r.createdBy ?? '-', stateEventId: r.downtimeId == null ? 'TARGET' : String(r.downtimeId), start: r.startedAt ?? r.baseAt ?? r.createdAt, detail: r.detail,
+  createdBy: r.createdBy ?? '-', stateEventId: r.kind === 'target' ? 'TARGET' : r.kind === 'order' ? '' : String(r.downtimeId), start: r.startedAt ?? r.baseAt ?? r.createdAt, detail: r.detail,
   kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
@@ -157,6 +158,8 @@ const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
     title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
     fallbackReason: r.ai.fallbackReason ?? null, additionalRequest: r.ai.additionalRequest ?? null, interpretation: r.ai.requestInterpretation ?? null,
   } : null,
+  causeTrace: r.ai?.causeTrace ?? null,
+  order: r.ai?.order ?? null,
 })
 // ── 구역·비가동 공통 (11/20 화면 간 숫자 맞추기) ──
 // 화면의 구역은 생산 라인 A~F와 도장(PT)·출고(VI). 백엔드는 라인만 lineId로 받으므로 PT·VI는 공정 조건으로 바꾼다
@@ -594,9 +597,22 @@ export function createApiSource(): DataSource {
       async getReplanReports(from, to) {
         const p = await api.R01({ from, to, page: 1, size: 100 })
         return p.items.map((r) => ({
-          id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode,
-          stateEventId: r.downtimeId == null ? 'TARGET' : String(r.downtimeId), approved: r.approved ?? false,
+          id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId ?? '', code: r.code as DowntimeCode, kind: r.kind ?? undefined,
+          stateEventId: r.kind === 'target' ? 'TARGET' : r.kind === 'order' ? undefined : String(r.downtimeId), approved: r.approved ?? false,
         }))
+      },
+      // 그날 승인·적용된 추가 주문 배정: R-01 목록에서 order·승인 건만 골라 R-02로 라인별 추가 수량을 더한다 (하루 몇 건뿐)
+      async getOrderAdditions(date) {
+        const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
+        const out: Partial<Record<LineId, number>> = {}
+        const done = p.items.filter((r) => r.kind === 'order' && r.approved)
+        for (const d of await Promise.all(done.map((r) => api.R02(r.reportId)))) {
+          for (const x of d.details) {
+            const l = x.targetLineId as LineId
+            if (x.addQty > 0) out[l] = (out[l] ?? 0) + x.addQty
+          }
+        }
+        return out
       },
       async getReplanReport(id) {
         try {
@@ -718,6 +734,11 @@ export function createApiSource(): DataSource {
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
       approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
       createTargetReport: async (additionalRequest) => replanOf(await api.R03T(additionalRequest?.trim() || undefined)),
+      createOrderReport: async (request) => replanOf(await api.R05(request.trim())),
+      async applyOrderReport(id) {
+        const r = await api.R06(Number(id))
+        return { appliedAt: r.appliedAt, startedLines: r.startedLines, targets: r.targets, lineCommandSent: r.lineCommandSent, notes: r.notes }
+      },
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

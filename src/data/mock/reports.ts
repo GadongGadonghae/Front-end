@@ -11,6 +11,7 @@ import type { DayCounts } from '@/data/mock/products'
 import { MASTER } from '@/data/mock/master'
 import { PRODUCTION_LINES } from '@/data/mock/products'
 import { addDays, dayStart, hash, localDate, noise, rng } from '@/data/mock/rand'
+import { demoCauseTrace } from '@/data/mock/causeTrace'
 
 interface Ctx {
   now: () => number
@@ -122,7 +123,7 @@ export function createReports(ctx: Ctx) {
     /** 기준 시각까지 라인 실적: 오늘은 지금 값, 지난 날은 그날 실적 × 지난 비율 */
     const doneAt = (l: LineId) => (isToday ? ctx.lineDone[l] : Math.round((ctx.counts(date, l)?.done ?? 0) * frac))
     const target = ctx.targetOf(date)
-    const head = { id, createdAt: iso(createdAt), createdBy, equipmentId: e.id, code: ev.code, stateEventId: ev.id, start: ev.start, detail: ev.detail, baseAt: iso(base), remainingSec, target }
+    const head = { id, createdAt: iso(createdAt), createdBy, equipmentId: e.id, code: ev.code, stateEventId: ev.id, start: ev.start, detail: ev.detail, baseAt: iso(base), remainingSec, target, causeTrace: demoCauseTrace(ev, e) }
 
     if (e.area === 'VI') {
       // 비전은 1대라 대체 없음 → 남은 출고 전량 미달 예상 [가정 A-13]
@@ -204,6 +205,71 @@ export function createReports(ctx: Ctx) {
     byEvent.set(eventId, reportId)
   }
 
+
+  /**
+   * 추가 주문 배정 검토 (R-05 데모). 실서버는 AI가 요청을 해석하지만 데모는 간단한 규칙으로 읽는다:
+   * "300개" 수량, "A~D"·"A·B라인" 가동 중 라인, "F라인 더/추가" 새 라인, "한 라인 더" 라인 수. 준비 30분, 납기 오늘 24:00
+   */
+  function createOrder(text: string): ReplanReport {
+    const qtyHit = [...text.matchAll(/(\d[\d,]*)\s*개(?!\s*라인)/g)][0]
+    const addQty = qtyHit ? Number(qtyHit[1].replace(/,/g, '')) : 0
+    if (!addQty) throw new Error('추가 주문 수량을 알 수 없습니다. 요청에 수량을 적어 주세요 (예: 추가 주문 300개)')
+    const norm = text.replace(/([A-F])\s*[~-]\s*([A-F])/gi, (_m, a: string, b: string) => {
+      const [x, y] = [a.toUpperCase().charCodeAt(0), b.toUpperCase().charCodeAt(0)].sort((m, n) => m - n)
+      return Array.from({ length: y - x + 1 }, (_v, i) => String.fromCharCode(x + i)).join(',') + '라인'
+    })
+    const running: string[] = []
+    const said: string[] = []
+    for (const m of norm.matchAll(/([A-F](?:\s*[,·/와과]\s*[A-F])*)\s*라인/gi)) {
+      const ids = m[1].toUpperCase().match(/[A-F]/g) ?? []
+      const ctx2 = norm.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 20)
+      if (/(더|추가|새로|켜|돌려|가동)/.test(ctx2) && !/(돌리고|돌아가|돌리는|가동 중|가동중)/.test(ctx2)) said.push(...ids)
+      else running.push(...ids)
+    }
+    const want = /(한|하나|1)\s*(개\s*)?라인\s*(을|를)?\s*(더|추가)/.test(text) ? 1 : /(두|둘|2)\s*(개\s*)?라인\s*(을|를)?\s*(더|추가)/.test(text) ? 2 : 0
+    const now = ctx.now()
+    const date = localDate(now)
+    const remainingSec = Math.max(0, Math.round((dayStart(date) + 86_400_000 - now) / 1000))
+    const setup = 30
+    const plan = ctx.linePlanOf(date) ?? 0
+    const runLines = (running.length ? running : PRODUCTION_LINES.map(String)).filter((l, i, a) => a.indexOf(l) === i) as LineId[]
+    const idle = PRODUCTION_LINES.filter((l) => !runLines.includes(l))
+    const runRows = runLines.map((l) => {
+      const remainingPlan = Math.max(0, plan - (ctx.lineDone[l] ?? 0))
+      return { target: l, remainingPlan, capacity: Math.max(0, Math.floor(remainingSec / LINE_CT) - remainingPlan) }
+    })
+    const currentCap = sum(runRows.map((r) => r.capacity))
+    const newCap = Math.max(0, Math.floor(Math.max(0, remainingSec - setup * 60) / LINE_CT))
+    let newLines = said.filter((l) => idle.includes(l as LineId))
+    const recommended = !newLines.length
+    if (recommended) {
+      let cap = currentCap
+      for (const l of idle) {
+        if (want ? newLines.length >= want : cap >= addQty) break
+        newLines.push(l)
+        cap += newCap
+      }
+    }
+    newLines = [...new Set(newLines)]
+    const rows = [...runRows, ...newLines.map((l) => ({ target: l, remainingPlan: 0, capacity: newCap }))].sort((a, b) => a.target.localeCompare(b.target))
+    const withCap = sum(rows.map((r) => r.capacity))
+    const id = `RP-${++seq + 1}`
+    const { allocations, unmet } = allocate(addQty, rows)
+    const rep: ReplanReport = {
+      id, createdAt: iso(now), createdBy: ctx.user, equipmentId: '', code: 'UP_ETC', stateEventId: '', start: iso(now), detail: null,
+      kind: 'order', baseAt: iso(now), remainingSec, ctSec: LINE_CT, stoppedPlan: addQty, stoppedDone: 0, shortage: addQty,
+      allocations, unmet, target: ctx.targetOf(date),
+      order: {
+        request: text, addQty, dueAt: '24:00', setupMinutes: setup, runningLines: runLines, newLines, recommended: recommended && newLines.length > 0,
+        idleLines: idle.filter((l) => !newLines.includes(l)), excludedLines: [], parsedBy: '규칙 (데모)', notes: ['데모 모드: 요청은 간단한 규칙으로 읽었습니다'],
+        current: { lines: runLines, capacity: currentCap, unmet: Math.max(0, addQty - currentCap) },
+        withNew: { lines: rows.map((r) => r.target), capacity: withCap, unmet: Math.max(0, addQty - withCap) },
+      },
+    }
+    made.set(id, rep)
+    return rep
+  }
+
   function list(from: string, to: string): ReplanSummary[] {
     const [a, b] = from <= to ? [from, to] : [to, from]
     const inRange = (t: string) => { const d = localDate(Date.parse(t)); return d >= a && d <= b }
@@ -214,7 +280,7 @@ export function createReports(ctx: Ctx) {
       for (const ev of ctx.pastDEvents(a, b < lastPast ? b : lastPast)) if (ev.reportId) ids.add(ev.reportId)
     }
     return [...ids].map(get).filter((r): r is ReplanReport => !!r && inRange(r.createdAt))
-      .map(({ id, createdAt, equipmentId, code }) => ({ id, createdAt, equipmentId, code }))
+      .map(({ id, createdAt, equipmentId, code, kind }) => ({ id, createdAt, equipmentId, code, kind }))
       .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
   }
 
@@ -227,5 +293,30 @@ export function createReports(ctx: Ctx) {
     return next
   }
 
-  return { daily, list, get, create, approve, reportOf, seedToday }
+
+  /** 추가 주문 배정 승인·적용 (R-06 데모): 적용 표시만. 데모 대시보드의 라인 상태는 바뀌지 않는다 */
+  function applyOrder(id: string) {
+    const r = made.get(id)
+    if (!r || r.kind !== 'order') throw new Error('추가 주문 배정 보고서만 적용할 수 있습니다')
+    if (r.approved) throw new Error('이미 적용한 보고서입니다')
+    const at = iso(ctx.now())
+    made.set(id, { ...r, approved: true, approvedAt: at, approvedBy: ctx.user })
+    return {
+      appliedAt: at, startedLines: r.order?.newLines ?? [], lineCommandSent: false,
+      targets: r.allocations.filter((a) => a.add > 0).map((a) => ({ lineId: a.target, before: 0, after: a.add })),
+      notes: ['데모 모드: 적용 표시만 하고 대시보드 라인 상태는 바뀌지 않습니다'],
+    }
+  }
+
+  /** 그날 승인·적용된 추가 주문 배정의 라인별 추가 수량 (데모: 이 화면에서 적용한 것만) */
+  function orderAdditions(date: string) {
+    const out: Partial<Record<LineId, number>> = {}
+    for (const r of made.values()) {
+      if (r.kind !== 'order' || !r.approved || localDate(Date.parse(r.createdAt)) !== date) continue
+      for (const a of r.allocations) if (a.add > 0) out[a.target as LineId] = (out[a.target as LineId] ?? 0) + a.add
+    }
+    return out
+  }
+
+  return { daily, list, get, create, approve, createOrder, applyOrder, orderAdditions, reportOf, seedToday }
 }

@@ -9,7 +9,7 @@ import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, Telem
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
-import type { DailyReport, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
+import type { DailyReport, ReplanApplyResult, ReplanReport, ReplanSummary, TargetRow } from '@/types/report'
 import type { NewUser, UserRow } from '@/types/user'
 
 export type Unsubscribe = () => void
@@ -79,6 +79,8 @@ export interface Queries {
   getReplanReports(from: string, to: string): Promise<ReplanSummary[]>
   /** R-02 [차순위] 계획수정 보고서 내용 */
   getReplanReport(id: string): Promise<ReplanReport | null>
+  /** 그날 승인·적용된 추가 주문 배정(R-06)의 라인별 추가 수량 합 (메인 대시보드 배정 칸). 없으면 빈 객체 */
+  getOrderAdditions(date: string): Promise<Partial<Record<LineId, number>>>
   /** 백엔드 없음 [차순위] PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
   getReplanPdf(id: string): Promise<Blob | null>
   /** G-02 (라인별 계획 합) 날짜별 목표·실적 */
@@ -110,6 +112,10 @@ export interface Commands {
   approveReplanReport(reportId: string): Promise<ReplanReport>
   /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리팀장 (11/20) */
   createTargetReport(additionalRequest?: string): Promise<ReplanReport>
+  /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로 ("지금 A~D만 돌리는데 추가 주문 300개, 한 라인 더") */
+  createOrderReport(request: string): Promise<ReplanReport>
+  /** R-06 추가 주문 배정 승인·적용 (한 번만): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 */
+  applyOrderReport(reportId: string): Promise<ReplanApplyResult>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** C-03 사용자 등록. 같은 아이디가 있으면 실패 */
