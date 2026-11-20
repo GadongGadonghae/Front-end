@@ -30,9 +30,9 @@ const LINE_DONE_PER_SEC = 1 / 17
 const DEMO_USER = '김현수'
 /** 데모 사용자 목록 (사용자 관리 화면) */
 const demoUsers: import('@/types/user').UserRow[] = [
-  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_MANAGER', email: null, memo: '데모 공장장', lastLoginAt: null },
-  { loginId: 'prodlead', name: '이도윤', role: 'PRODUCTION_MANAGER', email: null, memo: '데모 생산관리팀장', lastLoginAt: null },
-  { loginId: 'linelead', name: '박서연', role: 'LINE_MANAGER', email: null, memo: 'A·B라인', lastLoginAt: null },
+  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_HEAD', email: null, memo: '데모 공장장', lastLoginAt: null },
+  { loginId: 'prodlead', name: '이도윤', role: 'PROD_LEAD', email: null, memo: '데모 생산관리팀장', lastLoginAt: null },
+  { loginId: 'linelead', name: '박서연', role: 'LINE_WORKER', email: null, memo: 'A·B라인', lastLoginAt: null },
 ]
 const PAGE_SIZE = 50
 
@@ -460,7 +460,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       login: async (userId, password) => {
         if (!userId || !password) return { ok: false }
         const u = demoUsers.find((x) => x.loginId === userId)
-        return { ok: true, name: u?.name ?? DEMO_USER, role: u?.role ?? 'PLANT_MANAGER' }
+        return { ok: true, name: u?.name ?? DEMO_USER, role: u?.role ?? 'PLANT_HEAD' }
       },
       logout: async () => {},
       async saveActionMemo(eventId, memo) {
@@ -474,6 +474,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       },
       createReplanReport: async (eventId) => reports.create(eventId),
       approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
+      syncReportFlow: async () => {},
       createTargetReport: async () => { throw new Error('데모 데이터에서는 목표 변동 보고서를 만들 수 없어요 (실서버 전용)') },
       createOrderReport: async (request) => reports.createOrder(request),
       applyOrderReport: async (id) => reports.applyOrder(id),

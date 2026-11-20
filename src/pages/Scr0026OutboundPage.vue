@@ -18,10 +18,9 @@ import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
 const router = useRouter()
 const { card, inspections, byLine, equipmentId } = useOutbound()
 const history = useEquipmentHistory(equipmentId)
+const { can } = useAuth()
 const d = inspections.data
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
-// 조치 메모 쓰기 권한 (11/20)
-const { can } = useAuth()
 </script>
 
 <template>
@@ -53,7 +52,7 @@ const { can } = useAuth()
         </BasePanel>
       </div>
       <BasePanel title="비가동 이력" :meta="`${card?.name ?? '비전'} · 오늘`">
-        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :can-write="can('memo')" />
+        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :readonly="!can('action', equipmentId ?? undefined)" />
       </BasePanel>
     </div>
   </PageLayout>

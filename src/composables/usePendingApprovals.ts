@@ -48,7 +48,7 @@ export function usePendingApprovals() {
     pending.value = []
   }
 
-  const active = computed(() => role.value === 'PLANT_MANAGER')
+  const active = computed(() => role.value === 'PLANT_HEAD')
   watch(active, (on) => {
     if (timer) clearInterval(timer)
     timer = null

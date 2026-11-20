@@ -23,16 +23,15 @@ import AlarmSummary from '@/components/domain/AlarmSummary.vue'
 import NotifySent from '@/components/domain/NotifySent.vue'
 import ActionMemoEditor from '@/components/domain/ActionMemoEditor.vue'
 import { useInlineEdit } from '@/components/base/inlineEdit'
+import { useAuth } from '@/composables/useAuth'
 import { useAlarmHistory, MAX_DAYS, type AlarmRow } from '@/composables/useAlarmHistory'
 import type { HistoryTodo } from '@/types/events'
 import { isCommsEvent } from '@/data/historyTodo'
-import { useAuth } from '@/composables/useAuth'
 import type { DowntimeCode } from '@/types/state'
 
 const route = useRoute()
 const router = useRouter()
 const h = useAlarmHistory()
-// 조치 메모 쓰기 권한 (11/20): 생산관리팀장·라인 담당자만
 const { can } = useAuth()
 const { tab, from, to, lineId, process, kind, code, ongoing, todo, page } = h
 
@@ -166,7 +165,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
               <span class="memo">
                 <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
                 <button
-                  v-if="!isCommsEvent(row.id) && can('memo')"
+                  v-if="!isCommsEvent(row.id) && can('action', row.equipmentId)"
                   class="link inline"
                   type="button"
                   :data-edit="memo.attr(row.id, 'open')"

@@ -4,6 +4,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { PERM_OWNER } from '@/lib/access'
 import { settingsTabsFor } from '@/lib/permissions'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -18,7 +19,7 @@ const c = useControlLimits()
 const { type, equipmentId } = c
 
 // 권한 있는 설정 탭만 (11/20, lib/permissions.ts)
-const { role: myRole } = useAuth()
+const { role: myRole, can } = useAuth()
 const TABS = computed(() => settingsTabsFor(myRole.value))
 </script>
 
@@ -40,7 +41,8 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
           </div>
         </template>
 
-        <form class="form" @submit.prevent="c.save">
+        <p v-if="!can('limits')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.limits }}만 바꿀 수 있습니다</p>
+        <form class="form" :inert="!can('limits')" @submit.prevent="can('limits') && c.save()">
           <table aria-label="관리값 기준">
             <colgroup><col /><col class="c-unit" /><col class="c-lim" /><col class="c-lim" /><col class="c-mod" /></colgroup>
             <thead>
@@ -105,6 +107,12 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
 </template>
 
 <style scoped>
+.perm-note {
+  margin-bottom: var(--sp-3);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);

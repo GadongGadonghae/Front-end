@@ -79,6 +79,7 @@ const speed = computed(() => {
 
 // 비가동 이력·조치 메모, 공정 검사
 const history = useEquipmentHistory(selectedId)
+const { can } = useAuth()
 const inspections = useInspections(process, paint ? undefined : lineId)
 const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
@@ -106,8 +107,6 @@ const tabs = computed(() => (paint ? [] : [
   ...(linePaint.value ? [{ key: 'paint', label: `${PROCESS_NAME.PAINTING} (${painterName(linePaint.value)})`, to: `/lines/PT/paint?eq=${linePaint.value}` }] : []),
 ]))
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
-// 조치 메모 쓰기 권한 (11/20)
-const { can } = useAuth()
 </script>
 
 <template>
@@ -219,7 +218,7 @@ const { can } = useAuth()
 
       <div :class="['right', { paint }]">
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
-          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :can-write="can('memo')" />
+          <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :readonly="!can('action', selectedId ?? undefined)" />
         </BasePanel>
         <BasePanel v-if="paint" title="오늘 요약" meta="도장 공정">
           <div class="sum-figs">

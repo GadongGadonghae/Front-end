@@ -455,6 +455,8 @@ export interface LoginDto {
   accessToken: string
   userName: string
   role: string
+  /** 라인 담당자의 담당 라인 (v0.3.15) */
+  lines?: string[]
 }
 
 /** C-04 */
@@ -488,4 +490,23 @@ export interface AlarmEventDto {
 export interface ProductionEventDto {
   last: { lineId: string; paintId: string; result: 'OK' | 'NG' }
   today: { total: number; processNg: number; inspected: number; ngVision: number; ok: number; yieldRate: number }
+}
+
+/** R-10 ~ R-14 보고서 결재·전송 (11/20). 목록에서는 content = null */
+export interface FlowReportDto {
+  reportId: number
+  kind: 'DAILY' | 'REPLAN'
+  targetKey: string
+  title: string
+  status: 'WRITTEN' | 'APPROVED' | 'SENT'
+  campusId: string
+  factoryId: number
+  replanReportId: number | null
+  writtenBy: { userId: number; userName: string | null } | null
+  writtenAt: string | null
+  approvedBy: { userId: number; userName: string | null } | null
+  approvedAt: string | null
+  sentBy: { userId: number; userName: string | null } | null
+  sentAt: string | null
+  content: unknown
 }

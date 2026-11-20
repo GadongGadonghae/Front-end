@@ -71,7 +71,7 @@ export function useTargetChange() {
     change.value = null
   }
 
-  const active = computed(() => role.value === 'PRODUCTION_MANAGER')
+  const active = computed(() => role.value === 'PROD_LEAD')
   watch(active, (on) => {
     if (timer) clearInterval(timer)
     timer = null

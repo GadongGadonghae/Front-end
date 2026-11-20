@@ -3,6 +3,7 @@
      수정·삭제 API는 아직 없어서 등록만 해요 -->
 <script setup lang="ts">
 import { useAuth } from '@/composables/useAuth'
+import { PERM_OWNER } from '@/lib/access'
 import { settingsTabsFor } from '@/lib/permissions'
 import { computed, ref, shallowRef } from 'vue'
 import PageLayout from '@/layouts/PageLayout.vue'
@@ -22,10 +23,10 @@ const { role: myRole } = useAuth()
 const TABS = computed(() => settingsTabsFor(myRole.value))
 // 권한 3가지 (11/20). 할 수 있는 일은 lib/permissions.ts
 const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'LINE_MANAGER', label: ROLE_LABEL.LINE_MANAGER },
-  { value: 'PRODUCTION_MANAGER', label: ROLE_LABEL.PRODUCTION_MANAGER },
-  { value: 'PLANT_MANAGER', label: ROLE_LABEL.PLANT_MANAGER },
-  { value: 'CAMPUS_HEAD', label: ROLE_LABEL.CAMPUS_HEAD },
+  { value: 'LINE_WORKER', label: ROLE_LABEL.LINE_WORKER },
+  { value: 'PROD_LEAD', label: ROLE_LABEL.PROD_LEAD },
+  { value: 'PLANT_HEAD', label: ROLE_LABEL.PLANT_HEAD },
+  { value: 'CAMPUS', label: ROLE_LABEL.CAMPUS },
 ]
 const roleName = (r: string) => ROLES.find((x) => x.value === r)?.label ?? r
 const COLS: TableColumn[] = [
@@ -53,7 +54,7 @@ const rows = computed(() => (users.value ?? []).map((u) => ({
 const loginId = ref('')
 const password = ref('')
 const name = ref('')
-const role = ref<UserRole>('LINE_MANAGER')
+const role = ref<UserRole>('LINE_WORKER')
 const email = ref('')
 const memo = ref('')
 const saving = ref(false)
@@ -88,6 +89,7 @@ async function save() {
   memo.value = ''
   load()
 }
+const { can } = useAuth()
 </script>
 
 <template>
@@ -99,7 +101,8 @@ async function save() {
 
     <div class="layout">
       <BasePanel title="새 사용자 등록" meta="로그인 계정">
-        <form class="form" autocomplete="off" @submit.prevent="save">
+        <p v-if="!can('users')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.users }}만 바꿀 수 있습니다</p>
+        <form class="form" autocomplete="off" :inert="!can('users')" @submit.prevent="can('users') && save()">
           <BaseInput v-model="loginId" label="아이디" size="md" autocomplete="off" />
           <BaseInput v-model="password" label="비밀번호" type="password" size="md" autocomplete="new-password" />
           <BaseInput v-model="name" label="이름" size="md" />
@@ -133,6 +136,12 @@ async function save() {
 </template>
 
 <style scoped>
+.perm-note {
+  margin-bottom: var(--sp-3);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);

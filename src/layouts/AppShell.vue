@@ -16,7 +16,6 @@ import { useDataInfo } from '@/composables/useDataInfo'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDate, formatTime } from '@/lib/format'
 import { settingsTabsFor } from '@/lib/permissions'
-import { ROLE_LABEL } from '@/types/user'
 
 const BASE_MENU = [
   { name: '대시보드', to: '/' },
@@ -29,13 +28,12 @@ const BASE_MENU = [
 
 const route = useRoute()
 const router = useRouter()
-const { userName, role, logout } = useAuth()
-// 설정: 권한 있는 첫 탭으로, 하나도 없으면(라인 담당자) 메뉴에서 숨김 (11/20)
+const { userName, role, roleName, can, logout } = useAuth()
+// 설정: 권한 있는 첫 탭으로, 하나도 없으면(라인 담당자·캠퍼스장) 메뉴에서 숨김 (11/20)
 const MENU = computed(() => {
   const first = settingsTabsFor(role.value)[0]
   return first ? [...BASE_MENU, { name: '설정', to: first.to }] : BASE_MENU
 })
-const roleLabel = computed(() => (role.value ? ROLE_LABEL[role.value] : ''))
 const now = useNow()
 const nowIso = computed(() => new Date(now.value).toISOString())
 const { demo } = useDataInfo()
@@ -91,7 +89,8 @@ function viewFault() {
         <span v-if="demo" class="demo">데모 데이터</span>
         <span class="clock">{{ formatDate(nowIso) }}<b>{{ formatTime(nowIso) }}</b></span>
         <HeaderAlerts />
-        <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}<small v-if="roleLabel" class="role">{{ roleLabel }}</small></span>
+        <RouterLink v-if="can('mes')" class="mes" to="/mes">임시 MES</RouterLink>
+        <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}<small class="role">{{ roleName }}</small></span>
         <button class="logout" type="button" aria-label="로그아웃" title="로그아웃" @click="onLogout"><BaseIcon name="log-out" :size="20" /></button>
       </div>
     </header>
@@ -132,6 +131,21 @@ function viewFault() {
 </template>
 
 <style scoped>
+.role {
+  margin-left: var(--sp-1);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
+.mes {
+  padding: var(--sp-1) var(--sp-3);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
 .shell {
   display: grid;
   grid-template-rows: var(--nav-h) minmax(0, 1fr);

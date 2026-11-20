@@ -717,7 +717,7 @@ export function createApiSource(): DataSource {
         try {
           const r = await api.C01({ loginId: userId, password })
           token.set(r.accessToken)
-          return { ok: true, name: r.userName, role: r.role }
+          return { ok: true, name: r.userName, role: r.role, lines: r.lines ?? [] }
         } catch (e) {
           // 401(LOGIN_FAILED)만 아이디·비밀번호 오류. 서버가 꺼졌거나 다른 오류는 던져서 화면이 다른 문구를 보여 준다
           if (e instanceof ApiError && e.status === 401) return { ok: false }
@@ -733,6 +733,22 @@ export function createApiSource(): DataSource {
       // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
       createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
       approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
+      async syncReportFlow(action, key, content) {
+        const [kind, id] = key.split(':')
+        // 계획수정 보고서는 AI 보고서를 만들 때(R-03) 서버가 이미 '작성'으로 기록해요 → 일일 보고서만 작성(R-10)
+        if (action === 'write') {
+          if (kind === 'daily') await api.R10({ kind: 'DAILY', targetKey: id, content })
+          return
+        }
+        const list = await api.R11(kind === 'replan' ? { replanId: Number(id) } : { kind: 'DAILY' })
+        const row = kind === 'replan' ? list.items[0] : list.items.find((r) => r.targetKey === id)
+        if (!row) throw new Error('서버에 보고서 기록이 없어요. 작성부터 다시 해 주세요')
+        if (action === 'approve') {
+          if (row.status === 'WRITTEN') await api.R13(row.reportId)   // 계획수정이면 서버가 계획·도장 경로에 적용
+        } else if (row.status !== 'SENT') {
+          await api.R14(row.reportId)
+        }
+      },
       createTargetReport: async (additionalRequest) => replanOf(await api.R03T(additionalRequest?.trim() || undefined)),
       createOrderReport: async (request) => replanOf(await api.R05(request.trim())),
       async applyOrderReport(id) {

@@ -1,8 +1,8 @@
 // 라우트 표 (FRONTEND.md 5장).
 // 로그인 확인 (FN-016): /login 외에는 로그인해야 들어가고, 안 했으면 /login?redirect=원래경로
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { currentRole, isLoggedIn } from '@/composables/useAuth'
-import { allows, settingsTabsFor, type Permission } from '@/lib/permissions'
+import { hasPerm, homePath, isLoggedIn, currentRole } from '@/composables/useAuth'
+import { settingsTabsFor } from '@/lib/permissions'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -10,12 +10,12 @@ declare module 'vue-router' {
     screen?: string
     /** 화면 이름 */
     title?: string
-    /** 이 화면을 여는 데 필요한 권한 (11/20, 설정 탭). 없으면 권한 있는 설정 탭 또는 대시보드로 */
-    perm?: Permission
     /** 상단 메뉴에서 켜질 항목 */
     menu?: '대시보드' | '생산' | '가동률' | '예지보전' | '알람이력' | 'AI 리포트' | '설정'
     /** 로그인 없이 들어갈 수 있는 화면 */
     public?: boolean
+    /** 이 권한이 있어야 들어가는 화면 (없으면 첫 화면으로) */
+    perm?: import('@/lib/access').Perm
   }
 }
 
@@ -49,6 +49,8 @@ if (import.meta.env.DEV) {
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('@/pages/Scr000LoginPage.vue'), meta: { screen: 'SCR-000', title: '로그인', public: true } },
+  // 임시 MES (11/20, 시연용): 상단 메뉴 없이 따로. 캠퍼스장 계정만
+  { path: '/mes', component: () => import('@/pages/MesPage.vue'), meta: { title: '임시 MES', perm: 'mes' } },
   { path: '/', component: () => import('@/layouts/AppShell.vue'), children: appRoutes },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
@@ -58,9 +60,9 @@ export const router = createRouter({ history: createWebHistory(), routes })
 router.beforeEach((to) => {
   const loggedIn = isLoggedIn()
   if (!to.meta.public && !loggedIn) return { path: '/login', query: { redirect: to.fullPath } }
-  if (to.path === '/login' && loggedIn) return '/'
-  // 권한이 없는 설정 탭: 쓸 수 있는 첫 설정 탭, 없으면 대시보드 (11/20)
-  if (to.meta.perm && !allows(currentRole(), to.meta.perm)) return settingsTabsFor(currentRole())[0]?.to ?? '/'
+  if (to.path === '/login' && loggedIn) return homePath()
+  // 권한이 없는 화면(설정 탭 등): 쓸 수 있는 첫 설정 탭, 없으면 첫 화면 (11/20)
+  if (to.meta.perm && !hasPerm(to.meta.perm)) return (to.path.startsWith('/settings') ? settingsTabsFor(currentRole())[0]?.to : null) ?? homePath()
 })
 
 router.afterEach((to) => {

@@ -101,7 +101,7 @@ export interface Queries {
 export interface Commands {
   /** C-01 로그인. 아이디·비밀번호가 틀리면 ok=false, 서버에 닿지 못하면 오류를 던진다 */
   /** role: 계정 권한 (11/20, lib/permissions.ts) */
-  login(userId: string, password: string): Promise<{ ok: true; name: string; role: string } | { ok: false }>
+  login(userId: string, password: string): Promise<{ ok: true; name: string; role: string; lines?: string[] } | { ok: false }>
   /** 토큰 삭제 (백엔드 호출 없음) 로그아웃 */
   logout(): Promise<void>
   /** U-09 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
@@ -112,6 +112,8 @@ export interface Commands {
   approveReplanReport(reportId: string): Promise<ReplanReport>
   /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리팀장 (11/20) */
   createTargetReport(additionalRequest?: string): Promise<ReplanReport>
+  /** 보고서 결재 줄을 서버에도 기록 (R-10·R-13·R-14, 11/20). key = 'replan:보고서ID' · 'daily:날짜'. 데모 데이터는 아무것도 안 함 */
+  syncReportFlow(action: 'write' | 'approve' | 'send', key: string, content?: unknown): Promise<void>
   /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로 ("지금 A~D만 돌리는데 추가 주문 300개, 한 라인 더") */
   createOrderReport(request: string): Promise<ReplanReport>
   /** R-06 추가 주문 배정 승인·적용 (한 번만): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 */
