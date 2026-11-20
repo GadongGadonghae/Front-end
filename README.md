@@ -7,6 +7,8 @@ Vue 3 + TypeScript + Vite. 차트는 라이브러리 없이 SVG로 직접 그립
 - 코드 구조·층·의존 방향: [`FRONTEND.md`](FRONTEND.md), 보이는 모습: [`DESIGN.md`](DESIGN.md)
 - 백엔드 API 명세: [`docs/api-spec-v3.1.md`](docs/api-spec-v3.1.md), 프론트와의 차이·요청: [`docs/API-차이-v3.1.md`](docs/API-차이-v3.1.md)
 - 진행 상황: [`docs/진행현황.md`](docs/진행현황.md)
+- 결정 ↔ 구현 역링크: [`docs/인터뷰/05_결정_구현대조표.md`](docs/인터뷰/05_결정_구현대조표.md) (자동 생성)
+- AI를 어떻게 썼는지 (보고서용): [`docs/08_AI개발활용정의서.md`](docs/08_AI개발활용정의서.md)
 
 ---
 
