@@ -10,7 +10,6 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
-import BaseTabs from '@/components/base/BaseTabs.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import BaseDateField from '@/components/base/BaseDateField.vue'
 import BaseCheck from '@/components/base/BaseCheck.vue'
@@ -23,7 +22,7 @@ import AlarmSummary from '@/components/domain/AlarmSummary.vue'
 import NotifySent from '@/components/domain/NotifySent.vue'
 import ActionMemoEditor from '@/components/domain/ActionMemoEditor.vue'
 import { useInlineEdit } from '@/components/base/inlineEdit'
-import { useAlarmHistory, MAX_DAYS, type AlarmRow, type HistoryTab, type RiskRow } from '@/composables/useAlarmHistory'
+import { useAlarmHistory, MAX_DAYS, type AlarmRow } from '@/composables/useAlarmHistory'
 import type { HistoryTodo } from '@/types/events'
 import type { DowntimeCode } from '@/types/state'
 
@@ -32,15 +31,10 @@ const router = useRouter()
 const h = useAlarmHistory()
 const { tab, from, to, lineId, process, states, code, ongoing, todo, page } = h
 
-// 탭은 주소 쿼리 (?tab=risk). 같은 화면이라 필터는 그대로 둔다
-const tabOf = (v: unknown): HistoryTab => (v === 'risk' ? 'risk' : 'alarm')
-watch(() => route.query.tab, (v) => { tab.value = tabOf(v) }, { immediate: true })
+// 예지보전 위험 탭은 뺌 (11/20). 알람·비가동만 (예전 주소 ?tab=risk로 와도 알람·비가동)
+tab.value = 'alarm'
 // 대시보드 팝업 "조치 가기" (?eq=설비ID): 기준정보가 오면 그 설비 건으로 필터를 맞춘다
 watch([() => route.query.eq, () => h.equipmentById.value.size], ([eq]) => { if (typeof eq === 'string') h.focusEquipment(eq) }, { immediate: true })
-const TABS = [
-  { key: 'alarm', label: '알람·비가동', to: '/alarms' },
-  { key: 'risk', label: '예지보전 위험', to: '/alarms?tab=risk' },
-]
 
 const multi = computed(() => from.value !== to.value)
 const timeW = computed(() => (multi.value ? '9.5em' : '6.5em'))
@@ -54,17 +48,8 @@ const ALARM_COLS = computed<TableColumn[]>(() => [
   { key: 'memo', label: '조치 메모 · 담당자' },
   { key: 'report', label: '보고서', width: '6.5em' },
 ])
-const RISK_COLS = computed<TableColumn[]>(() => [
-  { key: 'start', label: '발생', width: timeW.value },
-  { key: 'end', label: '해제', width: timeW.value },
-  { key: 'line', label: '라인', width: '4.5em' },
-  { key: 'equipment', label: '설비', width: '8em' },
-  { key: 'item', label: '항목' },
-  { key: 'max', label: '최고 %', align: 'right', width: '6em' },
-])
 
 const tone = (r: AlarmRow) => (r.ongoing && r.state === 'D' ? 'down' : r.ongoing && r.state === 'I' ? 'idle' : null)
-const riskTone = (r: RiskRow) => (r.ongoing ? 'down' : null)
 
 // 조치 메모: 한 번에 한 건만, 그 행 아래로 펼친다. 열면 입력에 초점, 닫으면 연 버튼으로. 저장하면 그 행에 "저장됨"
 const memo = useInlineEdit('alarm-memo')
@@ -93,14 +78,12 @@ const picked = computed(() => [
 ])
 
 const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?event=${r.id}`)
-const noState = computed(() => !states.value.D && !states.value.I && !states.value.S)
 </script>
 
 <template>
   <PageLayout>
     <template #head>
       <h1 class="title">알람·비가동 이력</h1>
-      <BaseTabs :items="TABS" :active="tab" label="이력 종류" />
     </template>
 
     <div class="body" :class="{ split: tab === 'alarm' }">
@@ -156,7 +139,7 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
             :row-key="(r) => r.id"
             :row-tone="tone"
             :expanded-key="memo.editing.value"
-            :empty="noState ? '상태를 하나 이상 고르세요' : '데이터 없음'"
+            empty="데이터 없음"
           >
             <template #cell-start="{ row }"><span class="t">{{ row.start }}</span></template>
             <template #cell-end="{ row }">
@@ -211,21 +194,6 @@ const noState = computed(() => !states.value.D && !states.value.I && !states.val
           </BaseTable>
         </template>
 
-        <BaseTable
-          v-else
-          label="예지보전 위험 이력"
-          :columns="RISK_COLS"
-          :rows="h.riskRows.value"
-          :row-key="(r) => r.id"
-          :row-tone="riskTone"
-        >
-          <template #cell-start="{ row }"><span class="t">{{ row.start }}</span></template>
-          <template #cell-end="{ row }">
-            <span v-if="row.ongoing" class="live">진행 중</span>
-            <span v-else class="t">{{ row.end }}</span>
-          </template>
-          <template #cell-max="{ row }"><b class="num">{{ row.max }}</b></template>
-        </BaseTable>
 
         <BasePager v-model="page" :total="h.total.value" :size="h.size.value" />
       </BasePanel>

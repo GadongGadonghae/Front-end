@@ -14,6 +14,7 @@ export type DowntimeCode =
   | 'PL_CHANGE'     // 모델 교체 (S)
   | 'PL_SETUP'      // 코일·나이프 교체 (S)
   | 'UP_SHORTAGE'   // 재공부족 (I, 자동)
+  | 'UP_BLOCKED'    // 후공정 정지 대기 (I, 자동: 프레스 1~3단이 끝낸 제품을 들고 뒤 단을 기다림, 11/20)
   | 'UP_DELAY'      // 작업지연 (I, 사람이 고침)
   | 'UP_BREAKDOWN'  // 장비고장 (D)
   | 'UP_ALARM'      // 알람·관리값 이탈 (D)

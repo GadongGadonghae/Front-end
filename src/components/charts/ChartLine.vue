@@ -5,7 +5,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { formatNumber } from '@/lib/format'
 
-export interface LineSeries { key: string; points: [number, number][]; kind?: 'main' | 'thin' | 'ref' }
+export interface LineSeries { key: string; points: [number, number][]; kind?: 'main' | 'thin' | 'ref'; /** 선 색 (라인별 등). 없으면 kind 색 */ color?: string }
 export interface RefLine { value: number; kind: 'target' | 'limit' | 'warn' | 'danger'; label?: string }
 
 const props = withDefaults(defineProps<{
@@ -70,7 +70,7 @@ const ready = computed(() => w.value > 0 && h.value > 0)
         <text v-if="l.label" class="ref-label" :x="w - P.r + 6" :y="Y(l.value) + 4">{{ l.label }}</text>
       </g>
       <line v-if="now != null" class="now" :x1="X(now)" :x2="X(now)" :y1="P.t" :y2="h - P.b" />
-      <path v-for="s in series" :key="s.key" :class="['s', s.kind ?? 'main']" :d="path(s.points)" />
+      <path v-for="s in series" :key="s.key" :class="['s', s.kind ?? 'main']" :style="s.color ? { stroke: s.color } : undefined" :d="path(s.points)" />
       <circle v-for="(p, i) in overPts" :key="`o${i}`" class="over" :cx="X(p[0])" :cy="Y(p[1])" r="3.5" />
       <circle v-if="endDot && last" class="dot" :cx="X(last[0])" :cy="Y(last[1])" :r="4" />
     </svg>

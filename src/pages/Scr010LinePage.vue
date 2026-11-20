@@ -86,7 +86,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
         <StatusKey state="D" size="sm" />
         <b>{{ fault.title }} 고장<template v-if="faultCount > 1"> 외 {{ faultCount - 1 }}건</template></b>
         <span class="why">{{ fault.message }} · 지속 {{ fault.duration }}</span>
-        <BaseButton size="sm" @click="openAlert(fault)">조치 가기 ›</BaseButton>
+        <BaseButton size="sm" @click="router.push({ path: '/alarms', query: { eq: fault.equipmentId } })">조치 가기 ›</BaseButton>
       </div>
     </template>
 

@@ -24,7 +24,8 @@ const { period, date, tab, sort } = u
 
 const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일' }, { value: 'week', label: '주' }, { value: 'month', label: '월' }]
 const TABS: { value: UtilTab; label: string }[] = [
-  { value: 'line', label: '생산 라인' }, { value: 'inbound', label: '코일입고' }, { value: 'paint', label: '도장' }, { value: 'out', label: '출고 비전' },
+  // 코일입고는 공정 시간(CT)이 없어 가동률을 셀 수 없어서 뺌 (11/20)
+  { value: 'line', label: '생산 라인' }, { value: 'paint', label: '도장' }, { value: 'out', label: '출고 비전' },
 ]
 /** 줄이 적은 구역의 설명 줄 (시안 G) */
 const NOTE: Partial<Record<UtilTab, string>> = {
