@@ -125,7 +125,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
         </BasePanel>
       </div>
 
-      <BasePanel class="flowp" title="라인 흐름" meta="공정 이름이나 설비 칸을 누르면 공정 상세">
+      <BasePanel class="flowp vt-line-stage" title="라인 흐름" meta="공정 이름이나 설비 칸을 누르면 공정 상세">
         <template #tools><StateLegend pdm /></template>
         <LineFlow v-if="flow" :view="flow" :line-name="name" @open-cell="openEquipment" @open-group="openGroup" />
         <BaseEmpty v-else />

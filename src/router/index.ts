@@ -2,6 +2,7 @@
 // 로그인 확인 (FN-016): /login 외에는 로그인해야 들어가고, 안 했으면 /login?redirect=원래경로
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { isLoggedIn } from '@/composables/useAuth'
+import { installViewTransition } from '@/router/viewTransition'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -51,6 +52,7 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export const router = createRouter({ history: createWebHistory(), routes })
+installViewTransition(router)
 
 router.beforeEach((to) => {
   const loggedIn = isLoggedIn()

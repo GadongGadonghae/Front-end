@@ -145,10 +145,17 @@ function ack() {
   if (l) acked.value = new Set(acked.value).add(ackKey(l))
   closePop()
 }
+/** 생산 라인은 3D에서 그 라인으로 다가간 뒤 라인 상세로 (D-119). 도장·출고는 바로 */
+function openLine(id: LineId) {
+  const s = scene.value
+  if (!s || id === 'PT' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { emit('open-line', id); return }
+  closePop(false)
+  s.dive(id as ProductionLineId, () => emit('open-line', id))
+}
 function goLine() {
   const a = pop.value?.e.area
   if (a === 'VI') emit('open-outbound')
-  else if (a) emit('open-line', a)
+  else if (a) openLine(a)
 }
 
 // ── 라인 카드 (오른쪽 위, 간소화) ──
@@ -199,7 +206,7 @@ const panel = computed(() => {
       <LinePanel
         v-bind="panel"
         @close="selectLine(null)"
-        @open-line="emit('open-line', panel.line)"
+        @open-line="openLine(panel.line)"
       />
     </div>
   </div>

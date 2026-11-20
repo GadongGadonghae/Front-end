@@ -186,6 +186,7 @@
   /* ── 움직임: 토스트와 물류(제품 상자), 3D 카메라 이동·붙는 패널 등장 (D-118) ── */
   --dur-fast: 150ms;
   --dur-enter: 240ms;
+  --dur-page: 480ms;   /* 대시보드 3D ↔ 라인 상세 이어지는 전환 (D-119) */
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -193,5 +194,6 @@
   :root {
     --dur-fast: 0ms;
     --dur-enter: 0ms;
+    --dur-page: 0ms;
   }
 }

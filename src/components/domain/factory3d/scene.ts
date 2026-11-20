@@ -885,6 +885,19 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     setRing(e)
     fly(focusPose(e), 800)
   }
+  /** 라인 상세로 가기 전: 그 라인을 내려다보며 다가간다 (다음 화면 '라인 흐름'으로 이어지게, D-119) */
+  const dive = (L: ProductionLineId, done: () => void) => {
+    const i = LINES.indexOf(L)
+    if (i < 0) { done(); return }
+    focusId = null
+    saved = null
+    setRing(null)
+    sel = L
+    applyDim()
+    const tgt = new THREE.Vector3(-12, 0, lineZ(i))
+    const pos = new THREE.Vector3().setFromSpherical(new THREE.Spherical(58, THREE.MathUtils.degToRad(48), THREE.MathUtils.degToRad(-8))).add(tgt)
+    fly({ pos, tgt }, 600, done)
+  }
   const unfocus = () => {
     if (!focusId) return
     focusId = null
@@ -969,6 +982,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     onModeChange(cb: (m: ViewMode) => void) { onMode = cb },
     focus,
     unfocus,
+    dive,
     dispose() {
       cancelAnimationFrame(raf)
       ro.disconnect()
