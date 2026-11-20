@@ -92,6 +92,12 @@
         ],
         "createdAt": "2026-11-16T08:06:06.355Z",
         "reason": "user confirmed 2026-11-16: 시안(docs/wireframes)은 화면 구성 확인용이고 여백·px 수치는 구현에 옮기지 않음. 탭·구간 버튼 묶음 경고이며 시안 여백은 고치지 않는다"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "맑은 고딕",
+        "createdAt": "2026-11-20T02:01:42.776Z",
+        "reason": "Claude 판단: src/lib/replanDoc.ts는 화면이 아니라 Word(.doc) 내려받기용 HTML로, 회사 양식 production-plan-report-template.doc의 글꼴을 그대로 따름 (커밋 498bad3, AI 리포트 담당)"
       }
     ]
   }
