@@ -1,6 +1,5 @@
-<!-- 3D 공장: 라인 상세 (D-118). 라인 바닥을 누르면 3D 화면 오른쪽에 붙는다
-     위: 생산 · 달성률 · OEE 숫자 세 칸 + 달성률 막대. 가운데: 설비 흐름 (슬리팅 → 재공 → 프레스 1~4 → 재공 → 용접 → 재공 → 도장)
-     설비 줄을 누르면 그 설비로 다가가고 왼쪽에 팝업. 아래: 공정 불량 · 라인 상세 화면으로 -->
+<!-- 3D 공장: 라인 카드 (D-118, 11/20 간소화). 라인 바닥을 누르면 3D 화면 오른쪽 위에 붙는다
+     간단한 정보만: 생산 · 달성률 · OEE, 상태별 대수, 공정 사이 재공 한 줄, 라인 상세 화면으로 -->
 <script setup lang="ts">
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import ChartProgress from '@/components/charts/ChartProgress.vue'
@@ -10,45 +9,24 @@ import type { StateCode } from '@/types/state'
 import type { LineSummary } from '@/types/live'
 import type { ProductionLineId } from '@/types/plant'
 
-export interface LineFlowRow {
-  /** 설비 줄 */
-  kind: 'eq'
-  id: string
-  /** 짧은 번호 (SL · PR1 · WD) */
-  no: string
-  /** 공정 이름 (슬리팅 · 프레스 1단 · 용접) */
-  name: string
-  state: StateCode
-  /** 이상 상태면 "고장 12:07"처럼 */
-  note: string | null
-}
-export interface LineWipRow {
-  /** 공정 사이 재공 줄 */
-  kind: 'wip'
-  key: string
-  label: string
-  qty: number | null
-}
-
 defineProps<{
   line: ProductionLineId
   sum: LineSummary | null
-  flow: (LineFlowRow | LineWipRow)[]
+  /** 상태별 설비 대수 */
+  counts: Record<StateCode, number>
   /** 지금 보내는 도장 (예: 도장 1) */
   paint: string
   /** 기본과 다른 도장으로 바뀌었는지 */
   switched: boolean
-  /** 이상 대수 (가동·정지 아닌 것) */
-  abnormal: number
-  ng: { label: string; value: number | null }[]
-  /** 지금 다가가 있는 설비 */
-  focusId: string | null
+  /** 공정 사이 재공 (데모) */
+  wip: { label: string; qty: number | null }[]
 }>()
-const emit = defineEmits<{ close: []; pick: [id: string]; openLine: [] }>()
+const emit = defineEmits<{ close: []; openLine: [] }>()
+const STATES: StateCode[] = ['R', 'I', 'S', 'D', 'DC']
 </script>
 
 <template>
-  <aside class="panel" :aria-label="`${line}라인 상세`">
+  <aside class="panel" :aria-label="`${line}라인 카드`">
     <header class="head">
       <div>
         <h3 class="title">{{ line }}라인</h3>
@@ -75,42 +53,16 @@ const emit = defineEmits<{ close: []; pick: [id: string]; openLine: [] }>()
       </dl>
       <ChartProgress v-if="sum?.rate != null" class="prog" :percent="sum.rate" :label="`달성률 ${formatNumber(sum.rate, 1)}%`" />
 
-      <section class="sec">
-        <h4 class="h">
-          설비 흐름
-          <span class="meta" :class="{ warn: abnormal }">{{ abnormal ? `이상 ${abnormal}대` : '모두 정상' }}</span>
-        </h4>
-        <ol class="flow">
-          <li v-for="r in flow" :key="r.kind === 'eq' ? r.id : r.key" :class="r.kind">
-            <button
-              v-if="r.kind === 'eq'"
-              type="button"
-              class="eq"
-              :class="{ on: focusId === r.id, ab: r.state !== 'R' && r.state !== 'S' }"
-              :aria-pressed="focusId === r.id"
-              @click="emit('pick', r.id)"
-            >
-              <StatusKey :state="r.state" size="sm" />
-              <b class="no">{{ r.no }}</b>
-              <span class="name">{{ r.name }}</span>
-              <span v-if="r.note" class="note num">{{ r.note }}</span>
-            </button>
-            <span v-else class="wip">
-              <svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 14 4.8v6.4L8 14.2 2 11.2V4.8zM2 4.8l6 3 6-3M8 7.8v6.4" /></svg>
-              {{ r.label }} <b class="num">{{ formatNumber(r.qty) }}</b>
-            </span>
-          </li>
-          <li class="end">→ {{ paint }}</li>
-        </ol>
-        <p class="demo">재공 수는 데모 값</p>
-      </section>
+      <ul class="states" aria-label="상태별 설비 대수">
+        <li v-for="s in STATES" :key="s" :class="{ zero: !counts[s] }">
+          <StatusKey :state="s" size="sm" :muted="!counts[s]" /><b class="num">{{ counts[s] }}</b>
+        </li>
+      </ul>
 
-      <section class="sec">
-        <h4 class="h">공정 불량 <span class="meta">오늘 · 공정 검사</span></h4>
-        <dl class="ng">
-          <div v-for="n in ng" :key="n.label"><dt>{{ n.label }}</dt><dd class="num">{{ formatNumber(n.value) }}</dd></div>
-        </dl>
-      </section>
+      <p class="wip">
+        재공 (데모) ·
+        <template v-for="(w, i) in wip" :key="w.label">{{ i ? ' · ' : '' }}{{ w.label }} <b class="num">{{ formatNumber(w.qty) }}</b></template>
+      </p>
     </div>
 
     <footer class="foot">
@@ -222,131 +174,40 @@ const emit = defineEmits<{ close: []; pick: [id: string]; openLine: [] }>()
   margin-top: var(--sp-3);
 }
 
-.sec {
-  margin-top: var(--sp-4);
-  padding-top: var(--sp-4);
-  border-top: var(--line-w) solid var(--c-line);
-}
-
-.h {
+/* 상태별 대수: 상태 글자 칸 + 수. 0대는 흐리게 */
+.states {
   display: flex;
-  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: var(--sp-2);
-  font-size: var(--fs-md);
-  font-weight: var(--fw-strong);
-}
-
-.meta {
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-regular);
-}
-
-.meta.warn {
-  color: var(--c-ink);
-  font-weight: var(--fw-strong);
-}
-
-.flow {
-  margin: 0;
-  padding: 0;
+  gap: var(--sp-2);
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-3) 0 0;
+  border-top: var(--line-w) solid var(--c-line);
   list-style: none;
 }
 
-/* 설비 줄: 고른 줄은 가라앉은 면 + 네 변 테두리 (CLAUDE.md 모양 규칙) */
-.eq {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  width: 100%;
-  min-height: var(--control-h-sm);
-  padding: 3px var(--sp-2);
-  border: var(--line-w) solid transparent;
-  border-radius: var(--r-2);
-  background: none;
-  color: var(--c-ink);
-  font: inherit;
-  font-size: var(--fs-md);
-  text-align: left;
-  cursor: pointer;
-}
-
-.eq:hover { background: var(--c-surface-sunk); }
-
-.eq.on {
-  border-color: var(--c-line-strong);
-  background: var(--c-surface-sunk);
-}
-
-.no {
-  min-width: 3.2em;
-  font-weight: var(--fw-strong);
-}
-
-.name {
-  color: var(--c-ink-2);
-}
-
-.note {
-  margin-left: auto;
-  color: var(--c-ink);
-  font-weight: var(--fw-strong);
-}
-
-/* 공정 사이 재공: 설비 줄 사이의 가는 연결 줄 */
-.wip {
-  display: flex;
+.states li {
+  display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  margin-left: calc(var(--sp-2) + var(--key-sm) / 2);
-  padding: 3px 0 3px var(--sp-3);
-  border-left: var(--line-w-strong) dashed var(--c-line-ink);
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
-}
-
-.wip b {
-  color: var(--c-ink);
-  font-weight: var(--fw-strong);
-}
-
-.ico {
-  width: 14px;
-  height: 14px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-width: 1.4;
-  stroke-linejoin: round;
-}
-
-.end {
-  padding: var(--sp-1) var(--sp-2);
-  color: var(--c-ink-2);
-  font-size: var(--fs-md);
-}
-
-.demo {
-  margin-top: var(--sp-1);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-}
-
-.ng {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sp-2);
-  margin: 0;
-}
-
-.ng dt {
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
-}
-
-.ng dd {
-  margin: 2px 0 0;
   font-size: var(--fs-row);
+}
+
+.states b { font-weight: var(--fw-strong); }
+
+.states .zero b {
+  color: var(--c-ink-3);
+  font-weight: var(--fw-regular);
+}
+
+.wip {
+  margin-top: var(--sp-3);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+.wip .num {
+  color: var(--c-ink);
   font-weight: var(--fw-strong);
 }
 

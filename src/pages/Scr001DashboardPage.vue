@@ -90,7 +90,7 @@ const ng = computed(() => {
         </div>
       </BasePanel>
 
-      <BasePanel class="go" title="품질" meta="오늘" @click="router.push('/outbound')">
+      <BasePanel class="go" title="불량률" meta="오늘" @click="router.push('/outbound')">
         <div class="qual">
         <div class="row">
           <div>
@@ -119,7 +119,7 @@ const ng = computed(() => {
 
     <BasePanel title="공장 배치도" meta="설비 39대">
       <template #tools>
-        <StateLegend :counts="counts" pdm />
+        <StateLegend :counts="counts" />
       </template>
       <Factory3D
         v-if="f3d.view.value"

@@ -1,6 +1,6 @@
 // 3D 공장 장면 (SCR-005). Three.js로 설비 39대·컨베이어·재공 상자·제품 상자를 그린다
 // 보기 (D-118): 3D(비스듬히) ↔ 탑뷰(같은 원근 카메라가 위로 날아가 내려다본다. 평면 그림으로 바꾸지 않음)
-//   탑뷰에 도착하면 장면을 흐리게 하고 설비마다 설비 카드를 띄운다
+//   탑뷰에 도착하면 바닥 상태 칸을 진하게 하고 설비마다 상태 칩(설비 번호 + 이상이면 상태 글자)을 띄운다 (11/20 예전 탑뷰 모양)
 // 설비를 누르면 카메라가 그 설비로 다가가 화면 가운데에 두고, 닫으면(unfocus) 누르기 전 자리로 돌아온다
 // 라인 바닥에 마우스를 올리면 그 라인 외곽선, 누르면 라인 선택 (on.onLine). 빈 곳을 누르면 on.onEmpty
 // 마우스: 왼쪽 끌기 = 이동, 휠 = 확대, 오른쪽 끌기 = 회전 (탑뷰에서 오른쪽을 누르면 3D로)
@@ -243,8 +243,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     pad.position.set(m.x, 0.03, m.z)
     pad.userData.eq = m.id
     scene.add(pad)
-    // 탑뷰 설비 카드: 상태 글자 칸 + 설비 번호, 이상이면 둘째 줄에 지속 시간
-    const card = tag(`<button type="button" class="f3d-card" data-eq="${m.id}"></button>`, '', [m.x, m.h, m.z], 'top', 'c')
+    // 탑뷰 설비 칩: 상태 색 면 + 설비 번호 (이상이면 상태 글자). 바닥 칸 위에 둔다 (11/20 예전 탑뷰 모양)
+    const card = tag(`<button type="button" class="f3d-chip" data-eq="${m.id}"></button>`, '', [m.x, 1, m.z], 'top')
     const btn = card.el.firstElementChild as HTMLButtonElement
     btn.addEventListener('click', () => on.onPick(m.id))
     btn.addEventListener('pointerenter', () => { hoverEq = m.id })
@@ -708,17 +708,17 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       e.caps.forEach((m) => matOf(m).color.set(c))
       const pm = e.pad.material as THREE.MeshBasicMaterial
       pm.color.set(c)
-      pm.opacity = e.dim ? 0.08 : e.id === hoverEq || e.id === focusId ? 0.6 : 0.35
+      pm.opacity = e.dim ? 0.08 : topUi ? 0.75 : e.id === hoverEq || e.id === focusId ? 0.6 : 0.35
       const hot = e.state === 'D' && blink
       e.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) matOf(o).emissive.setHex(hot ? 0x8a1c1c : 0) })
       if (topUi) {
-        // 가동(R)은 설비 번호만. 이상 상태는 색만으로 구분하지 않게 상태 글자 + 지속 시간 (CLAUDE.md 색약 대비)
+        // 가동(R)은 색으로 충분해 설비번호만. 이상 상태는 색만으로 구분하지 않게 상태 글자를 붙인다 (CLAUDE.md 색약 대비)
         const key = `${e.state}|${e.note ?? ''}`
         if (e.cardKey !== key) {
           e.cardKey = key
           const btn = e.card.el.firstElementChild as HTMLElement
-          btn.dataset.state = e.state
-          btn.innerHTML = `<span class="f3d-key st-${e.state}">${e.state}</span><b>${e.no}</b>${e.state !== 'R' && e.note ? `<small>${e.note}</small>` : ''}`
+          btn.className = `f3d-chip st-${e.state}`
+          btn.textContent = e.state === 'R' ? e.no : `${e.no} ${e.state}`
           btn.setAttribute('aria-label', `${e.id} ${STATE_NAME[e.state]}${e.note ? ` ${e.note}` : ''}`)
           e.card.w = -1
         }
@@ -747,13 +747,6 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const placeTags = () => {
     const w = W()
     const h = H()
-    if (topUi) {
-      // 탑뷰 카드 크기: 설비 사이 간격(px)에 맞춰 세 단계 (확대하면 자세히)
-      const a = toPx(tmpV.copy(ctl.target), w, h)
-      const b = toPx(tmpV.copy(ctl.target).setX(ctl.target.x + 1), w, h)
-      const u = a && b ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0
-      layer.dataset.u = u >= 7.4 ? 'full' : u >= 6 ? 'mid' : 'min'
-    }
     drawPoly(polySel, sel, w, h)
     drawPoly(polyHov, hoverLine !== sel ? hoverLine : null, w, h)
     // 이상 표시끼리 겹치면 위로 비켜 쌓는다 (이웃 설비가 함께 고장·대기일 때)

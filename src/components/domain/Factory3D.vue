@@ -1,13 +1,12 @@
 <!-- SCR-005 3D 공장 (대시보드 배치도의 3D 보기, D-118). 설비 상태 색 · 이상 표시 · 도장 경로 · 제품 상자(데모)
-     3D ↔ 탑뷰: 같은 원근 카메라가 부드럽게 날아간다. 탑뷰에 도착하면 장면이 흐려지고 설비 위에 설비 카드
+     3D ↔ 탑뷰: 같은 원근 카메라가 부드럽게 날아간다. 탑뷰에 도착하면 바닥 상태 칸 + 설비 상태 칩 (예전 탑뷰 모양)
      설비를 누르면 카메라가 그 설비로 다가가고(화면 가운데) 왼쪽에 설비 팝업. 닫으면(× · Esc · 팝업 밖) 누르기 전 자리로
-     라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽에 라인 상세. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
+     라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽 위에 간단한 라인 카드. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
 import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
-import LinePanel, { type LineFlowRow, type LineWipRow } from '@/components/domain/factory3d/LinePanel.vue'
-import { STATE_NAME, PROCESS_NAME, byProcess } from '@/lib/status'
+import LinePanel from '@/components/domain/factory3d/LinePanel.vue'
 import { formatDuration } from '@/lib/format'
 import type { Equipment, Line, LineId, ProductionLineId } from '@/types/plant'
 import type { EquipmentLive, FlowPositions, LineSummary } from '@/types/live'
@@ -152,39 +151,21 @@ function goLine() {
   else if (a) emit('open-line', a)
 }
 
-// ── 라인 상세 (오른쪽) ──
+// ── 라인 카드 (오른쪽 위, 간소화) ──
 const paintName = (id: string | null) => (id ? `도장 ${id.slice(2)}` : '-')
-const NG: [keyof LineSummary['ngByProcess'], string][] = [['SLITTING', '슬리팅'], ['PRESS', '프레스'], ['WELDING', '용접'], ['PAINTING', '도장']]
 const panel = computed(() => {
   const L = selLine.value
   if (!L) return null
   const sum = props.lineSummaries.find((x) => x.lineId === L) ?? null
-  const eqs = props.equipment.filter((e) => e.area === L).sort((a, b) => byProcess(a.process, b.process) || a.order - b.order)
+  const counts: Record<StateCode, number> = { R: 0, I: 0, S: 0, D: 0, DC: 0 }
+  for (const e of props.equipment) if (e.area === L) { const st = liveById.value.get(e.id)?.state; if (st) counts[st] += 1 }
   const pile = (k: string) => props.flow?.products.filter((p) => 'pile' in p.location && p.location.pile === `${L}:${k}`).length ?? null
-  const row = (e: Equipment): LineFlowRow => {
-    const l = liveById.value.get(e.id)
-    const state = l?.state ?? 'S'
-    return {
-      kind: 'eq', id: e.id, no: e.id.split('-')[1] ?? e.id,
-      name: e.process === 'PRESS' ? `${PROCESS_NAME.PRESS} ${e.shortName}` : PROCESS_NAME[e.process],
-      state, note: l && state !== 'R' ? `${STATE_NAME[state]} ${formatDuration(secOf(l))}` : null,
-    }
-  }
-  const wip = (key: string, label: string): LineWipRow => ({ kind: 'wip', key, label, qty: pile(key) })
-  const flow: (LineFlowRow | LineWipRow)[] = []
-  for (const e of eqs) {
-    flow.push(row(e))
-    if (e.process === 'SLITTING') flow.push(wip('SL-PR', '재공'))
-    if (e.process === 'PRESS' && e === eqs.filter((x) => x.process === 'PRESS').at(-1)) flow.push(wip('PR-WD', '재공'))
-    if (e.process === 'WELDING') flow.push(wip('WD-PT', '재공'))
-  }
   const line = props.lines.find((l) => l.id === L)
   return {
-    line: L, sum, flow,
+    line: L, sum, counts,
     paint: paintName(line?.currentPaintId ?? null),
     switched: !!line && line.currentPaintId !== line.defaultPaintId,
-    abnormal: flow.filter((r) => r.kind === 'eq' && r.state !== 'R' && r.state !== 'S').length,
-    ng: NG.map(([k, label]) => ({ label, value: sum?.ngByProcess[k] ?? null })),
+    wip: [{ label: '슬리팅→프레스', qty: pile('SL-PR') }, { label: '프레스→용접', qty: pile('PR-WD') }, { label: '용접→도장', qty: pile('WD-PT') }],
   }
 })
 </script>
@@ -217,9 +198,7 @@ const panel = computed(() => {
     <div v-if="panel" class="dock right" data-keep-pop>
       <LinePanel
         v-bind="panel"
-        :focus-id="popId"
         @close="selectLine(null)"
-        @pick="pick"
         @open-line="emit('open-line', panel.line)"
       />
     </div>
@@ -240,15 +219,6 @@ const panel = computed(() => {
 .stage {
   position: absolute;
   inset: 0;
-}
-
-/* 탑뷰에 도착하면 장면(캔버스)만 흐리게. 설비 카드·외곽선은 겹친 층이라 선명하다 */
-.stage :deep(canvas) {
-  transition: filter var(--dur-3d-blur) var(--ease-out);
-}
-
-.stage.topui :deep(canvas) {
-  filter: blur(var(--f3d-blur)) saturate(0.6);
 }
 
 .views {
@@ -300,7 +270,7 @@ const panel = computed(() => {
   pointer-events: none;
 }
 
-/* 붙는 자리: 설비 팝업 = 왼쪽 (보기 버튼 아래), 라인 상세 = 오른쪽 전체 높이 */
+/* 붙는 자리: 설비 팝업 = 왼쪽 (보기 버튼 아래), 라인 카드 = 오른쪽 위 (내용만큼) */
 .dock {
   position: absolute;
   z-index: 5;
@@ -317,10 +287,8 @@ const panel = computed(() => {
 .dock.right {
   top: var(--sp-3);
   right: var(--sp-3);
-  bottom: var(--sp-3);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+  max-height: calc(100% - var(--sp-3) * 2);
+  overflow-y: auto;
 }
 
 /* ── 장면 위 이름표 (scene.ts가 만든 DOM이라 :deep) ── */
@@ -472,61 +440,18 @@ const panel = computed(() => {
 
 .stage :deep(.f3d-bang:hover) { background: var(--c-surface-sunk); }
 
-/* 탑뷰 설비 카드: 흐린 장면 위 흰 카드. 이상이면 상태 테두리 + 옅은 바탕 + 지속 시간 */
-.stage :deep(.f3d-card) {
-  display: grid;
-  grid-template-columns: auto auto;
-  place-items: center start;
-  gap: 2px var(--sp-1);
-  padding: 3px 5px;
-  border: var(--line-w) solid var(--c-line-strong);
-  border-radius: var(--r-2);
-  background: var(--c-surface);
-  color: var(--c-ink);
+/* 탑뷰 설비 칩: 상태 색 면(.st-*) + 설비 번호, 이상 상태는 상태 글자를 붙인다 (11/20 사용자: 예전 탑뷰 모양으로) */
+.stage :deep(.f3d-chip) {
+  display: inline-block;
+  padding: 1px var(--sp-1);
+  border: 0;
+  border-radius: var(--r-1);
   font: inherit;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-3d-dense);
+  font-weight: var(--fw-strong);
   pointer-events: auto;
   cursor: pointer;
-  animation: f3d-card-in var(--dur-enter) var(--ease-out);
 }
-
-@keyframes f3d-card-in {
-  from { opacity: 0; transform: translateY(var(--sp-1)); }
-}
-
-.stage :deep(.f3d-card:hover) { background: var(--c-surface-sunk); }
-
-.stage :deep(.f3d-card b) { font-weight: var(--fw-strong); }
-
-.stage :deep(.f3d-card small) {
-  grid-column: 1 / -1;
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-strong);
-}
-
-.stage :deep(.f3d-card[data-state="D"]) { border: var(--indicator-w) solid var(--c-down); background: var(--c-down-tint); }
-.stage :deep(.f3d-card[data-state="I"]) { border: var(--indicator-w) solid var(--c-idle-edge); background: var(--c-idle-tint); }
-.stage :deep(.f3d-card[data-state="DC"]) { border: var(--indicator-w) solid var(--c-dc); background: var(--c-dc-tint); }
-
-/* 카드 크기 세 단계: 설비 사이가 좁으면 줄인다 (scene.ts가 data-u를 정함) */
-.stage :deep(.f3d-layer[data-u="mid"] .f3d-card small),
-.stage :deep(.f3d-layer[data-u="min"] .f3d-card small),
-.stage :deep(.f3d-layer[data-u="min"] .f3d-card b) { display: none; }
-
-.stage :deep(.f3d-layer[data-u="mid"] .f3d-card) {
-  gap: 2px;
-  padding: 2px 3px;
-  font-size: var(--fs-3d-dense);
-}
-
-.stage :deep(.f3d-layer[data-u="mid"] .f3d-key),
-.stage :deep(.f3d-layer[data-u="min"] .f3d-key) {
-  min-width: 16px;
-  height: 16px;
-  font-size: var(--fs-3d-dense);
-}
-
-.stage :deep(.f3d-layer[data-u="min"] .f3d-card) { padding: 2px; }
 
 /* 화면 밖 고장 단추 */
 .stage :deep(.f3d-edge) {
