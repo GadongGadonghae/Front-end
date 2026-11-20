@@ -41,7 +41,8 @@ export function useProduction(initialQ = '') {
   const now = useNow()
   const today = toDateStr(Date.now())
 
-  const tab = ref<ProdTab>(initialQ ? 'hist' : 'live')
+  // 기본은 이력 조회, 스위치를 켜면 현재 상황(공정 중 추적)
+  const tab = ref<ProdTab>('hist')
   const lineId = ref<'' | LineId>('')
   const selected = ref<string | null>(null)
   const scale = ref<JourneyScale>('60')

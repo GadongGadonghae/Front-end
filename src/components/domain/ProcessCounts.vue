@@ -11,7 +11,7 @@ defineProps<{ items: ProcessCountView[] }>()
   <ol class="counts" aria-label="공정별 지금 제품 수">
     <li v-for="(c, i) in items" :key="c.key" :class="{ stuck: c.stuck }">
       <BaseIcon v-if="i" class="arr" name="chevron-right" :size="16" />
-      <span class="nm">{{ c.label }}<small v-if="c.stuck">고장으로 멈춤 {{ c.stuck }}</small></span>
+      <span class="nm"><span class="pn"><i class="sw" :style="{ background: `color-mix(in srgb, var(--c-proc-${i + 1}) 50%, var(--c-surface))` }"></i>{{ c.label }}</span><small v-if="c.stuck">고장으로 멈춤 {{ c.stuck }}</small></span>
       <b>{{ c.count }}</b>
     </li>
   </ol>
@@ -46,6 +46,18 @@ li {
   left: calc(var(--sp-4) / -2);
   color: var(--c-ink-3);
   transform: translate(-50%, -50%);
+}
+
+.pn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.sw {
+  width: var(--sp-3);
+  height: var(--sp-3);
+  border-radius: var(--r-1);
 }
 
 .nm {
