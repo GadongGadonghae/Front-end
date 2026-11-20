@@ -103,7 +103,7 @@ async function onLogout() {
 </script>
 
 <template>
-  <div class="mes">
+  <div :class="['mes', { home: view === 'home' }]">
     <header class="top">
       <b class="brand">차체 캠퍼스 MES</b>
       <span class="tag">임시 구현 · 시연용</span>
@@ -129,7 +129,7 @@ async function onLogout() {
         </button>
       </nav>
 
-      <main class="body">
+      <main :class="['body', { home: view === 'home' }]">
         <!-- 현황 대시보드 (전부 더미) -->
         <template v-if="view === 'home'">
           <p class="dummy-note">이 화면의 숫자와 목록은 모두 <b>더미 데이터</b>입니다. 열리는 메뉴는 [수신 보고서] 하나뿐입니다.</p>
@@ -219,7 +219,7 @@ async function onLogout() {
             </section>
           </div>
 
-          <section class="panel">
+          <section class="panel deliv">
             <h2>납입 일정 <small>고객사별 · 오늘</small></h2>
             <table>
               <thead><tr><th>시간</th><th>고객사</th><th>품목</th><th>수량</th><th>상태</th></tr></thead>
@@ -384,6 +384,32 @@ async function onLogout() {
 .dummy-note {
   color: var(--c-ink-3);
   font-size: var(--fs-row);
+}
+
+/* 현황 대시보드: 화면 한 장에 딱 맞춘다 (F11 전체 화면 포함). 남는·모자란 높이는 가운데 두 패널이 받는다 */
+.mes.home {
+  height: 100vh;
+}
+
+.body.home {
+  grid-template-rows: auto auto minmax(min-content, 3fr) minmax(min-content, 2fr);
+  align-content: stretch;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* 낮은 화면(노트북 1536×864 등): 간격·칸 여백을 줄여 스크롤 없이 */
+@media (height <= 960px) {
+  .body.home { gap: var(--sp-2) var(--sp-3); padding-block: var(--sp-2); }
+
+  .body.home .kpi,
+  .body.home .panel { padding: var(--sp-3); }
+  .body.home .k-chart { min-height: 56px; }
+
+  .body.home h2 { margin-bottom: var(--sp-2); }
+
+  .body.home td,
+  .body.home th { padding-block: var(--sp-1); }
 }
 
 .kpis {
@@ -608,6 +634,7 @@ th {
 
 .bars {
   display: grid;
+  align-content: space-around;
   gap: var(--sp-2);
   margin: 0;
   padding: 0;
@@ -627,6 +654,18 @@ th {
   height: 14px;
   border-radius: var(--r-1);
   background: var(--c-proc-1);
+}
+
+.grid2 .panel,
+.body.home .deliv {
+  display: flex;
+  flex-direction: column;
+}
+
+.grid2 table,
+.grid2 .bars,
+.body.home .deliv table {
+  flex: 1;
 }
 
 .reports {
