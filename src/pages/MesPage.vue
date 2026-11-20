@@ -63,11 +63,21 @@ const DELIVERIES = [
   { at: '17:00', to: '현대 울산', item: '플로어 크로스멤버', qty: 900, state: '지연 위험' },
 ]
 const DELIVERY_CLASS: Record<string, string> = { 완료: 'ok', 진행: 'wait', '지연 위험': 'late' }
-const FACTORIES = [
-  { name: '차체 캠퍼스 공장 1', plan: 9000, done: 8650, oee: 84.1, state: '정상' },
-  { name: '차체 캠퍼스 공장 2', plan: 8200, done: 8010, oee: 88.6, state: '정상' },
-  { name: '차체 캠퍼스 공장 3', plan: 7600, done: 6980, oee: 79.3, state: '주의' },
-  { name: '차체 캠퍼스 공장 4', plan: 8800, done: 8560, oee: 90.2, state: '정상' },
+const CAMPUSES = [
+  {
+    name: '차체 캠퍼스',
+    factories: [
+      { name: '공장 1', plan: 9000, done: 8650, oee: 84.1, state: '정상' },
+      { name: '공장 2', plan: 8200, done: 8010, oee: 88.6, state: '정상' },
+    ],
+  },
+  {
+    name: '전장 캠퍼스',
+    factories: [
+      { name: '공장 1', plan: 7600, done: 6980, oee: 79.3, state: '주의' },
+      { name: '공장 2', plan: 8800, done: 8560, oee: 90.2, state: '정상' },
+    ],
+  },
 ]
 const WEEK = [
   { d: '월', v: 38200 }, { d: '화', v: 40100 }, { d: '수', v: 39400 }, { d: '목', v: 42300 }, { d: '금', v: 41280 },
@@ -183,9 +193,10 @@ async function onLogout() {
               <h2>공장별 생산 현황 <small>오늘</small></h2>
               <table>
                 <thead><tr><th>공장</th><th>계획</th><th>실적</th><th>달성률</th><th>OEE</th><th>상태</th></tr></thead>
-                <tbody>
-                  <tr v-for="f in FACTORIES" :key="f.name">
-                    <td>{{ f.name }}</td>
+                <tbody v-for="c in CAMPUSES" :key="c.name">
+                  <tr><td colspan="6" class="campus">{{ c.name }}</td></tr>
+                  <tr v-for="f in c.factories" :key="f.name">
+                    <td class="fac">{{ f.name }}</td>
                     <td>{{ f.plan.toLocaleString() }}</td>
                     <td>{{ f.done.toLocaleString() }}</td>
                     <td>{{ pct(f.done, f.plan) }}</td>
@@ -513,6 +524,16 @@ svg {
   left: 0;
   margin-bottom: 24px;
   border-top: var(--line-w) dashed var(--c-line-strong);
+}
+
+.campus {
+  background: var(--c-surface-sunk);
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
+}
+
+.fac {
+  padding-left: var(--sp-5);
 }
 
 .state {
