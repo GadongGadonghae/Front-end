@@ -755,6 +755,11 @@ export function createApiSource(): DataSource {
         const r = await api.R06(Number(id))
         return { appliedAt: r.appliedAt, startedLines: r.startedLines, targets: r.targets, lineCommandSent: r.lineCommandSent, notes: r.notes }
       },
+      // N-01: 서버가 보고서·장비 정보를 모아 LLM 요약 후 슬랙 웹훅으로 보낸다 (기록은 남기지 않음)
+      async sendReplanToSlack(reportId) {
+        const r = await api.N01(Number(reportId))
+        return { sentAt: r.sentAt, mock: r.mock, summary: r.summary, summaryFallback: r.summaryFallbackReason }
+      },
       async createUser(u) {
         try {
           return { ok: true, value: await api.C03({ loginId: u.loginId, password: u.password, userName: u.name, role: u.role, email: u.email || undefined, memo: u.memo || undefined }) }

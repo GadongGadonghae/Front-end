@@ -156,6 +156,26 @@ async function generate() {
   }
 }
 
+// ── 슬랙 전송 (N-01): 고장 장비 정보 + 보고서 + LLM 요약. 요약에 20초 안팎 걸려 그동안 버튼을 막는다 ──
+const slackBusy = ref(false)
+const slackMsg = ref<{ ok: boolean; text: string } | null>(null)
+watch(selectedId, () => { slackMsg.value = null })
+async function sendSlack() {
+  const id = selectedId.value
+  if (!id || slackBusy.value) return
+  slackBusy.value = true
+  slackMsg.value = null
+  try {
+    const r = await source.cmd.sendReplanToSlack(id)
+    const how = r.mock ? '슬랙 시험 모드 · 실제로 보내지 않음' : '슬랙 전송 완료'
+    slackMsg.value = { ok: true, text: `${how} (${formatTime(r.sentAt)})${r.summaryFallback ? ` · AI 요약 실패로 템플릿 문장 사용` : ''}` }
+  } catch (e) {
+    slackMsg.value = { ok: false, text: e instanceof Error ? e.message : '슬랙으로 보내지 못했습니다' }
+  } finally {
+    slackBusy.value = false
+  }
+}
+
 // ── 보고서 문서 값 ──
 const title = computed(() => {
   if (orderSide.value) return ov.value ? ov.value.title : '추가 주문 배정 검토'
@@ -349,6 +369,7 @@ async function downloadPdf() {
           </button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
+          <button class="btn" type="button" :disabled="!doc || !selectedId || slackBusy || generating" @click="sendSlack">{{ slackBusy ? '슬랙 전송 중…' : '슬랙 전송' }}</button>
         </div>
         <ReportApproval
           v-if="selectedId"
@@ -384,6 +405,7 @@ async function downloadPdf() {
           <p v-if="genError" class="gen-error">{{ genError }}</p>
           <p v-if="flow.lastError.value" class="gen-error">결재 기록 실패: {{ flow.lastError.value }}</p>
           <p v-if="!can('reportWrite') && !report" class="gen-error">AI 보고서·추가 주문 배정 작성은 생산관리팀장 권한이에요.</p>
+          <p v-if="slackMsg" :class="slackMsg.ok ? 'slack-msg' : 'gen-error'" role="status" aria-live="polite">{{ slackMsg.text }}</p>
           <div v-if="applyResult" class="info-panel">
             <h4>적용 결과 · {{ formatTime(applyResult.appliedAt).slice(0, 5) }}</h4>
             <div class="info-grid">
@@ -955,10 +977,15 @@ async function downloadPdf() {
   color: #b42318;
 }
 
-.gen-error {
+.gen-error,
+.slack-msg {
   grid-column: 1 / -1;
   margin: 0;
   font-size: 13px;
+}
+
+.slack-msg {
+  color: var(--c-ink-3);
 }
 
 .info-panel {

@@ -219,6 +219,7 @@ DC 판정: 설비(Node-RED·가상 설비)가 1초마다 상태 신호(heartbeat
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | R-01 | 재배정 보고서 목록 | GET | `/reassignments` | 쿼리 `from, to, page, size` | `{ "content": [ { "reportId": 12, "downtimeId": 5001, "sourceLineId": "B", "equipmentId": "B-PR3", "stopMin": 42, "lossQty": 126, "createdAt": "2026-11-18T09:55:00+09:00" } ] }` | BE1 | P1 |
 | R-02 | 재배정 보고서 상세 (라인별 추가 배정) | GET | `/reassignments/{reportId}` | 경로 `reportId` | `{ "reportId": 12, "downtimeId": 5001, "sourceLineId": "B", "lossQty": 126, "details": [ { "targetLineId": "D", "spareCapacity": 300, "addQty": 126 } ] }` | BE1 | P1 |
+| N-01 | 계획수정 보고서를 슬랙으로 보내기 (2026-11-20, D-120) | POST | `/reassignments/{reportId}/slack` | 경로 `reportId` | `{ "reportId": 12, "mock": false, "sentAt": "2026-11-20T14:12:03+09:00", "summary": ["...", "...", "..."], "summaryModel": "gemini-3.8-flash", "summaryFallbackReason": null }`. 고장 장비 + 보고서 + LLM 3줄 요약을 슬랙 웹훅 1건으로 보냄. 요약 실패면 `summaryModel: "template"`. 웹훅 없음 503 `SLACK_NOT_CONFIGURED`, 슬랙 거절·연결 실패 502 `SLACK_SEND_FAILED`. 보낸 기록은 저장하지 않음. 자세히 `docs/09_슬랙전송.md` | BE1 | P2 |
 
 **R-01**
 - 손실 수량 = 정지 시간 × 라인 생산 능력(가장 느린 공정 기준, 프레스·용접 17초 → 시간당 약 211개). 흐름: 정지 30분 이상 → 손실 수량 계산 → 여유 라인 추천 → 계획서(보고서) 작성. 실제 재배정 수행과 승인은 하지 않아요. 보고서는 Spring Boot가 자동으로 만들어요. DB에는 승인 칸(approved, approved_by, approved_at)을 만들어 두지만 비워 두고, 승인 API는 없어요.

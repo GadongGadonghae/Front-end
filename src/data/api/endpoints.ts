@@ -4,7 +4,7 @@ import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
-  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
+  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, SlackSendDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, FlowReportDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
 
@@ -113,6 +113,8 @@ export const api = {
   R13: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/approve`, {}),
   /** R-14 전송 (공장장, 결재 완료 후에만) → MES 수신함 */
   R14: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/send`, {}),
+  /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 + 보고서 + LLM 요약). 웹훅 없음 503, 슬랙 실패 502 */
+  N01: (reportId: number) => http.post<SlackSendDto>(`/reassignments/${reportId}/slack`),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

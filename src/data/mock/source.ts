@@ -478,6 +478,12 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       createTargetReport: async () => { throw new Error('데모 데이터에서는 목표 변동 보고서를 만들 수 없어요 (실서버 전용)') },
       createOrderReport: async (request) => reports.createOrder(request),
       applyOrderReport: async (id) => reports.applyOrder(id),
+      // 데모 데이터: 슬랙으로 보내지 않고 보고서 요약만 돌려준다
+      async sendReplanToSlack(reportId) {
+        const r = reports.get(reportId)
+        if (!r) throw new Error('보고서를 찾을 수 없습니다')
+        return { sentAt: iso(now()), mock: true, summary: r.ai?.summary ? [r.ai.summary] : [], summaryFallback: null }
+      },
       async createUser(u) {
         if (demoUsers.some((x) => x.loginId === u.loginId)) return { ok: false, error: '이미 있는 아이디입니다' }
         demoUsers.push({ loginId: u.loginId, name: u.name, role: u.role, email: u.email || null, memo: u.memo || null, lastLoginAt: null })
