@@ -1,11 +1,12 @@
-<!-- 구간 버튼: 주소를 바꾸지 않는 한 가지 선택 (일/주/월, 1시간/8시간/오늘, 관리값 항목, 2D/3D) -->
+<!-- 구간 버튼: 주소를 바꾸지 않는 한 가지 선택 (일/주/월, 1시간/8시간/오늘, 관리값 항목, 2D/3D)
+     variant soft = 패널 안 탭·정렬: 회색 바탕에 고른 것만 흰 면 (먹색으로 채우는 기본형은 화면 위 기간 같은 큰 선택에만) -->
 <script setup lang="ts" generic="T extends string">
-withDefaults(defineProps<{ options: { value: T; label: string }[]; label: string; size?: 'md' | 'sm' }>(), { size: 'md' })
+withDefaults(defineProps<{ options: { value: T; label: string }[]; label: string; size?: 'md' | 'sm'; variant?: 'solid' | 'soft' }>(), { size: 'md', variant: 'solid' })
 const model = defineModel<T>({ required: true })
 </script>
 
 <template>
-  <div class="seg" :class="size" role="group" :aria-label="label">
+  <div class="seg" :class="[size, variant]" role="group" :aria-label="label">
     <button
       v-for="o in options"
       :key="o.value"
@@ -53,5 +54,33 @@ button.on {
 .sm button {
   height: var(--control-h-sm);
   font-size: var(--fs-sm);
+}
+
+.soft {
+  gap: 2px;
+  padding: 2px;
+  border: 0;
+  background: var(--c-track);
+}
+
+.soft button {
+  border-left: 0;
+  border-radius: var(--r-1);
+  background: none;
+}
+
+.soft button:hover {
+  background: color-mix(in srgb, var(--c-surface) 60%, transparent);
+}
+
+.soft button.on {
+  background: var(--c-surface);
+  box-shadow: 0 0 0 var(--line-w) var(--c-line-strong);
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
+}
+
+.soft.sm button {
+  height: calc(var(--control-h-sm) - 4px);
 }
 </style>
