@@ -10,7 +10,8 @@
     "typecheck": "vue-tsc -b",
     "lint": "eslint src",
     "lint:style": "stylelint \"src/**/*.{css,vue}\"",
-    "check": "npm run typecheck && npm run lint && npm run lint:style"
+    "check": "npm run typecheck && npm run lint && npm run lint:style",
+    "drift": "bash scripts/drift-check.sh"
   },
   "dependencies": {
     "three": "^0.170.0",

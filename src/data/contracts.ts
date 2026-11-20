@@ -102,7 +102,7 @@ export interface Commands {
   /** 토큰 삭제 (백엔드 호출 없음) 로그아웃 */
   logout(): Promise<void>
   /** U-09 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
-  saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
+  saveActionMemo(eventId: string, memo: string): Promise<HistoryEvent>
   /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */

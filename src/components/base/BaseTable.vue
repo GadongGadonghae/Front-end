@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<{
   clickable?: boolean
   expandedKey?: string | null
   /** hatch = 옅은 빗금 (빠진·제외된 행) */
-  rowTone?: (row: T) => 'down' | 'idle' | 'hatch' | null
+  rowTone?: (row: T) => 'down' | 'idle' | 'dc' | 'hatch' | null
   empty?: string
 }>(), { clickable: false, expandedKey: null, rowTone: undefined, empty: '데이터 없음' })
 const emit = defineEmits<{ rowClick: [row: T] }>()
@@ -128,6 +128,7 @@ tr.open td {
 
 tr.t-down td { background: var(--c-down-tint); }
 tr.t-idle td { background: var(--c-idle-tint); }
+tr.t-dc td { background: var(--c-dc-tint); }
 tr.t-hatch td { background: repeating-linear-gradient(135deg, var(--c-ng-hatch) 0 2px, transparent 2px 9px); }
 
 .inset th:first-child,
