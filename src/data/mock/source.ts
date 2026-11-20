@@ -15,6 +15,7 @@ import { createTelemetry } from '@/data/mock/telemetry'
 import { createProducts, PRODUCTION_LINES } from '@/data/mock/products'
 import { createAnalysis } from '@/data/mock/analysis'
 import { createHistory } from '@/data/mock/history'
+import { asStateEvent } from '@/data/historyTodo'
 import { createReports } from '@/data/mock/reports'
 import { createPdm } from '@/data/mock/pdm'
 import { createFlow } from '@/data/mock/flow'
@@ -29,8 +30,9 @@ const LINE_DONE_PER_SEC = 1 / 17
 const DEMO_USER = '김현수'
 /** 데모 사용자 목록 (사용자 관리 화면) */
 const demoUsers: import('@/types/user').UserRow[] = [
-  { loginId: 'abc', name: DEMO_USER, role: 'MANAGER', email: null, memo: '데모 관리자', lastLoginAt: null },
-  { loginId: 'op01', name: '박서연', role: 'OPERATOR', email: null, memo: 'A·B라인', lastLoginAt: null },
+  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_MANAGER', email: null, memo: '데모 공장장', lastLoginAt: null },
+  { loginId: 'prodlead', name: '이도윤', role: 'PRODUCTION_MANAGER', email: null, memo: '데모 생산관리팀장', lastLoginAt: null },
+  { loginId: 'linelead', name: '박서연', role: 'LINE_MANAGER', email: null, memo: 'A·B라인', lastLoginAt: null },
 ]
 const PAGE_SIZE = 50
 
@@ -164,7 +166,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
   const reports = createReports({
     now, lineDone, live, inboundStock: () => inbound.stock,
     counts: products.counts, oee: analysis.oee, oeeOf: analysis.oeeOf, targetOf, linePlanOf,
-    findEvent: history.find,
+    findEvent: (id) => asStateEvent(history.find(id)),
     pastDEvents: (from, to) => history.all({ from, to, states: ['D'] }),
     setTodayReport: (eventId, reportId) => { const ev = events.find((e) => e.id === eventId); if (ev) ev.reportId = reportId },
     user: DEMO_USER,
@@ -453,18 +455,24 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     },
     cmd: {
       // 데모 계정: 아이디·비밀번호가 비어 있지 않으면 통과 (실제 계정은 백엔드, DT-008)
-      login: async (userId, password) => (userId && password ? { ok: true, name: DEMO_USER } : { ok: false }),
+      // 데모: 아이디로 권한을 고름 (prodlead 생산관리팀장 · linelead 라인 담당자 · 그 밖 공장장)
+      login: async (userId, password) => {
+        if (!userId || !password) return { ok: false }
+        const u = demoUsers.find((x) => x.loginId === userId)
+        return { ok: true, name: u?.name ?? DEMO_USER, role: u?.role ?? 'PLANT_MANAGER' }
+      },
       logout: async () => {},
       async saveActionMemo(eventId, memo) {
         const text = memo.trim()
         const patch = text ? { memo: text, memoBy: DEMO_USER, memoAt: iso(now()) } : { memo: null, memoBy: null, memoAt: null }
         const ev = events.find((e) => e.id === eventId)
-        if (ev) return { ...Object.assign(ev, patch) }
+        if (ev) return { ...Object.assign(ev, patch), notify: null }
         const past = history.saveMemo(eventId, patch)
         if (!past) throw new Error(`상태 이력 없음: ${eventId}`)
         return past
       },
       createReplanReport: async (eventId) => reports.create(eventId),
+      approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
       createOrderReport: async (request) => reports.createOrder(request),
       applyOrderReport: async (id) => reports.applyOrder(id),
       async createUser(u) {

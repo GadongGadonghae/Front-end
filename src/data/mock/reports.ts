@@ -1,6 +1,7 @@
 // 데모 리포트 (API-080 일일 생산 리포트, API-081~083 계획수정 보고서).
 // 일일 리포트는 생산 조회·가동률과 같은 수(제품 목록·비가동 구간)에서 셈한다. 보고서 계산은 FN-009 규칙 그대로. 값은 데모용 (CLAUDE.md)
 import type { DailyReport, ReplanAllocation, ReplanReport, ReplanSummary } from '@/types/report'
+import type { asStateEvent } from '@/data/historyTodo'
 import type { EquipmentLive } from '@/types/live'
 import type { HistoryEvent } from '@/types/events'
 import type { OeeQuery, OeeReport } from '@/types/analysis'
@@ -22,7 +23,7 @@ interface Ctx {
   oeeOf: (key: string, date: string) => number | null
   targetOf: (date: string) => number | null
   linePlanOf: (date: string) => number | null
-  findEvent: (id: string) => HistoryEvent | null
+  findEvent: (id: string) => ReturnType<typeof asStateEvent>
   pastDEvents: (from: string, to: string) => HistoryEvent[]
   setTodayReport: (eventId: string, reportId: string) => void
   user: string
@@ -113,7 +114,7 @@ export function createReports(ctx: Ctx) {
   }
 
   /** 고장 건과 기준 시각으로 보고서를 계산한다 */
-  function compute(ev: HistoryEvent, base: number, id: string, createdAt: number, createdBy: string): ReplanReport {
+  function compute(ev: NonNullable<ReturnType<typeof asStateEvent>>, base: number, id: string, createdAt: number, createdBy: string): ReplanReport {
     const e = MASTER.equipment.find((x) => x.id === ev.equipmentId)!
     const date = localDate(base)
     const isToday = date === today()
@@ -206,7 +207,7 @@ export function createReports(ctx: Ctx) {
 
 
   /**
-   * 추가 주문 배정 검토 (R-04 데모). 실서버는 AI가 요청을 해석하지만 데모는 간단한 규칙으로 읽는다:
+   * 추가 주문 배정 검토 (R-05 데모). 실서버는 AI가 요청을 해석하지만 데모는 간단한 규칙으로 읽는다:
    * "300개" 수량, "A~D"·"A·B라인" 가동 중 라인, "F라인 더/추가" 새 라인, "한 라인 더" 라인 수. 준비 30분, 납기 오늘 24:00
    */
   function createOrder(text: string): ReplanReport {
@@ -283,13 +284,23 @@ export function createReports(ctx: Ctx) {
       .sort((x, y) => y.createdAt.localeCompare(x.createdAt))
   }
 
-  /** 추가 주문 배정 승인·적용 (R-05 데모): 적용 표시만. 데모 대시보드의 라인 상태는 바뀌지 않는다 */
+  /** 공장장 승인(결재) (11/20). 데모는 메모리에만 */
+  function approve(id: string, by: string): ReplanReport {
+    const r = get(id)
+    if (!r) throw new Error(`보고서 없음: ${id}`)
+    const next = { ...r, approved: true, approvedBy: by, approvedAt: new Date(ctx.now()).toISOString() }
+    made.set(id, next)
+    return next
+  }
+
+
+  /** 추가 주문 배정 승인·적용 (R-06 데모): 적용 표시만. 데모 대시보드의 라인 상태는 바뀌지 않는다 */
   function applyOrder(id: string) {
     const r = made.get(id)
     if (!r || r.kind !== 'order') throw new Error('추가 주문 배정 보고서만 적용할 수 있습니다')
-    if (r.appliedAt) throw new Error('이미 적용한 보고서입니다')
+    if (r.approved) throw new Error('이미 적용한 보고서입니다')
     const at = iso(ctx.now())
-    made.set(id, { ...r, appliedAt: at, appliedBy: ctx.user })
+    made.set(id, { ...r, approved: true, approvedAt: at, approvedBy: ctx.user })
     return {
       appliedAt: at, startedLines: r.order?.newLines ?? [], lineCommandSent: false,
       targets: r.allocations.filter((a) => a.add > 0).map((a) => ({ lineId: a.target, before: 0, after: a.add })),
@@ -297,5 +308,5 @@ export function createReports(ctx: Ctx) {
     }
   }
 
-  return { daily, list, get, create, createOrder, applyOrder, reportOf, seedToday }
+  return { daily, list, get, create, approve, createOrder, applyOrder, reportOf, seedToday }
 }

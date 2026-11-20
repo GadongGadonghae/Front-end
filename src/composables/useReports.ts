@@ -109,7 +109,15 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return r.id
   }
 
-  /** 추가 주문 배정 승인·적용 (R-05). 적용 뒤 보고서를 다시 읽는다 */
+  /** 공장장 승인(결재) (11/20). 바뀐 보고서로 화면을 바꿔요 */
+  async function approve() {
+    const r = report.value
+    if (!r) return
+    report.value = await source.cmd.approveReplanReport(r.id)
+    await loadList()
+  }
+
+  /** 추가 주문 배정 승인·적용 (R-06). 적용 뒤 보고서를 다시 읽는다 */
   async function apply(id: string) {
     const result = await source.cmd.applyOrderReport(id)
     const r = await source.q.getReplanReport(id)
@@ -117,7 +125,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return result
   }
 
-  /** 추가 주문 배정 검토 만들기 (R-04, 고장 건 없이). request = 현장 말 그대로. 만든 보고서 ID */
+  /** 추가 주문 배정 검토 만들기 (R-05, 고장 건 없이). request = 현장 말 그대로. 만든 보고서 ID */
   async function createOrder(request: string) {
     const r = await source.cmd.createOrderReport(request)
     await loadList()
@@ -226,5 +234,5 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     }
   }
 
-  return { list, groups, report, view, missing, create, createOrder, apply, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
+  return { list, groups, report, view, missing, create, approve, createOrder, apply, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
 }

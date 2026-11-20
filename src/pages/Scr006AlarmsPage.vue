@@ -1,16 +1,17 @@
-<!-- SCR-006 알람·비가동 이력 (화면정의서 SCR-006, D-109 시안 D4 docs/wireframes/후보-v2/알람/D4.html)
-     제목 줄: 제목 + 탭 [알람·비가동] / [예지보전 위험] (D-65)
-     알람 탭: 왼쪽 좁은 요약 열 (고장·대기·정지 건수와 시간 → 알람 코드 → 아직 손볼 건, 누르면 표를 거름)
+<!-- SCR-006 알람 이력 (화면정의서 SCR-006, D-109 시안 D4, D-117 고장·통신 끊김만)
+     제목 줄: 제목. 위쪽 종류 버튼 [전체 · 고장 · 통신 끊김] 중 하나 (D-117)
+     왼쪽 좁은 요약 열 (고장·통신 끊김 건수 → 아직 손볼 건 → 알람 코드, 누르면 표를 거름)
              + 오른쪽 패널 = 필터 줄 → 표 → 페이지 (50건씩, D-66). 표는 설비+라인, 상태·코드+상세를 합쳐 조치 메모 열을 넓게
      조치 메모 [쓰기]/[고치기] → 그 행 아래로 3줄 입력칸이 펼쳐짐. 지속 시간은 보통 글자 (D-109)
-     조치 담당자는 메모 칸 둘째 줄 (1280 폭에서도 메모 열이 남게). 진행 중 고장 → 진행 중 대기 → 나머지 최근순 (D-111)
-     진행 중 고장 행은 고장 바탕, 대기 행은 대기 바탕 (DESIGN.md). 메일은 고장(D)만 보내므로 (슬랙 없음, D-110) 다른 건은 "-" -->
+     조치 담당자는 메모 칸 둘째 줄 (1280 폭에서도 메모 열이 남게). 진행 중 고장 → 진행 중 통신 끊김 → 나머지 최근순 (D-111)
+     진행 중 고장 행은 고장 바탕, 통신 끊김 행은 통신 끊김 바탕 (DESIGN.md). 메일은 고장(D)만 보내므로 (슬랙 없음, D-110) 다른 건은 "-" -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
+import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseDateField from '@/components/base/BaseDateField.vue'
 import BaseCheck from '@/components/base/BaseCheck.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
@@ -24,17 +25,23 @@ import ActionMemoEditor from '@/components/domain/ActionMemoEditor.vue'
 import { useInlineEdit } from '@/components/base/inlineEdit'
 import { useAlarmHistory, MAX_DAYS, type AlarmRow } from '@/composables/useAlarmHistory'
 import type { HistoryTodo } from '@/types/events'
+import { isCommsEvent } from '@/data/historyTodo'
+import { useAuth } from '@/composables/useAuth'
 import type { DowntimeCode } from '@/types/state'
 
 const route = useRoute()
 const router = useRouter()
 const h = useAlarmHistory()
-const { tab, from, to, lineId, process, states, code, ongoing, todo, page } = h
+// 조치 메모 쓰기 권한 (11/20): 생산관리팀장·라인 담당자만
+const { can } = useAuth()
+const { tab, from, to, lineId, process, kind, code, ongoing, todo, page } = h
 
 // 예지보전 위험 탭은 뺌 (11/20). 알람·비가동만 (예전 주소 ?tab=risk로 와도 알람·비가동)
 tab.value = 'alarm'
 // 대시보드 팝업 "조치 가기" (?eq=설비ID): 기준정보가 오면 그 설비 건으로 필터를 맞춘다
 watch([() => route.query.eq, () => h.equipmentById.value.size], ([eq]) => { if (typeof eq === 'string') h.focusEquipment(eq) }, { immediate: true })
+// ?line=A: 라인 상세의 "오늘 알람 이력"에서 넘어올 때 그 라인으로 거름 (11/20)
+watch(() => route.query.line, (line) => { if (typeof line === 'string') h.lineId.value = line }, { immediate: true })
 
 const multi = computed(() => from.value !== to.value)
 const timeW = computed(() => (multi.value ? '9.5em' : '6.5em'))
@@ -49,7 +56,7 @@ const ALARM_COLS = computed<TableColumn[]>(() => [
   { key: 'report', label: '보고서', width: '6.5em' },
 ])
 
-const tone = (r: AlarmRow) => (r.ongoing && r.state === 'D' ? 'down' : r.ongoing && r.state === 'I' ? 'idle' : null)
+const tone = (r: AlarmRow) => (r.ongoing && r.state === 'D' ? 'down' : r.ongoing && r.state === 'DC' ? 'dc' : null)
 
 // 조치 메모: 한 번에 한 건만, 그 행 아래로 펼친다. 열면 입력에 초점, 닫으면 연 버튼으로. 저장하면 그 행에 "저장됨"
 const memo = useInlineEdit('alarm-memo')
@@ -83,7 +90,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
 <template>
   <PageLayout>
     <template #head>
-      <h1 class="title">알람·비가동 이력</h1>
+      <h1 class="title">알람 이력</h1>
     </template>
 
     <div class="body" :class="{ split: tab === 'alarm' }">
@@ -101,7 +108,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
 
       <BasePanel class="list">
         <template #head>
-          <h2 class="sr-only">{{ tab === 'alarm' ? '알람·비가동 이력 표' : '예지보전 위험 이력 표' }}</h2>
+          <h2 class="sr-only">알람 이력 표</h2>
           <div class="filters">
             <span class="field range">
               <BaseDateField v-model="from" label="기간" :max="h.today" />
@@ -112,13 +119,11 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
             <BaseSelect v-model="lineId" label="라인" :options="h.lineOptions" />
             <template v-if="tab === 'alarm'">
               <BaseSelect v-model="process" label="공정" :options="h.processOptions.value" />
-              <span class="field" role="group" aria-label="상태">
-                <span class="lab">상태</span>
-                <BaseCheck v-model="states.D" label="고장"><StatusKey state="D" size="sm" label="고장" /></BaseCheck>
-                <BaseCheck v-model="states.I" label="대기"><StatusKey state="I" size="sm" label="대기" /></BaseCheck>
-                <BaseCheck v-model="states.S" label="정지"><StatusKey state="S" size="sm" label="정지" /></BaseCheck>
+              <span class="field">
+                <span class="lab">종류</span>
+                <BaseSegmented v-model="kind" label="종류" :options="h.kindOptions.value" />
               </span>
-              <BaseSelect v-model="code" label="코드" :options="h.codeOptions.value" />
+              <BaseSelect v-if="kind !== 'DC'" v-model="code" label="고장 코드" :options="h.codeOptions.value" />
               <BaseCheck v-model="ongoing" label="진행 중만" />
             </template>
           </div>
@@ -161,6 +166,7 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
               <span class="memo">
                 <span class="memo-text" :class="{ none: !row.memo }">{{ row.memo ?? '-' }}</span>
                 <button
+                  v-if="!isCommsEvent(row.id) && can('memo')"
                   class="link inline"
                   type="button"
                   :data-edit="memo.attr(row.id, 'open')"

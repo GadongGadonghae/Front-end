@@ -52,6 +52,10 @@ export interface ReplanAllocation {
 /** API-083 계획수정 보고서 (FN-009). 제안만 하고 계획은 바꾸지 않는다 (D-70) */
 export interface ReplanReport extends ReplanSummary {
   createdBy: string
+  /** 공장장 승인(결재) (11/20, R-04). 승인자 이름·시각은 승인 전 null */
+  approved?: boolean
+  approvedBy?: string | null
+  approvedAt?: string | null
   stateEventId: string
   /** 고장 시작 시각과 원인 */
   start: string
@@ -81,12 +85,9 @@ export interface ReplanReport extends ReplanSummary {
   causeTrace?: CauseTrace | null
   /** 추가 주문 배정 조건과 라인 가동 비교 (kind = order) */
   order?: ReplanOrder | null
-  /** 승인·적용한 시각과 사람 (R-05, 추가 주문 배정만). 적용 전 null */
-  appliedAt?: string | null
-  appliedBy?: string | null
 }
 
-/** 추가 주문 배정 승인·적용 결과 (R-05) */
+/** 추가 주문 배정 승인·적용 결과 (R-06) */
 export interface ReplanApplyResult {
   appliedAt: string
   /** 가동 명령을 보낸 새 라인 */
@@ -98,7 +99,7 @@ export interface ReplanApplyResult {
   notes: string[]
 }
 
-/** 추가 주문 배정 (R-04): AI가 해석한 조건과, 지금 가동 라인만 / 새 라인까지 켤 때 비교 */
+/** 추가 주문 배정 (R-05): AI가 해석한 조건과, 지금 가동 라인만 / 새 라인까지 켤 때 비교 */
 export interface ReplanOrder {
   request: string | null
   addQty: number
@@ -211,4 +212,6 @@ export interface TargetRow {
   /** 지난 날·오늘의 실적. 앞으로의 날은 null */
   done: number | null
   updatedBy: string | null
+  /** 마지막으로 저장한 시각 (11/20 목표 변동 카드). 데모는 null */
+  updatedAt?: string | null
 }

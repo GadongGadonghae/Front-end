@@ -1,6 +1,7 @@
 // 선택 설비의 오늘 비가동 이력 + 조치 메모 (SCR-002 5·6번, API-041·042). 알람 이벤트가 오면 이어 붙인다
 import { computed, onScopeDispose, ref, watch, type Ref } from 'vue'
 import { source } from '@/data'
+import { asStateEvent } from '@/data/historyTodo'
 import type { StateEvent } from '@/types/events'
 import type { HistoryRowView } from '@/types/view'
 import { useNow } from '@/composables/useNow'
@@ -48,9 +49,9 @@ export function useEquipmentHistory(equipmentId: Ref<string | null>) {
 
   /** 조치 메모 저장. 빈 글이면 지운다. 담당자는 로그인 사용자 (D-84) */
   async function saveMemo(eventId: string, memo: string) {
-    const saved = await source.cmd.saveActionMemo(eventId, memo)
+    const saved = asStateEvent(await source.cmd.saveActionMemo(eventId, memo))
     const i = events.value.findIndex((e) => e.id === eventId)
-    if (i >= 0) events.value.splice(i, 1, saved)
+    if (i >= 0 && saved) events.value.splice(i, 1, saved)
   }
 
   return { rows, loaded, saveMemo }

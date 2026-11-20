@@ -2,6 +2,8 @@
      왼쪽: 새 사용자 등록 (아이디 · 비밀번호 · 이름 · 역할 · 이메일 · 메모). 오른쪽: 사용자 목록 (최근 로그인 포함)
      수정·삭제 API는 아직 없어서 등록만 해요 -->
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+import { settingsTabsFor } from '@/lib/permissions'
 import { computed, ref, shallowRef } from 'vue'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
@@ -13,17 +15,16 @@ import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import { source } from '@/data'
 import { formatTime, toDateStr } from '@/lib/format'
-import type { UserRole, UserRow } from '@/types/user'
+import { ROLE_LABEL, type UserRole, type UserRow } from '@/types/user'
 
-const TABS = [
-  { key: 'target', label: '생산 목표', to: '/settings/target' },
-  { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
-  { key: 'users', label: '사용자 관리', to: '/settings/users' },
-]
+// 권한 있는 설정 탭만 (11/20, lib/permissions.ts)
+const { role: myRole } = useAuth()
+const TABS = computed(() => settingsTabsFor(myRole.value))
+// 권한 3가지 (11/20). 할 수 있는 일은 lib/permissions.ts
 const ROLES: { value: UserRole; label: string }[] = [
-  { value: 'OPERATOR', label: '작업자' },
-  { value: 'MANAGER', label: '생산관리' },
-  { value: 'ADMIN', label: '관리자' },
+  { value: 'LINE_MANAGER', label: ROLE_LABEL.LINE_MANAGER },
+  { value: 'PRODUCTION_MANAGER', label: ROLE_LABEL.PRODUCTION_MANAGER },
+  { value: 'PLANT_MANAGER', label: ROLE_LABEL.PLANT_MANAGER },
 ]
 const roleName = (r: string) => ROLES.find((x) => x.value === r)?.label ?? r
 const COLS: TableColumn[] = [
@@ -51,7 +52,7 @@ const rows = computed(() => (users.value ?? []).map((u) => ({
 const loginId = ref('')
 const password = ref('')
 const name = ref('')
-const role = ref<UserRole>('OPERATOR')
+const role = ref<UserRole>('LINE_MANAGER')
 const email = ref('')
 const memo = ref('')
 const saving = ref(false)
@@ -101,7 +102,7 @@ async function save() {
           <BaseInput v-model="loginId" label="아이디" size="md" autocomplete="off" />
           <BaseInput v-model="password" label="비밀번호" type="password" size="md" autocomplete="new-password" />
           <BaseInput v-model="name" label="이름" size="md" />
-          <BaseSelect v-model="role" label="역할" :options="ROLES" />
+          <BaseSelect v-model="role" label="권한" :options="ROLES" />
           <BaseInput v-model="email" label="이메일 (선택)" size="md" />
           <BaseInput v-model="memo" label="메모 (선택)" size="md" />
           <div class="actions">

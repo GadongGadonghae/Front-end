@@ -141,6 +141,8 @@ export interface CycleDto {
   equipmentId: string
   cycles: number
   avgCtMs: number | null
+  /** 그날 이 설비에서 공정 판정 NG(폐기)된 수. 프레스는 NG가 난 단 (11/20) */
+  ng?: number
 }
 
 /** M-13 */
@@ -363,6 +365,10 @@ export interface ReassignmentDetailDto {
   stoppedDone: number | null
   targetQty: number | null
   unmetQty: number | null
+  /** 공장장 승인(결재) (11/20, R-04) */
+  approved?: boolean
+  approvedBy?: string | null
+  approvedAt?: string | null
   /** AI 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
   ai: {
     title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null
@@ -374,12 +380,9 @@ export interface ReassignmentDetailDto {
     /** 추가 주문 배정 조건과 라인 가동 비교 (kind = order, 11/20 추가) */
     order?: OrderInfoDto | null
   } | null
-  /** R-05 승인·적용 시각과 사람 (적용 전 null, 11/20 추가) */
-  appliedAt?: string | null
-  appliedBy?: string | null
 }
 
-/** R-05 추가 주문 배정 승인·적용 결과 */
+/** R-06 추가 주문 배정 승인·적용 결과 */
 export interface ApplyResponseDto {
   reportId: number
   appliedAt: string

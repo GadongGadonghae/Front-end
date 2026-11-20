@@ -1,7 +1,8 @@
 // 라우트 표 (FRONTEND.md 5장).
 // 로그인 확인 (FN-016): /login 외에는 로그인해야 들어가고, 안 했으면 /login?redirect=원래경로
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { isLoggedIn } from '@/composables/useAuth'
+import { currentRole, isLoggedIn } from '@/composables/useAuth'
+import { allows, settingsTabsFor, type Permission } from '@/lib/permissions'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -9,6 +10,8 @@ declare module 'vue-router' {
     screen?: string
     /** 화면 이름 */
     title?: string
+    /** 이 화면을 여는 데 필요한 권한 (11/20, 설정 탭). 없으면 권한 있는 설정 탭 또는 대시보드로 */
+    perm?: Permission
     /** 상단 메뉴에서 켜질 항목 */
     menu?: '대시보드' | '생산' | '가동률' | '예지보전' | '알람이력' | 'AI 리포트' | '설정'
     /** 로그인 없이 들어갈 수 있는 화면 */
@@ -32,9 +35,9 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'alarms', component: () => import('@/pages/Scr006AlarmsPage.vue'), meta: { screen: 'SCR-006', title: '알람·비가동 이력', menu: '알람이력' } },
   { path: 'reports/daily', component: () => import('@/pages/Scr007DailyPage.vue'), meta: { screen: 'SCR-007', title: '일일 생산 리포트', menu: 'AI 리포트' } },
   { path: 'reports/replan/:id?', component: () => import('@/pages/Scr007ReplanPage.vue'), meta: { screen: 'SCR-007', title: '계획수정 보고서', menu: 'AI 리포트' } },
-  { path: 'settings/target', component: () => import('@/pages/Scr008TargetPage.vue'), meta: { screen: 'SCR-008', title: '생산 목표 설정', menu: '설정' } },
-  { path: 'settings/limits', component: () => import('@/pages/Scr009LimitsPage.vue'), meta: { screen: 'SCR-009', title: '관리값 기준 설정', menu: '설정' } },
-  { path: 'settings/users', component: () => import('@/pages/Scr012UsersPage.vue'), meta: { screen: 'SCR-012', title: '사용자 관리', menu: '설정' } },
+  { path: 'settings/target', component: () => import('@/pages/Scr008TargetPage.vue'), meta: { screen: 'SCR-008', title: '생산 목표 설정', menu: '설정', perm: 'target' } },
+  { path: 'settings/limits', component: () => import('@/pages/Scr009LimitsPage.vue'), meta: { screen: 'SCR-009', title: '관리값 기준 설정', menu: '설정', perm: 'limits' } },
+  { path: 'settings/users', component: () => import('@/pages/Scr012UsersPage.vue'), meta: { screen: 'SCR-012', title: '사용자 관리', menu: '설정', perm: 'users' } },
   { path: 'reports', redirect: '/reports/daily' },
   { path: 'settings', redirect: '/settings/target' },
 ]
@@ -56,6 +59,8 @@ router.beforeEach((to) => {
   const loggedIn = isLoggedIn()
   if (!to.meta.public && !loggedIn) return { path: '/login', query: { redirect: to.fullPath } }
   if (to.path === '/login' && loggedIn) return '/'
+  // 권한이 없는 설정 탭: 쓸 수 있는 첫 설정 탭, 없으면 대시보드 (11/20)
+  if (to.meta.perm && !allows(currentRole(), to.meta.perm)) return settingsTabsFor(currentRole())[0]?.to ?? '/'
 })
 
 router.afterEach((to) => {

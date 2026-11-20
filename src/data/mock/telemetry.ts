@@ -7,6 +7,7 @@ import type { InverterStatus, MicrostopToday, TelemetryItem, TelemetryRange, Tel
 import { MASTER } from '@/data/mock/master'
 import { INVERTER_LAST_TRIP, TELEMETRY_BASE, TELEMETRY_RAMPS } from '@/data/mock/scenario'
 import { dayStart, hash, localDate, noise } from '@/data/mock/rand'
+import { sensorDefsOf, sensorValue } from '@/data/dummy/sensors'
 
 /** 수집 주기(초): 슬리터 1초, 도장 5초, 프레스·용접 사이클마다 = 처리 시간 17초 (백엔드 v3.1) (API 명세 3.1). 비전은 관리값 없음 (D-51) */
 export const CADENCE_SEC: Record<EquipmentTypeCode, number> = { slitter: 1, painter: 5, press: 17, welder: 17, vision: 0 }
@@ -33,9 +34,11 @@ export function createTelemetry(ctx: Ctx) {
   const eqOf = (id: string) => MASTER.equipment.find((e) => e.id === id)
 
   function itemsOf(e: Equipment): ItemDef[] {
-    const defs = MASTER.controlLimits.filter((l) => l.equipmentId === e.id).map((l): ItemDef => ({ item: l.item, unit: l.unit, lower: l.lower, upper: l.upper }))
+    const defs = MASTER.controlLimits.filter((l) => l.equipmentId === e.id).map((l): ItemDef => ({ item: l.item, unit: l.unit, lower: l.lower, upper: l.upper, source: 'process' }))
     // 실설비 슬리팅 속도 그래프 (SCR-002-2 3번, D-43). 백엔드 항목에는 없다
-    if (e.type === 'slitter') defs.push({ item: 'commandHz', unit: 'Hz', lower: null, upper: null }, { item: 'outputHz', unit: 'Hz', lower: null, upper: null })
+    if (e.type === 'slitter') defs.push({ item: 'commandHz', unit: 'Hz', lower: null, upper: null, source: 'inverter' }, { item: 'outputHz', unit: 'Hz', lower: null, upper: null, source: 'inverter' })
+    // 설비 상태 센서 (온도·진동·전류): 더미 (data/dummy/sensors.ts)
+    for (const s of sensorDefsOf(e.id)) defs.push({ item: s.item, unit: s.unit, lower: s.lower, upper: s.upper, source: 'sensor' })
     return defs
   }
 
@@ -59,6 +62,8 @@ export function createTelemetry(ctx: Ctx) {
   }
 
   function valueAt(e: Equipment, def: ItemDef, t: number): number {
+    const sensor = def.source === 'sensor' ? sensorDefsOf(e.id).find((s) => s.item === def.item) : undefined
+    if (sensor) return withRamp(e, def.item, sensor.center, sensorValue(e.id, sensor, t, ctx.now() / 1000), t)
     const base = TELEMETRY_BASE[`${e.type}.${def.item}`]
       ?? (def.lower != null && def.upper != null ? { center: (def.lower + def.upper) / 2, amp: (def.upper - def.lower) * 0.05 } : { center: 50, amp: 1 })
     if (def.item === 'commandHz') return base.center
@@ -76,14 +81,19 @@ export function createTelemetry(ctx: Ctx) {
         : base.center + base.amp * 6 * (pdm.percent / 100)
       v += (target - base.center) * clamp01((t - (ctx.now() / 1000 - PDM_DRIFT_SEC)) / PDM_DRIFT_SEC)
     }
-    // 지금 고장과 이어진 이탈: 고장 시각에 to가 된다
-    const ramp = TELEMETRY_RAMPS.find((r) => r.equipmentId === e.id && r.item === def.item)
+    return withRamp(e, def.item, base.center, v, t)
+  }
+
+  /** 지금 고장과 이어진 이탈: 고장 시각에 to가 된다 */
+  function withRamp(e: Equipment, item: string, center: number, value: number, t: number): number {
+    let v = value
+    const ramp = TELEMETRY_RAMPS.find((r) => r.equipmentId === e.id && r.item === item)
     const l = ctx.live.get(e.id)
     if (ramp && l && l.state === 'D') {
       const end = Date.parse(l.since) / 1000
-      v += (ramp.to - base.center) * clamp01((t - (end - ramp.rampSec)) / ramp.rampSec) ** 2
+      v += (ramp.to - center) * clamp01((t - (end - ramp.rampSec)) / ramp.rampSec) ** 2
     }
-    const digits = Math.abs(base.center) < 10 ? 100 : 10
+    const digits = Math.abs(center) < 10 ? 100 : 10
     return Math.round(v * digits) / digits
   }
 

@@ -27,7 +27,7 @@ const MEMOS: Record<string, string[]> = {
   vision: ['카메라 렌즈 청소 후 재가동', '조명 케이블 재체결'],
 }
 const SOURCE = '데모 데이터'
-const codeName = (code: string) => MASTER.downtimeCodes.find((d) => d.code === code)?.name ?? code
+const codeName = (code: string | null) => MASTER.downtimeCodes.find((d) => d.code === code)?.name ?? code ?? '고장'
 
 const hms = (ms: number) => new Date(ms).toTimeString().slice(0, 8)
 const fmt = (n: number) => { const k = Math.abs(n) < 100 ? 100 : 10; return String(Math.round(n * k) / k) }

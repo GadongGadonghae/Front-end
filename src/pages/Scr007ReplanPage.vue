@@ -4,6 +4,7 @@
      ?event=비가동ID 로 들어오면 그 고장 건을 고른 채로 연다 (예전 ?create= 도 같은 뜻). 제안만 하며 계획은 바꾸지 않는다 (D-70) -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -20,6 +21,22 @@ const route = useRoute()
 const router = useRouter()
 const selectedId = computed(() => (typeof route.params.id === 'string' && route.params.id ? route.params.id : null))
 const rp = useReplanReports(selectedId)
+// 계정 권한 (11/20): 작성 = 생산관리팀장, 승인(결재) = 공장장
+const { can } = useAuth()
+const approving = ref(false)
+const approveError = ref('')
+async function approveReport() {
+  if (approving.value) return
+  approving.value = true
+  approveError.value = ''
+  try {
+    await rp.approve()
+  } catch (e) {
+    approveError.value = e instanceof Error ? e.message : '승인하지 못했습니다'
+  } finally {
+    approving.value = false
+  }
+}
 const { equipmentName } = useMaster()
 const report = computed(() => rp.report.value)
 const v = computed(() => rp.view.value)
@@ -45,7 +62,7 @@ function openOrder() {
 const applying = ref(false)
 const applyResult = ref<ReplanApplyResult | null>(null)
 watch(selectedId, () => { applyResult.value = null })
-const canApply = computed(() => isOrder.value && !report.value?.appliedAt && !applying.value)
+const canApply = computed(() => isOrder.value && !report.value?.approved && !applying.value)
 async function applyOrder() {
   const id = selectedId.value
   const o = report.value?.order
@@ -76,7 +93,7 @@ const troubleRows = computed(() => (rp.troubles.value ?? []).map((e) => {
     id: e.id,
     name: equipmentName(e.equipmentId),
     time: formatTime(e.start),
-    text: [e.detail, DOWNTIME_NAME[e.code], e.end ? `${formatTime(e.end)} 복구` : '현재 조치 중'].filter(Boolean).join(' · '),
+    text: [e.detail, e.code ? DOWNTIME_NAME[e.code] : '통신 끊김', e.end ? `${formatTime(e.end)} 복구` : '현재 조치 중'].filter(Boolean).join(' · '),
     ongoing: e.end === null,
     made,
   }
@@ -183,7 +200,10 @@ const doc = computed(() => {
     targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : '출고'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
     author: r.createdBy,
-    status: r.appliedAt ? `승인·적용 ${formatTime(r.appliedAt).slice(0, 5)}${r.appliedBy ? ` · ${r.appliedBy}` : ''}` : '검토 대기',
+    // 추가 주문 배정은 승인과 함께 적용(R-06)되므로 '승인·적용'으로
+    status: r.approved ? (r.kind === 'order' ? '승인·적용 완료' : '승인 완료') : '검토 대기',
+    approvedBy: r.approvedBy ?? '',
+    approvedAt: r.approvedAt ? `${toDateStr(Date.parse(r.approvedAt))} ${formatTime(r.approvedAt)}` : '',
     stopSec,
     stop: formatDuration(stopSec),
     rows,
@@ -311,9 +331,10 @@ async function downloadPdf() {
       <section class="panel doc">
         <div class="doc-head">
           <div><h2>{{ title }}</h2><p>현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
-          <button class="btn primary" type="button" :disabled="!canGenerate" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : orderSide ? 'AI 배정 검토 생성' : 'AI 보고서 생성' }}</button>
-          <button v-if="isOrder" class="btn primary" type="button" :disabled="!canApply" @click="applyOrder">
-            {{ report?.appliedAt ? '적용됨' : applying ? '적용 중…' : '승인하고 적용' }}
+          <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!canGenerate" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : orderSide ? 'AI 배정 검토 생성' : 'AI 보고서 생성' }}</button>
+          <button v-if="can('reportApprove') && doc && !isOrder && !report?.approved" class="btn primary" type="button" :disabled="approving" @click="approveReport">{{ approving ? '승인 중…' : '승인(결재)' }}</button>
+          <button v-if="can('reportApprove') && isOrder" class="btn primary" type="button" :disabled="!canApply" @click="applyOrder">
+            {{ report?.approved ? '적용됨' : applying ? '적용 중…' : '승인하고 적용' }}
           </button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
@@ -336,6 +357,8 @@ async function downloadPdf() {
             <span v-if="ai" :class="['ai-state', { warn: ai.mock }]">{{ ai.mock ? `AI 생성 실패 · 템플릿 문장${ai.fallbackReason ? ` (${ai.fallbackReason})` : ''}` : `AI 생성 · ${ai.model}` }}</span>
           </div>
           <p v-if="genError" class="gen-error">{{ genError }}</p>
+          <p v-if="approveError" class="gen-error">{{ approveError }}</p>
+          <p v-if="!can('reportWrite') && !report" class="gen-error">AI 보고서·추가 주문 배정 작성은 생산관리팀장 권한이에요.</p>
           <div v-if="applyResult" class="info-panel">
             <h4>적용 결과 · {{ formatTime(applyResult.appliedAt).slice(0, 5) }}</h4>
             <div class="info-grid">
@@ -490,7 +513,7 @@ async function downloadPdf() {
           </section>
 
           <div class="approval">
-            <table><thead><tr><th>작성</th><th>생산관리 팀장</th></tr></thead><tbody><tr><td>{{ doc.author }}</td><td /></tr></tbody></table>
+            <table><thead><tr><th>작성 · 생산관리팀장</th><th>승인 · 공장장</th></tr></thead><tbody><tr><td>{{ doc.author }}</td><td>{{ doc.approvedBy }}<small v-if="doc.approvedAt" class="approved-at">{{ doc.approvedAt }}</small></td></tr></tbody></table>
           </div>
           <p class="note2">※ 본 문서는 AI 기반 의사결정 지원 초안이며, 담당자 검토 및 승인 후 생산계획에 반영합니다.</p>
         </article>
@@ -1257,6 +1280,13 @@ async function downloadPdf() {
   box-sizing: border-box;
   height: 63px;
   margin-top: 8px;
+}
+
+/* 승인 시각 (11/20 공장장 결재) */
+.approved-at {
+  display: block;
+  font-size: 11px;
+  color: #555;
 }
 
 .approval table {

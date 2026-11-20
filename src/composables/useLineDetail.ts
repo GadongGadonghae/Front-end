@@ -3,22 +3,24 @@ import { computed } from 'vue'
 import { source } from '@/data'
 import type { Equipment, LineId, ProcessId } from '@/types/plant'
 import type { ProcessToday } from '@/types/process'
-import type { BarRowView, FlowCellView, LineFlowView, LineNowView } from '@/types/view'
+import type { AlertRowView, BarRowView, FlowCellView, LineFlowView, LineNowView } from '@/types/view'
 import { useMaster } from '@/composables/useMaster'
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState } from '@/lib/status'
-import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
+import { formatDuration, formatNumber, formatTime, toDateStr } from '@/lib/format'
 
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
+/** 라인 오늘 알람(고장·통신 끊김) 갱신 주기 */
+const ALARM_POLL_MS = 5_000
 /** 프레스는 4단 뒤 1회 검사 (A-09) */
 const INSPECTION_NOTE: Partial<Record<ProcessId, string>> = { PRESS: '4단 뒤 검사' }
 
 export function useLineDetail(lineId: LineId) {
-  const { master } = useMaster()
+  const { master, equipmentName } = useMaster()
   const snapshot = useLiveSnapshot()
   const summary = useLiveSummary()
   const now = useNow()
@@ -27,6 +29,28 @@ export function useLineDetail(lineId: LineId) {
   const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
   // 라인 OEE 3요소 (가동률 화면과 같은 API-050, 오늘·이 라인)
   const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(Date.now()), lineId }), PROCESS_POLL_MS)
+  // 오늘 알람 이력 (11/20): 알람 이력 탭과 같은 기준 = 이 라인 설비의 고장(D) + 통신 끊김(DC). 대기·정지는 아래 비가동 누적에서
+  const { data: alarmEvents } = usePoll(() => {
+    const d = toDateStr(Date.now())
+    return source.q.getHistory({ from: d, to: d, lineId, states: ['D', 'DC'], minMinutes: 0, page: 1 }).then((p) => p.items)
+  }, ALARM_POLL_MS)
+  const alarms = computed<AlertRowView[]>(() => {
+    const rows = (alarmEvents.value ?? []).map((e): AlertRowView => {
+      const sec = ((e.end ? Date.parse(e.end) : now.value) - Date.parse(e.start)) / 1000
+      return {
+        id: e.id, kind: e.state, title: equipmentName(e.equipmentId),
+        message: [e.code ? DOWNTIME_NAME[e.code] : '통신 끊김', e.detail].filter(Boolean).join(' · '),
+        start: e.start, time: formatTime(e.start),
+        duration: e.end ? `지속 ${formatDuration(sec)}` : formatDuration(sec),
+        ongoing: e.end === null,
+        report: e.state === 'D' ? (e.reportId ? 'view' : 'create') : null,
+        reportId: e.reportId, equipmentId: e.equipmentId,
+      }
+    })
+    // 진행 중 위, 그다음 최근순 (대시보드 알림과 같은 순서)
+    return rows.sort((a, b) => Number(b.ongoing) - Number(a.ongoing) || b.start.localeCompare(a.start))
+  })
+
   const oeeRows = computed<BarRowView[]>(() => {
     const o = oeeReport.value?.oee
     const row = (key: string, label: string, v: number | null | undefined): BarRowView => ({ key, label, value: v ?? null, display: v == null ? '-' : formatNumber(v, 1) })
@@ -47,6 +71,8 @@ export function useLineDetail(lineId: LineId) {
     const info: FlowCellView['info'] = []
     if (row) {
       info.push({ label: e.process === 'PRESS' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
+      // 그 설비에서 공정 판정 NG(폐기)된 수 (11/20). 있으면 빨간 글씨
+      info.push({ label: '불량', value: formatNumber(row.ng ?? 0), alert: (row.ng ?? 0) > 0 })
       if (row.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초` })
     }
     return {
@@ -103,5 +129,5 @@ export function useLineDetail(lineId: LineId) {
     }
   })
 
-  return { flow, now: now_, oeeRows }
+  return { flow, now: now_, oeeRows, alarms }
 }

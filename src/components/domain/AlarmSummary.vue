@@ -1,20 +1,20 @@
 <!-- 알람·비가동 이력 왼쪽 요약 (D-109 시안 D4, D-111). SummaryColumn 안에 덩어리 셋:
-     ① 상태별 건수 한 줄 (고장 · 대기 · 정지). 표에서 빠진 상태는 흐리게, 누르면 표에도 보임
+     ① 종류별 건수 한 줄 (고장 · 통신 끊김, D-117). 종류 버튼에서 빠진 것은 흐리게, 누르면 전체로
      ② 아직 손볼 건 (진행 중 고장 · 메일 실패) — 숫자를 크게 ③ 알람 코드 (고장 코드별 건수)
      ②③은 같은 모양의 거르기 버튼: 누르면 그 건만, 고른 것은 먹색 면, 다시 누르면 풀림 -->
 <script setup lang="ts">
 import SummaryBlock from '@/components/domain/SummaryBlock.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
-import type { StopState } from '@/types/state'
+import type { StateCode } from '@/types/state'
 
 defineProps<{
-  states: { state: StopState; label: string; count: number; hidden: boolean }[]
+  states: { state: StateCode; label: string; count: number; hidden: boolean }[]
   alarms: { code: string; name: string; count: number }[]
   todo: { key: string; label: string; count: number }[]
   activeCode: string
   activeTodo: string
 }>()
-const emit = defineEmits<{ pickAlarm: [code: string]; pickTodo: [key: string]; showState: [state: StopState] }>()
+const emit = defineEmits<{ pickAlarm: [code: string]; pickTodo: [key: string]; showState: [state: StateCode] }>()
 </script>
 
 <template>

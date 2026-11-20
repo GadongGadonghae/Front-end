@@ -22,6 +22,12 @@ export const CURRENT_STATES: ScenarioState[] = [
 /** 지금 통신이 끊긴 설비 (DC). 상태 신호가 10초 넘게 안 와서 백엔드가 DC로 판정한 것 (데모). 사유·비가동 이력은 없다 */
 export const CURRENT_DC = [{ equipmentId: 'F-PR3', agoSec: 2 * 60 + 40 }]
 
+/** 오늘 이미 끝난 통신 끊김 (데모, D-117 알람 이력에 보이려고): 지금보다 agoSec 전에 시작, durSec 동안 */
+export const PAST_DC_TODAY = [
+  { equipmentId: 'C-WD', agoSec: 3 * 3600 + 12 * 60, durSec: 95 },
+  { equipmentId: 'E-SL', agoSec: 6 * 3600 + 20 * 60, durSec: 40 },
+]
+
 /** R 설비가 지금 상태로 이어진 시간 (모두 같게 둠) */
 export const RUN_AGO_SEC = 4 * 3600 + 2 * 60 + 15
 
@@ -72,7 +78,12 @@ export const HOURLY_WEIGHT = [48, 50, 51, 47, 52, 50, 49, 53, 51, 46, 52, 50, 54
 export const RISK_EVENTS = [{ equipmentId: 'E-PR2', item: 'pressureLeft', agoSec: 29 * 60 + 37, maxPercent: 92 }]
 
 /** 지금 고장 난 설비의 관리값 이탈: 고장 전 rampSec 동안 값이 올라 고장 시각에 to가 된다 (데모) */
-export const TELEMETRY_RAMPS = [{ equipmentId: 'B-PR3', item: 'pressureLeft', to: 356, rampSec: 15 * 60 }]
+export const TELEMETRY_RAMPS = [
+  { equipmentId: 'B-PR3', item: 'pressureLeft', to: 356, rampSec: 15 * 60 },
+  // 설비 상태 센서 더미: 고장 전에 진동·모터 전류가 먼저 오른다 (예지보전 SCR-004)
+  { equipmentId: 'B-PR3', item: 'vibration', to: 4.3, rampSec: 30 * 60 },
+  { equipmentId: 'B-PR3', item: 'motorCurrent', to: 24, rampSec: 25 * 60 },
+]
 
 /** 지금 고장과 이어진 공정 검사 불량 (데모): 고장 직전 마지막 검사에서 걸린 제품 */
 export const NG_OVERRIDES = [{ lineId: 'B', process: 'PRESS', equipmentId: 'B-PR3', reason: '3단 · 압력(좌) 상한 이탈', beforeFaultSec: 14 }]
