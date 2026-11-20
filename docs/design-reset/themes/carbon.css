@@ -1,0 +1,17 @@
+/* 비교용: IBM Carbon g10 테마 값을 우리 토큰에 입힌 것 (docs/design-reset/carbon.md). 구현 토큰이 아니다 */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&display=swap");
+:root {
+  --c-canvas: #f4f4f4; --c-surface: #fff; --c-surface-sunk: #f4f4f4; --c-track: #e0e0e0;
+  --c-ink: #161616; --c-ink-2: #525252; --c-ink-3: #6f6f6f;
+  --c-line: #e0e0e0; --c-line-strong: #c6c6c6; --c-line-ink: #8d8d8d;
+  --c-accent: #0f62fe; --c-accent-tint: rgb(15 98 254 / 12%);
+  --c-run: #198038; --c-run-quiet: #24a148;
+  --c-stop: #e0e0e0; --c-stop-ink: #393939; --c-stop-solid: #6f6f6f;
+  --c-idle: #f1c21b; --c-idle-ink: #161616; --c-idle-edge: #8e6a00; --c-caution-ink: #8e6a00;
+  --c-down: #da1e28; --c-down-tint: #fff1f1; --c-idle-tint: #fcf4d6;
+  --c-inverse: #161616;
+  --r-1: 0; --r-2: 0; --r-3: 0;
+  --font: "IBM Plex Sans KR", pretendard, sans-serif;
+  --fs-sm: 12px; --fs-md: 14px; --fs-row: 16px; --fs-figure: 16px; --fs-lg: 20px; --fs-page: 28px; --fs-xl: 32px;
+  --control-h: 32px; --control-h-sm: 24px; --nav-h: 48px;
+}

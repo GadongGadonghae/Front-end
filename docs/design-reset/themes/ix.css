@@ -1,0 +1,18 @@
+/* 비교용: Siemens iX v6 community 라이트 값을 우리 토큰에 입힌 것 (docs/design-reset/siemens-ix.md). 구현 토큰이 아니다.
+   iX 글꼴은 Arial(한글 없음)이라 한글은 Pretendard로 대신한다 */
+:root {
+  --c-canvas: #f3f4f5; --c-surface: #fff; --c-surface-sunk: #f3f4f5; --c-track: #e5e8e9;
+  --c-ink: #000609; --c-ink-2: #405158; --c-ink-3: #5b6a71;
+  --c-line: #e5e8e9; --c-line-strong: #919ca1; --c-line-ink: #5b6a71;
+  --c-accent: #006a87; --c-accent-tint: rgb(0 106 135 / 12%);
+  --c-run: #376f1c; --c-run-quiet: #5c8a45;
+  --c-stop: #e5e8e9; --c-stop-ink: #405158; --c-stop-solid: #5b6a71;
+  --c-idle: #fcb900; --c-idle-ink: #000609; --c-idle-edge: #ba5d00; --c-caution-ink: #4d3901;
+  --c-down: #d72323; --c-down-tint: #fbe9e9; --c-idle-tint: #fff4d6;
+  --c-dc: #a733bc;
+  --c-inverse: #000609;
+  --r-1: 2px; --r-2: 2px; --r-3: 4px;
+  --font: Arial, pretendard, sans-serif;
+  --fs-sm: 12px; --fs-md: 14px; --fs-row: 16px; --fs-figure: 16px; --fs-lg: 20px; --fs-page: 24px; --fs-xl: 32px;
+  --control-h: 32px; --control-h-sm: 28px; --nav-h: 48px;
+}

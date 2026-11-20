@@ -98,6 +98,12 @@
         "value": "맑은 고딕",
         "createdAt": "2026-11-20T02:01:42.776Z",
         "reason": "Claude 판단: src/lib/replanDoc.ts는 화면이 아니라 Word(.doc) 내려받기용 HTML로, 회사 양식 production-plan-report-template.doc의 글꼴을 그대로 따름 (커밋 498bad3, AI 리포트 담당)"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "ibm plex sans kr",
+        "createdAt": "2026-11-20T06:30:11.741Z",
+        "reason": "Claude 판단: docs/design-reset/themes/carbon.css는 D-114 재설정의 비교용 토큰 덮어쓰기(Carbon 참고)로, 구현 글꼴이 아님. 채택하면 새 DESIGN.md에 올린다"
       }
     ]
   }
