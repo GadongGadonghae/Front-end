@@ -89,6 +89,8 @@ const pct = (done: number, plan: number) => `${((done / plan) * 100).toFixed(1)}
 const pickedKey = ref<string | null>(null)
 const picked = computed(() => flow.sent.value.find((f) => f.key === pickedKey.value) ?? flow.sent.value[0] ?? null)
 const KIND = { daily: '일일 생산 마감', replan: '생산계획 수정 검토' }
+// 공장별 란: 실제로 보고서를 보내는 곳은 우리 시스템(차체 캠퍼스 공장 1)뿐. 나머지 공장은 빈 란 (더미 공장 목록)
+const isOurs = (campus: string, factory: string) => campus === '차체 캠퍼스' && factory === '공장 1'
 
 async function download() {
   const f = picked.value
@@ -237,16 +239,22 @@ async function onLogout() {
         <div v-else class="reports">
           <section class="panel list">
             <h2>받은 공장 보고서 <small>{{ flow.sent.value.length }}건</small></h2>
-            <ul v-if="flow.sent.value.length">
-              <li v-for="f in flow.sent.value" :key="f.key">
-                <button type="button" :class="['item', { on: picked?.key === f.key }]" @click="pickedKey = f.key">
-                  <span class="from">공장 1 · {{ KIND[f.kind] }}</span>
-                  <b>{{ f.title }}</b>
-                  <span class="when">{{ flowLine(f).sent }} 전송</span>
-                </button>
-              </li>
-            </ul>
-            <p v-else class="empty">아직 전송된 보고서가 없습니다. 우리 시스템에서 공장장이 결재 후 [보고서 전송]을 누르면 여기에 들어옵니다.</p>
+            <template v-for="c in CAMPUSES" :key="c.name">
+              <section v-for="fa in c.factories" :key="c.name + fa.name" class="fgroup">
+                <h3>{{ c.name }} · {{ fa.name }} <small>{{ isOurs(c.name, fa.name) ? flow.sent.value.length : 0 }}건</small></h3>
+                <ul v-if="isOurs(c.name, fa.name) && flow.sent.value.length">
+                  <li v-for="f in flow.sent.value" :key="f.key">
+                    <button type="button" :class="['item', { on: picked?.key === f.key }]" @click="pickedKey = f.key">
+                      <span class="from">{{ KIND[f.kind] }}</span>
+                      <b>{{ f.title }}</b>
+                      <span class="when">{{ flowLine(f).sent }} 전송</span>
+                    </button>
+                  </li>
+                </ul>
+                <p v-else-if="isOurs(c.name, fa.name)" class="empty">아직 전송된 보고서가 없습니다. 우리 시스템에서 공장장이 결재 후 [보고서 전송]을 누르면 여기에 들어옵니다.</p>
+                <p v-else class="empty">받은 보고서 없음</p>
+              </section>
+            </template>
           </section>
 
           <section class="panel view">
@@ -681,6 +689,23 @@ th {
   margin: 0;
   padding: 0;
   list-style: none;
+}
+
+.fgroup + .fgroup {
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  border-top: var(--line-w) solid var(--c-line);
+}
+
+h3 {
+  margin-bottom: var(--sp-2);
+  font-size: var(--fs-row);
+  font-weight: var(--fw-strong);
+}
+
+h3 small {
+  color: var(--c-ink-3);
+  font-weight: normal;
 }
 
 .item {
