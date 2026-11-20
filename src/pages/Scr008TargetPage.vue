@@ -74,8 +74,10 @@ const { can } = useAuth()
             <span :class="{ strong: row.today }">{{ dateWithDay(row.date) }}<template v-if="row.today"> · 오늘</template></span>
           </template>
           <template #cell-quantity="{ row }">
-            <b v-if="row.quantity != null" class="n">{{ formatNumber(row.quantity) }}</b>
-            <small v-if="row.pending" class="pending"> (배정 대기 {{ formatNumber(row.pending) }})</small>
+            <template v-if="row.quantity != null">
+              <b class="n">{{ formatNumber(row.quantity) }}</b>
+              <small v-if="row.pending" class="pending"> (배정 대기 {{ formatNumber(row.pending) }})</small>
+            </template>
             <span v-else class="unset">목표 미설정</span>
           </template>
           <template #cell-plan="{ row }"><span class="n">{{ formatNumber(row.plan) }}</span></template>

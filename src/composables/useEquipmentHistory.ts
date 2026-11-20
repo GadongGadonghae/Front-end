@@ -34,7 +34,8 @@ export function useEquipmentHistory(equipmentId: Ref<string | null>) {
   })
   onScopeDispose(off)
 
-  const rows = computed<HistoryRowView[]>(() => [...events.value]
+  // 11/21: 대기(I)는 빼요 (알람 이력과 같게, 짧은 대기가 목록을 덮지 않게). 고장·통신 끊김·계획정지만
+  const rows = computed<HistoryRowView[]>(() => events.value.filter((e) => e.state !== 'I')
     .sort((a, b) => b.start.localeCompare(a.start))
     .map((e) => ({
       id: e.id,
