@@ -1,4 +1,4 @@
-<!-- 예지보전 센서 카드: 이름 · 출처 → 지금 값 · 위험도 → 1시간 미니 그래프 → 기준 · 1시간 변화
+<!-- 예지보전 센서 카드: 이름 · 출처 → 지금 값 · 위험도 → 1시간 미니 그래프 → 1시간 변화
      주의 = 노랑 실선 테두리, 위험 = 빨강 점선 테두리 + 고장 바탕 (DESIGN.md 예지보전 표시). 글자로 "주의"·"위험"을 같이 쓴다 -->
 <script setup lang="ts">
 import ChartSpark from '@/components/charts/ChartSpark.vue'
@@ -11,7 +11,6 @@ export interface SensorTileView {
   unit: string
   grade: 'danger' | 'warn' | 'normal' | 'unset'
   percentText: string
-  rangeText: string
   changeText: string
   spark: { points: [number, number][]; x: [number, number]; y: [number, number]; lines: number[] }
 }
@@ -28,7 +27,7 @@ defineEmits<{ select: [key: string] }>()
       <span :class="['pc', tile.grade]">{{ tile.percentText }}</span>
     </span>
     <ChartSpark :points="tile.spark.points" :x="tile.spark.x" :y="tile.spark.y" :lines="tile.spark.lines" />
-    <span class="t3"><span>{{ tile.rangeText }}</span><span>{{ tile.changeText }}</span></span>
+    <span class="t3">{{ tile.changeText }}</span>
   </button>
 </template>
 

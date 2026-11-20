@@ -197,8 +197,8 @@ const topGroups = computed(() => [
 <style scoped>
 /* 이 화면 글씨 크기 4단계
    24 --fs-page 화면 제목
-   20 --fs-lg   패널 제목 · 고른 설비 이름
-   16 --fs-row  주인공 값: 설비 이름 · 위험도 % · 등급별 대수 · 센서 이름 · 센서 값
+   20 --fs-lg   패널 제목 · 고른 설비 이름 · 등급별 대수 숫자
+   16 --fs-row  주인공 값: 설비 이름 · 위험도 % · 등급 이름(위험·주의·정상) · 센서 이름 · 센서 값
    13 --fs-sm   나머지 보조 글: 설명 · 항목 이름 · 등급 글자 · 단위 · 기준 · 축 · 범례 · 이력 */
 .layout :deep(.meta),
 .layout :deep(.empty) {
@@ -259,7 +259,7 @@ const topGroups = computed(() => [
 
 .counts dd {
   margin: 0;
-  font-size: var(--fs-row);
+  font-size: var(--fs-lg);
   font-weight: var(--fw-strong);
   font-variant-numeric: tabular-nums;
 }

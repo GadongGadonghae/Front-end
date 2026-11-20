@@ -20,7 +20,6 @@ const SOURCE_ORDER = { process: 0, inverter: 1, sensor: 2 } as const
 export type LaneGrade = 'normal' | 'warn' | 'danger' | 'down' | 'none'
 
 const dig = (n: number) => (Math.abs(n) < 10 ? 2 : 1)
-const unitOf = (u: string) => (u ? ` ${u}` : '')
 
 /** 위험도 %: 가운데에서 한계까지 (하한 없는 항목은 0에서 상한까지) */
 function percentOf(avg: number | null, lower: number | null, upper: number | null): number | null {
@@ -34,11 +33,6 @@ const avgBetween = (it: TelemetryItem, from: number, to: number) => {
   const vs = it.points.filter((p) => { const t = Date.parse(p.t); return t >= from && t <= to }).map((p) => p.value)
   return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null
 }
-
-const rangeText = (it: TelemetryItem) =>
-  it.upper == null && it.lower == null ? '기준 미정'
-    : it.lower == null ? `상한 ${formatNumber(it.upper, dig(it.upper!))}${unitOf(it.unit)}`
-      : `${formatNumber(it.lower, dig(it.lower))} ~ ${formatNumber(it.upper, dig(it.upper!))}${unitOf(it.unit)}`
 
 export function usePdmSensors(selectedId: Ref<string | null>, state: Ref<StateCode>, now: Ref<number>) {
   const hourRange = ref<TelemetryRange>('1h')
@@ -72,7 +66,6 @@ export function usePdmSensors(selectedId: Ref<string | null>, state: Ref<StateCo
         unit: it.unit,
         grade,
         percentText: percent == null ? '기준 미정' : `${grade === 'warn' ? '주의 ' : grade === 'danger' ? '위험 ' : ''}${percent}%`,
-        rangeText: rangeText(it),
         changeText: toward == null ? '' : toward >= 5 ? `1시간 +${toward}%p` : toward <= -5 ? `1시간 ${toward}%p` : '1시간 변화 작음',
         spark: {
           points: it.points.map((p): [number, number] => [Date.parse(p.t), p.value]),
