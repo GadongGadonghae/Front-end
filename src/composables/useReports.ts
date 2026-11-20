@@ -1,4 +1,5 @@
 // 리포트 (SCR-007): 일일 생산 리포트 (API-080) · 계획수정 보고서 목록·내용·만들기 (API-081~084)
+import { now as clockNow } from '@/clock'
 import { computed, ref, shallowRef, watch, type Ref } from 'vue'
 import { source } from '@/data'
 import type { StopState } from '@/types/state'
@@ -29,7 +30,7 @@ export function dateWithDay(date: string) {
 }
 
 export function useDailyReport() {
-  const today = toDateStr(Date.now())
+  const today = toDateStr(clockNow())
   const date = ref(today)
   const { data: report } = usePoll(
     () => source.q.getDailyReport(date.value),
@@ -60,7 +61,7 @@ export function useDailyReport() {
 
 export function useReplanReports(selectedId: Ref<string | null>) {
   const { equipmentName } = useMaster()
-  const today = toDateStr(Date.now())
+  const today = toDateStr(clockNow())
   const from = toDateStr(Date.parse(today) - (LIST_DAYS - 1) * DAY)
 
   const list = shallowRef<ReplanSummary[] | null>(null)
@@ -103,8 +104,9 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     .then((p) => {
       troubles.value = [...p.items].sort((a, b) => Number(b.end === null) - Number(a.end === null) || b.start.localeCompare(a.start))
     })
-    .catch(() => { troubles.value = [] })
-  loadTroubles()
+    .catch(() => { troubles.value = troubles.value ?? [] })
+  // 11/21: 고장이 새로 나거나 복구되면 "현재 트러블 슈팅"이 바로 바뀌게 10초마다 다시 읽어요
+  usePoll(loadTroubles, 10_000)
   /** 고장 건별 이미 만든 보고서 (최근 것이 앞) */
   const reportsOf = (eventId: string) => (list.value ?? []).filter((r) => r.stateEventId === eventId)
 
@@ -134,12 +136,31 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     return result
   }
 
-  /** 추가 주문 배정 검토 만들기 (R-05, 고장 건 없이). request = 현장 말 그대로. 만든 보고서 ID */
-  async function createOrder(request: string) {
-    const r = await source.cmd.createOrderReport(request)
+  /** 보고 있는 보고서를 서버에서 다시 읽기 (결재로 적용된 뒤 등) */
+  async function refreshReport() {
+    const id = selectedId.value
+    if (!id) return
+    const r = await source.q.getReplanReport(id)
+    if (selectedId.value === id) report.value = r
     await loadList()
+  }
+
+  /** 배정 값 고치기 (생산관리팀장, 결재 요청 전만, R-07). 고친 보고서로 화면을 바꿔요 */
+  async function editAllocations(addQty: Record<string, number>) {
+    const r = report.value
+    if (!r) return
+    report.value = await source.cmd.editReplanAllocations(r.id, addQty)
+  }
+
+  /** 추가 주문 배정 검토 만들기 (R-05, 고장 건 없이). request = 현장 말 그대로. 만든 보고서 ID */
+  async function createOrder(request: string, targetChangeId?: number) {
+    const r = await source.cmd.createOrderReport(request, targetChangeId)
+    await Promise.all([loadList(), reloadPending()])
     return r.id
   }
+
+  // 공장장이 오늘 목표를 올려서 생긴 배정 대기 (G-05, 11/20): 추가 주문 카드가 깜빡이고 수량을 보여 준다. 10초마다
+  const { data: pendingTarget, reload: reloadPending } = usePoll(() => source.q.getPendingTarget(toDateStr(clockNow())).catch(() => null), 10_000)
 
   // ── 보고서 내용의 문장과 숫자 ──
   const view = computed(() => {
@@ -195,7 +216,10 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       })),
       sums: { remainingPlan: planSum, capacity: capSum, add: addSum },
       ok: r.unmet === 0,
-      result: r.unmet === 0
+      overtime: r.overtime ?? null,
+      result: r.unmet === 0 && r.overtime
+        ? `근무 끝 ${formatTime(r.overtime.deadline)}까지 남은 능력 합 ${formatNumber(capSum)}개로는 부족 수량 ${formatNumber(r.shortage)}개를 다 못 만들어, ${formatNumber(r.overtime.qty)}개를 잔업으로 ${formatTime(r.overtime.until)}까지 생산할 예정입니다 (잔업 약 ${formatNumber(r.overtime.minutes)}분).`
+        : r.unmet === 0
         ? `남은 능력 합 ${formatNumber(capSum)}개가 부족 수량 ${formatNumber(r.shortage)}개보다 많아${r.target != null ? ` 오늘 목표 ${formatNumber(r.target)}개를` : ''} 맞출 수 있을 것으로 예상합니다.`
         : `${r.allocations.length ? `남은 능력 합 ${formatNumber(capSum)}개가 부족 수량 ${formatNumber(r.shortage)}개보다 적어` : '나눌 곳이 없어'} ${formatNumber(r.unmet)}개가 목표에 못 미칠 것으로 예상합니다.`,
       unmet: r.unmet,
@@ -237,7 +261,10 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       rows: r.allocations.map((a) => ({ key: a.target, target: `${a.target}라인`, remainingPlan: a.remainingPlan, capacity: a.capacity, share: a.share, add: a.add })),
       sums: { remainingPlan: planSum, capacity: capSum, add: addSum },
       ok: r.unmet === 0,
-      result: r.unmet === 0
+      overtime: r.overtime ?? null,
+      result: r.unmet === 0 && r.overtime
+        ? `${due}까지는 ${formatNumber(r.overtime.qty)}개가 모자라, 잔업으로 ${formatTime(r.overtime.until)}까지 생산할 예정입니다 (잔업 약 ${formatNumber(r.overtime.minutes)}분, 배정 합 ${formatNumber(addSum)}개).`
+        : r.unmet === 0
         ? `배정 합 ${formatNumber(addSum)}개로 추가 주문을 ${due}까지 모두 만들 수 있을 것으로 예상합니다.`
         : `배정 합 ${formatNumber(addSum)}개로, ${formatNumber(r.unmet)}개는 ${due}까지 만들기 어려울 것으로 예상합니다.`,
       unmet: r.unmet,
@@ -249,5 +276,5 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     }
   }
 
-  return { list, groups, report, view, missing, create, approve, createOrder, apply, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
+  return { list, groups, report, view, missing, create, approve, createOrder, apply, refreshReport, editAllocations, pendingTarget, reload: loadList, troubles, reportsOf, reloadTroubles: loadTroubles }
 }

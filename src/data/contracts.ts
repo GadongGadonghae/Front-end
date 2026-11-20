@@ -9,7 +9,7 @@ import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, Telem
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
-import type { DailyReport, ReplanApplyResult, ReplanReport, ReplanSummary, SlackSendResult, TargetRow } from '@/types/report'
+import type { DailyReport, PendingTarget, ReplanApplyResult, ReplanReport, ReplanSummary, ReportFlowRecord, SlackSendResult, TargetRow } from '@/types/report'
 import type { NewUser, UserRow } from '@/types/user'
 
 export type Unsubscribe = () => void
@@ -81,6 +81,14 @@ export interface Queries {
   getReplanReport(id: string): Promise<ReplanReport | null>
   /** 그날 승인·적용된 추가 주문 배정(R-06)의 라인별 추가 수량 합 (메인 대시보드 배정 칸). 없으면 빈 객체 */
   getOrderAdditions(date: string): Promise<Partial<Record<LineId, number>>>
+  /** 서버에 기록된 보고서 결재 상태 (R-11, 11/20). 데모 데이터는 null (브라우저 기록을 쓴다) */
+  getReportFlows(): Promise<ReportFlowRecord[] | null>
+  /** 임시 MES 수신함: 전송된 보고서와 문서 (M-01, 캠퍼스장). 데모 데이터는 null (브라우저 기록을 쓴다) */
+  getMesReports(): Promise<ReportFlowRecord[] | null>
+  /** 공장장이 그날 목표를 올려서 생긴 배정 대기 (G-05). 없으면 null. 데모 데이터는 null */
+  getPendingTarget(date: string): Promise<PendingTarget | null>
+  /** 지금 계획정지 중인 라인 (S-01). 목표를 가동 라인에만 나눌 때 */
+  getPlannedStopLines(): Promise<LineId[]>
   /** 백엔드 없음 [차순위] PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
   getReplanPdf(id: string): Promise<Blob | null>
   /** G-02 (라인별 계획 합) 날짜별 목표·실적 */
@@ -113,9 +121,11 @@ export interface Commands {
   /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리팀장 (11/20) */
   createTargetReport(additionalRequest?: string): Promise<ReplanReport>
   /** 보고서 결재 줄을 서버에도 기록 (R-10·R-13·R-14, 11/20). key = 'replan:보고서ID' · 'daily:날짜'. 데모 데이터는 아무것도 안 함 */
-  syncReportFlow(action: 'write' | 'approve' | 'send', key: string, content?: unknown): Promise<void>
+  syncReportFlow(action: 'write' | 'recall' | 'approve' | 'send', key: string, content?: unknown): Promise<void>
+  /** 계획수정 보고서 배정 값 고치기 (생산관리팀장, 결재 요청 전만, R-07). addQty = { 라인: 추가 수량 } */
+  editReplanAllocations(reportId: string, addQty: Record<string, number>): Promise<ReplanReport>
   /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로 ("지금 A~D만 돌리는데 추가 주문 300개, 한 라인 더") */
-  createOrderReport(request: string): Promise<ReplanReport>
+  createOrderReport(request: string, targetChangeId?: number): Promise<ReplanReport>
   /** R-06 추가 주문 배정 승인·적용 (한 번만): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 */
   applyOrderReport(reportId: string): Promise<ReplanApplyResult>
   /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 정보 + 보고서 + LLM 요약). 실패하면 이유를 담은 오류를 던진다 */

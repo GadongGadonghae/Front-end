@@ -1,5 +1,6 @@
 // 오늘 알람 (11/20): 알람 이력 탭과 같은 기준 = 고장(D) + 통신 끊김(DC). 대기·정지는 가동률·공정 상세에서 봐요.
 // 상단 종 · 전체 라인 화면 · 라인 상세 "오늘 알람 이력"이 같이 써요. 같은 범위(전체·라인)는 조회를 하나로 나눠 써요
+import { now as clockNow } from '@/clock'
 import { computed, effectScope, onScopeDispose, type ComputedRef, type EffectScope } from 'vue'
 import { source } from '@/data'
 import type { AlertRowView } from '@/types/view'
@@ -21,7 +22,7 @@ function create(lineId: string | undefined): Shared {
     const { equipmentName } = useMaster()
     const now = useNow()
     const { data } = usePoll(() => {
-      const d = toDateStr(Date.now())
+      const d = toDateStr(clockNow())
       return source.q.getHistory({ from: d, to: d, lineId, states: ['D', 'DC'], minMinutes: 0, page: 1 }).then((p) => p.items)
     }, EVERY_MS)
     const rows = computed<AlertRowView[]>(() => (data.value ?? []).map((e): AlertRowView => {

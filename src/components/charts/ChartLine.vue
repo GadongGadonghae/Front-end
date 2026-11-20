@@ -49,10 +49,13 @@ const yTicksShown = computed(() => {
   const step = (h.value - P.value.t - P.value.b) / Math.max(1, props.yTicks.length - 1)
   return step < 18 ? [props.yTicks[0], props.yTicks[props.yTicks.length - 1]] : props.yTicks
 })
-const path = (pts: [number, number][]) => pts.map(([a, b], i) => `${i ? 'L' : 'M'}${X(a).toFixed(1)},${Y(b).toFixed(1)}`).join('')
+// 11/21: x 범위 밖의 점은 그리지 않고, y는 그림 칸 안으로 (선이 패널 밖으로 튀어나가지 않게)
+const inX = (pts: [number, number][]) => pts.filter(([a]) => a >= props.x[0] && a <= props.x[1])
+const Yc = (v: number) => Math.min(h.value - P.value.b, Math.max(P.value.t, Y(v)))
+const path = (pts: [number, number][]) => inX(pts).map(([a, b], i) => `${i ? 'L' : 'M'}${X(a).toFixed(1)},${Yc(b).toFixed(1)}`).join('')
 const main = computed(() => props.series.find((s) => (s.kind ?? 'main') === 'main'))
-const last = computed(() => main.value?.points.at(-1) ?? null)
-const overPts = computed(() => props.marks)
+const last = computed(() => (main.value ? inX(main.value.points).at(-1) ?? null : null))
+const overPts = computed(() => inX(props.marks))
 const ready = computed(() => w.value > 0 && h.value > 0)
 </script>
 
@@ -72,7 +75,7 @@ const ready = computed(() => w.value > 0 && h.value > 0)
       <line v-if="now != null" class="now" :x1="X(now)" :x2="X(now)" :y1="P.t" :y2="h - P.b" />
       <path v-for="s in series" :key="s.key" :class="['s', s.kind ?? 'main']" :style="s.color ? { stroke: s.color } : undefined" :d="path(s.points)" />
       <circle v-for="(p, i) in overPts" :key="`o${i}`" class="over" :cx="X(p[0])" :cy="Y(p[1])" r="3.5" />
-      <circle v-if="endDot && last" class="dot" :cx="X(last[0])" :cy="Y(last[1])" :r="4" />
+      <circle v-if="endDot && last" class="dot" :cx="X(last[0])" :cy="Yc(last[1])" :r="4" />
     </svg>
   </div>
 </template>

@@ -1,4 +1,5 @@
 // 라인 상세 (SCR-010 2·3번): 1초 snapshot(상태·실적) + 10초 summary(계획·OEE·불량·재공) + 30초 공정 요약(API-030, 사이클·CT)
+import { now as clockNow } from '@/clock'
 import { computed } from 'vue'
 import { source } from '@/data'
 import type { Equipment, LineId, ProcessId } from '@/types/plant'
@@ -27,7 +28,7 @@ export function useLineDetail(lineId: LineId) {
   const processes: ProcessId[] = lineId === 'PT' ? ['PAINTING'] : ['SLITTING', 'PRESS', 'WELDING']
   const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
   // 라인 OEE 3요소 (가동률 화면과 같은 API-050, 오늘·이 라인)
-  const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(Date.now()), lineId }), PROCESS_POLL_MS)
+  const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(clockNow()), lineId }), PROCESS_POLL_MS)
   // 오늘 알람 이력 (11/20): 알람 이력 탭과 같은 기준 = 이 라인 설비의 고장(D) + 통신 끊김(DC)
   const { rows: alarms } = useTodayAlarms(lineId)
 

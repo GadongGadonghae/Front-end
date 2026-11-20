@@ -35,7 +35,7 @@ export interface SceneHandlers {
   onEmpty(): void
 }
 
-export type ZoneId = 'inbound' | 'paint' | 'outbound'
+export type ZoneId = 'inbound' | 'paint' | 'vision' | 'outbound'
 
 export interface SceneIssue { equipmentId: string; state: StateCode }
 
@@ -62,8 +62,11 @@ const PILE_DZ = 3.2
 const PILE_CAP = 63
 const MAX_BOXES = 1800
 const MOVE_MS = 900
-/** 탑뷰에 담을 범위 (코일 적재장 ~ 출하) */
-const TOP_FRAME = { x0: -73, x1: 97, z0: -47, z1: 40 }
+/** 탑뷰에 담을 범위 (배정 칸 ~ 출하). 11/21: 배정 칸(x −94)도 탑뷰에 보이게 왼쪽을 넓힘 */
+const TOP_FRAME = { x0: -104, x1: 99, z0: -47, z1: 40 }
+/** 출하 적재: 상자 1개 = 제품 20개, 파렛트에 3×3씩 쌓음 */
+const SHIP_PER_BOX = 20
+const SHIP_MAX = 45
 /** 처음 3D 자리 */
 const HOME = { pos: new THREE.Vector3(-52, 96, 110), tgt: new THREE.Vector3(0, 0, 4) }
 
@@ -337,6 +340,20 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     kit.shipping(sg, i === 0)
     scene.add(sg)
   })
+  // 11/21 출하 적재: 오늘 출고(양품)만큼 상자가 쌓여요 (상자 1개 = 20개). 검사 뒤 컨베이어 끝 오른쪽 파렛트
+  const SHIP_X = 93
+  box(SLOT * 3 + 0.3, 0.2, SLOT * 3 + 0.3, pallet, SHIP_X, 0, 0)
+  const shipMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(SLOT * 0.9, SLOT * 0.8, SLOT * 0.9), M(C.carton, { roughness: 0.9, metalness: 0 }), SHIP_MAX)
+  shipMesh.count = 0
+  shipMesh.castShadow = true
+  // 처음 그릴 때 상자가 0개면 화면 범위(bounding sphere)가 빈 채로 굳어 나중 상자가 안 그려져요 → 범위 판정에서 빼요 (11/21)
+  shipMesh.frustumCulled = false
+  scene.add(shipMesh)
+  const shipLab = tag('', 'f3d-cnt', [SHIP_X, 6.5, 0])
+  // 11/21 비전 검사 칸: 오늘 검사 양품·불량 (비전 위)
+  const viLab = tag('', 'f3d-vi', [74, 12, 0])
+  let viKey = ''
+  let shipped = -1
 
   // ── 라인 바닥: 마우스 올림 판(보이지 않음) + 외곽선 + 옅은 면 ──
   const pickables: THREE.Object3D[] = []
@@ -368,7 +385,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   // 구역 이름 (공정 머리글). 코일 입고·비전·적재는 눌러서 상세 화면으로
   const ZONES: [string, number, number, number, ZoneId | null][] = [
     ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
-    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -6, 'outbound'], ['적재', 86, 6, -16, 'outbound'],
+    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -6, 'vision'], ['적재', 86, 6, -16, 'outbound'],
   ]
   for (const [n, x, y, z, go] of ZONES) {
     if (go) {
@@ -984,6 +1001,31 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (LINES.some((L) => next[L] !== routes[L])) { routes = next; drawRoutes() }
     },
     select(L: ProductionLineId | null) { sel = L; applyDim() },
+    /** 비전 검사 칸: 오늘 검사 양품·불량 수 */
+    setVision(v: { ok: number; ng: number } | null) {
+      const key = v ? `${v.ok}|${v.ng}` : ''
+      if (key === viKey) return
+      viKey = key
+      setHtml(viLab, v ? `<b>비전 검사</b><span class="ok">양품 ${v.ok.toLocaleString('ko-KR')}</span><span class="ng">불량 ${v.ng.toLocaleString('ko-KR')}</span>` : '')
+      viLab.el.style.visibility = v ? '' : 'hidden'
+    },
+    /** 출하 적재: 오늘 출고(양품) 수 → 파렛트 상자 (상자 1개 = 20개) + 수 이름표 */
+    setShipped(n: number | null) {
+      const v = Math.max(0, n ?? 0)
+      if (v === shipped) return
+      shipped = v
+      const k = Math.min(SHIP_MAX, Math.ceil(v / SHIP_PER_BOX))
+      const m4 = new THREE.Matrix4()
+      for (let i = 0; i < k; i++) {
+        const layer = Math.floor(i / 9), cell = i % 9
+        m4.makeTranslation(SHIP_X + ((cell % 3) - 1) * SLOT, 0.2 + SLOT * 0.4 + layer * SLOT * 0.8, (Math.floor(cell / 3) - 1) * SLOT)
+        shipMesh.setMatrixAt(i, m4)
+      }
+      shipMesh.count = k
+      shipMesh.instanceMatrix.needsUpdate = true
+      setHtml(shipLab, `출하 ${v.toLocaleString('ko-KR')}개`)
+      shipLab.el.style.visibility = v ? '' : 'hidden'
+    },
     /** 배정 칸: 라인별 현재 생산 · 배정(오늘 목표) · 오늘 추가 배정 */
     setAllocation(rows: Partial<Record<ProductionLineId, { done: number | null; plan: number | null; added: number }>>) {
       LINES.forEach((L, i) => {

@@ -37,6 +37,8 @@
 
   /* ── 가동률·생산 개편 (D-107·D-108): "이상만 색" ── */
   --c-run-quiet: color-mix(in srgb, var(--c-run) 72%, var(--c-surface)); /* 타임라인의 가동: R 초록을 조금 옅게 (11-19 진한 초록 → 11-20 고장·대기 조각이 묻혀 조금만 옅게, D-113) */
+  --c-done-bg: color-mix(in srgb, var(--c-run) 12%, var(--c-surface));     /* 결재 단계 끝남: 연두색 면 (11/20) */
+  --c-done-line: color-mix(in srgb, var(--c-run) 45%, var(--c-surface));   /* 결재 단계 끝남: 연두색 테두리 */
   --c-stop-hatch: #9aa1ab;    /* 계획정지 빗금 선 (가동률에서 뺌) */
   --c-dc-tint: #f0ebf6;       /* 진행 중 통신 끊김 행 바탕 */
   --c-loss-a: #adb3bc;        /* OEE 다리: 시간 손실 (D-113: 흰 바탕 2:1 넘게, dataviz 검증 통과) */

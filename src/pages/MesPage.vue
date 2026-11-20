@@ -3,7 +3,7 @@
      수신 보고서는 같은 앱·같은 브라우저 저장(localStorage)을 읽으므로 같은 주소·같은 브라우저에서만 보인다
      보고서 외 모든 숫자·목록은 더미 데이터 — 화면에 더미라고 밝힌다. 실제 MES 연동은 향후 과제 -->
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import ChartDonut from '@/components/charts/ChartDonut.vue'
@@ -17,6 +17,10 @@ import { downloadReplanDoc } from '@/lib/replanDoc'
 const router = useRouter()
 const { userName, roleName, logout } = useAuth()
 const flow = useReportFlow()
+// 받은 보고서: 실서버는 M-01 수신함(다른 컴퓨터에서 보낸 것도), 데모 데이터는 이 브라우저 기록. 10초마다 다시 읽기 (11/20)
+let mesTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => { flow.refreshMes(); mesTimer = setInterval(flow.refreshMes, 10_000) })
+onUnmounted(() => { if (mesTimer) clearInterval(mesTimer) })
 
 // ── 메뉴: 수신 보고서만 열린다 ──
 type View = 'home' | 'reports'

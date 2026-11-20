@@ -318,5 +318,15 @@ export function createReports(ctx: Ctx) {
     return out
   }
 
-  return { daily, list, get, create, approve, createOrder, applyOrder, orderAdditions, reportOf, seedToday }
+  /** 배정 값 고치기 (데모, 승인 전만): 라인별 추가 수량을 바꾸고 비율은 그대로 */
+  function editAllocations(id: string, addQty: Record<string, number>) {
+    const r = get(id)
+    if (!r) throw new Error('보고서를 찾을 수 없습니다')
+    if (r.approved) throw new Error('승인된 보고서는 값을 고칠 수 없습니다')
+    const next = { ...r, allocations: r.allocations.map((a) => (a.target in addQty ? { ...a, add: Math.max(0, Math.round(addQty[a.target])) } : a)) }
+    made.set(id, next)
+    return next
+  }
+
+  return { daily, list, get, create, approve, createOrder, applyOrder, editAllocations, orderAdditions, reportOf, seedToday }
 }

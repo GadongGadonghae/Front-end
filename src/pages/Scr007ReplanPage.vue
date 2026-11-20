@@ -3,7 +3,8 @@
      오른쪽: [AI 보고서 생성] [.doc] [PDF] · AI 추가 요청 → A4 "생산계획 수정 검토 보고서"
      ?event=비가동ID 로 들어오면 그 고장 건을 고른 채로 연다 (예전 ?create= 도 같은 뜻). 제안만 하며 계획은 바꾸지 않는다 (D-70) -->
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { now as clockNow } from '@/clock'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
@@ -15,7 +16,6 @@ import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
 import { downloadReplanDoc, type ReplanDocData } from '@/lib/replanDoc'
 import CauseTraceSection from '@/components/domain/CauseTraceSection.vue'
-import type { ReplanApplyResult } from '@/types/report'
 import ReportApproval from '@/components/domain/ReportApproval.vue'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 
@@ -44,30 +44,39 @@ const orderMode = computed(() => !selectedId.value && route.query.order === '1')
 const isOrder = computed(() => report.value?.kind === 'order')
 /** 추가 주문 보고서의 문장·숫자 (고장 보고서 view에 비교 문장 등이 더 있다) */
 const ov = computed(() => { const x = v.value; return x && 'compare' in x ? x : null })
+/** 공장장 목표 증가로 생긴 추가 주문 (배정 대기). 있으면 추가 주문 카드가 트러블처럼 깜빡이고 수량을 보여 준다 (11/20) */
+const pending = computed(() => rp.pendingTarget.value ?? null)
+/** 지금 쓰는 추가 주문 검토가 목표 변경에서 왔으면 그 번호 (?change=) */
+const changeId = computed(() => (orderMode.value && typeof route.query.change === 'string' ? Number(route.query.change) : undefined))
+/** 추가 주문 카드: 언제든 새 검토를 쓴다 (11/21). 목표 변경 대기가 있고 아직 검토를 안 만들었으면 그 변경을 들고 */
 function openOrder() {
-  router.push({ path: '/reports/replan', query: { order: '1' } })
+  const p = pending.value
+  router.push({ path: '/reports/replan', query: p && !p.reportId ? { order: '1', change: String(p.changeId) } : { order: '1' } })
 }
-// 승인하고 적용 (R-05): 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 → 대시보드에 가동으로 보인다
-const applying = ref(false)
-const applyResult = ref<ReplanApplyResult | null>(null)
-watch(selectedId, () => { applyResult.value = null })
-const canApply = computed(() => isOrder.value && !report.value?.approved && !applying.value)
-async function applyOrder() {
-  const id = selectedId.value
-  const o = report.value?.order
-  if (!id || !o || !canApply.value) return
-  const lines = o.newLines.length ? `${o.newLines.join('·')}라인 가동, ` : ''
-  if (!window.confirm(`${lines}오늘 라인 목표에 배정 수량을 더합니다. 적용할까요?`)) return
-  applying.value = true
+/** 목표 변경 대기로 만든 검토 보기 */
+function openPendingReport() {
+  const id = pending.value?.reportId
+  if (id) router.push(`/reports/replan/${id}`)
+}
+/** [AI 검토 바로 생성] (11/21): 목표 변경 대기를 요청 문장 없이 바로 AI 배정·감소 검토로 */
+async function quickGenerate() {
+  const p = pending.value
+  if (!p || p.reportId || generating.value) return
+  generating.value = true
   genError.value = ''
   try {
-    applyResult.value = await rp.apply(id)
+    const text = p.pending > 0
+      ? `공장장이 오늘 목표를 ${formatNumber(p.before)}개에서 ${formatNumber(p.after)}개로 올렸어. 늘어난 ${formatNumber(p.pending)}개를 18시까지 끝내야 하니 지금 속도로 부족하면 쉬고 있는 라인을 더 가동해서 재배정해줘.`
+      : `공장장이 오늘 목표를 ${formatNumber(p.before)}개에서 ${formatNumber(p.after)}개로 줄였어. 줄어든 ${formatNumber(-p.pending)}개만큼 라인 계획을 줄이고, 필요 없는 라인은 정지해줘.`
+    const id = await rp.createOrder(text, p.changeId)
+    router.push(`/reports/replan/${id}`)
   } catch (e) {
-    genError.value = e instanceof Error ? e.message : '적용하지 못했습니다'
+    genError.value = e instanceof Error ? e.message : 'AI 검토를 만들지 못했습니다'
   } finally {
-    applying.value = false
+    generating.value = false
   }
 }
+// 승인·적용 (11/20): 따로 버튼 없이 결재 줄 [결재] 하나로. 추가 주문이면 서버가 결재와 함께 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령
 
 // ── 고장 건 고르기 ──
 const queryEvent = computed(() => {
@@ -76,12 +85,8 @@ const queryEvent = computed(() => {
 })
 /** 보고서를 만들 고장 건: 보고 있는 보고서의 고장 건, 아니면 고른 트러블 */
 const eventId = computed(() => (selectedId.value ? report.value?.stateEventId ?? null : queryEvent.value))
-// 목표 변동 카드 (11/20): 생산 목표가 바뀌면 이 카드로 보고서를 만들어요 (고장 건 없이 오늘 목표 기준)
-const targetRow = computed(() => {
-  const made = rp.reportsOf(TARGET_EVENT).length
-  return { id: TARGET_EVENT, name: '생산 목표 변동', time: '오늘', text: '계획정지 라인 몫을 가동 중인 라인에 나누는 안', ongoing: false, made }
-})
-const troubleRows = computed(() => [targetRow.value, ...(rp.troubles.value ?? []).map((e) => {
+// 11/21: "현재 트러블 슈팅" = 지금 진행 중인 고장만 (복구되면 사라짐). 생산 목표 변동은 위 추가 주문 카드가 맡아요
+const troubleRows = computed(() => (rp.troubles.value ?? []).filter((e) => e.end === null).map((e) => {
   const made = rp.reportsOf(e.id).length
   return {
     id: e.id,
@@ -91,7 +96,7 @@ const troubleRows = computed(() => [targetRow.value, ...(rp.troubles.value ?? []
     ongoing: e.end === null,
     made,
   }
-})])
+}))
 const trouble = computed(() => rp.troubles.value?.find((e) => e.id === eventId.value) ?? null)
 
 /** 트러블 카드: 만든 보고서가 있으면 가장 최근 것, 없으면 빈 보고서(생성 대기) */
@@ -110,6 +115,15 @@ watch([rp.list, rp.troubles], ([l, t]) => {
   else if (l[0]) router.replace(`/reports/replan/${l[0].id}`)
 })
 
+// 보고서를 열면 (결재 알림 카드 등) 왼쪽에서 그 칸이 보이게: 추가 주문 → 추가 주문 칸, 고장 → 현재 트러블 슈팅 칸 (11/20)
+const listEl = ref<HTMLElement | null>(null)
+watch(report, async (r) => {
+  if (!r) return
+  await nextTick()
+  const on = listEl.value?.querySelector<HTMLElement>(isOrder.value ? '.order-card' : '.trouble-card.on') ?? listEl.value?.querySelector<HTMLElement>('a.on')
+  on?.scrollIntoView({ block: 'nearest' })
+})
+
 // ── 이전 보고서 기간 검색 (시안 initPeriodFilter) ──
 const from = ref('')
 const to = ref('')
@@ -118,7 +132,7 @@ const ymd = (d: Date) => toDateStr(d.getTime())
 function pick(days: number) {
   preset.value = days
   if (days) {
-    const today = new Date()
+    const today = new Date(clockNow())
     const past = new Date(today)
     past.setDate(today.getDate() - (days - 1))
     from.value = ymd(past)
@@ -135,10 +149,19 @@ const shownCount = computed(() => groups.value.reduce((a, g) => a + g.items.leng
 // ── AI 보고서 생성 ──
 const request = ref('')
 watch(report, (r) => { if (r) request.value = r.ai?.additionalRequest ?? r.order?.request ?? '' })
-watch([queryEvent, orderMode], () => { if (!selectedId.value) request.value = '' })
+watch([queryEvent, orderMode, changeId, () => pending.value?.changeId], () => {
+  if (selectedId.value) return
+  // 목표 변경에서 온 추가 주문: 이전·새 목표와 수량을 요청 문장에 미리 채움 (AI가 그대로 해석)
+  const p = pending.value
+  request.value = changeId.value && p && p.changeId === changeId.value
+    ? p.pending > 0
+      ? `공장장이 오늘 목표를 ${formatNumber(p.before)}개에서 ${formatNumber(p.after)}개로 올렸어. 늘어난 추가 주문 ${formatNumber(p.pending)}개를 18시까지 끝내야 하니 지금 속도로 부족하면 쉬고 있는 라인을 더 가동해서 재배정해줘.`
+      : `공장장이 오늘 목표를 ${formatNumber(p.before)}개에서 ${formatNumber(p.after)}개로 줄였어. 줄어든 ${formatNumber(-p.pending)}개만큼 라인 계획을 줄이고, 필요 없는 라인은 정지해줘.`
+    : ''
+}, { immediate: true })
 /** 추가 주문 쪽이면 요청 문장이 있어야, 고장 쪽이면 고장 건이 있어야 만든다 */
 const orderSide = computed(() => orderMode.value || isOrder.value)
-const canGenerate = computed(() => !generating.value && (orderSide.value ? !!request.value.trim() : !!eventId.value))
+const canGenerate = computed(() => !generating.value && (orderSide.value ? !!request.value.trim() || !!changeId.value : !!eventId.value))
 const generating = ref(false)
 const genError = ref('')
 async function generate() {
@@ -147,7 +170,7 @@ async function generate() {
   generating.value = true
   genError.value = ''
   try {
-    const id = orderSide.value ? await rp.createOrder(request.value) : await rp.create(ev!, request.value)
+    const id = orderSide.value ? await rp.createOrder(request.value, changeId.value) : await rp.create(ev!, request.value)
     router.replace(`/reports/replan/${id}`)
   } catch (e) {
     genError.value = e instanceof Error ? e.message : '보고서를 만들지 못했습니다'
@@ -215,15 +238,16 @@ const doc = computed(() => {
     targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : r.kind === 'target' ? '전체 라인' : '출고'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
     author: r.createdBy,
-    // 추가 주문 배정은 승인과 함께 적용(R-06)되므로 '승인·적용', 나머지는 결재 줄 상태 (작성 → 결재 완료 → 전송 완료)
-    status: r.kind === 'order' && r.approved ? '승인·적용 완료' : flowLine(flow.flowOf(`replan:${r.id}`)).label,
+    // 결재 줄 상태 (작성 중 → 결재 요청 → 결재 완료 → 전송 완료). 추가 주문은 결재와 함께 적용
+    status: flowLine(flow.flowOf(`replan:${r.id}`)).label,
     approvedBy: r.approvedBy ?? '',
     approvedAt: r.approvedAt ? `${toDateStr(Date.parse(r.approvedAt))} ${formatTime(r.approvedAt)}` : '',
     stopSec,
     stop: formatDuration(stopSec),
     rows,
     totalPlan: rows.reduce((a, x) => a + x.remainingPlan, 0),
-    grade: vv.ok ? (r.kind === 'order' ? '납기 안 소화 가능' : '목표 달성 가능') : `${r.kind === 'order' ? '납기 미달 예상' : '목표 미달 예상'} ${formatNumber(vv.unmet)}개`,
+    grade: vv.ok && vv.overtime ? `잔업 ${formatTime(vv.overtime.until)}까지 생산 예정`
+      : vv.ok ? (r.kind === 'order' ? '납기 안 소화 가능' : '목표 달성 가능') : `${r.kind === 'order' ? '납기 미달 예상' : '목표 미달 예상'} ${formatNumber(vv.unmet)}개`,
     resultText: ai.value?.summary ? `${vv.result} ${ai.value.summary}` : vv.result,
     actions: r.ai?.actions ?? [],
     risks: [...(r.ai?.risks ?? []), '본 보고서는 생산계획을 자동 변경하지 않습니다.'],
@@ -265,12 +289,59 @@ async function downloadDoc() {
 // ── 결재·전송 (11/20): 작성 = 생산 관리 팀장, 결재·전송 = 공장장 ──
 const flowKey = computed(() => (selectedId.value ? `replan:${selectedId.value}` : null))
 const flowView = computed(() => flowLine(flow.flowOf(flowKey.value)))
+const flowBusy = ref(false)
+async function busy(task: () => Promise<unknown>) {
+  if (flowBusy.value) return
+  flowBusy.value = true
+  try { await task() } finally { flowBusy.value = false }
+}
 function writeFlow() {
   const dd = docData.value
-  if (dd && flowKey.value) flow.write(flowKey.value, 'replan', title.value, dd)
+  const key = flowKey.value
+  if (dd && key) busy(() => flow.write(key, 'replan', title.value, dd))
 }
-const approveFlow = () => { if (flowKey.value) flow.approve(flowKey.value) }
-const sendFlow = () => { if (flowKey.value) flow.send(flowKey.value) }
+const recallFlow = () => { const key = flowKey.value; if (key) busy(() => flow.recall(key)) }
+/** 결재: 추가 주문이면 새 라인 가동까지 하니 한 번 더 묻는다. 결재 뒤 보고서를 다시 읽어 적용 결과를 보여 준다 */
+function approveFlow() {
+  const key = flowKey.value
+  if (!key) return
+  const o = report.value?.order
+  if (o && !window.confirm(`${o.newLines.length ? `${o.newLines.join('·')}라인을 가동하고, ` : ''}오늘 라인 목표에 배정 수량을 더합니다. 결재할까요?`)) return
+  busy(async () => { if (await flow.approve(key)) await rp.refreshReport() })
+}
+const sendFlow = () => { const key = flowKey.value; if (key) busy(() => flow.send(key)) }
+
+// ── 배정 값 고치기 (11/20): 생산관리팀장, 결재 요청 전(작성 중)에만. 결재하면 고친 수량대로 목표에 들어간다 ──
+const canEdit = computed(() => can('reportWrite') && !!report.value && !report.value.approved
+  && (!flowView.value.status || flowView.value.status === 'DRAFT') && ['order', 'line', 'target'].includes(report.value.kind ?? 'line'))
+const editing = ref(false)
+const edits = ref<Record<string, string>>({})
+const editError = ref('')
+const editSaving = ref(false)
+watch(selectedId, () => { editing.value = false; editError.value = '' })
+function startEdit() {
+  edits.value = Object.fromEntries((v.value?.rows ?? []).map((x) => [x.key, String(x.add)]))
+  editError.value = ''
+  editing.value = true
+}
+async function saveEdit() {
+  const out: Record<string, number> = {}
+  for (const [k, raw] of Object.entries(edits.value)) {
+    const n = Number(raw.trim())
+    if (!Number.isInteger(n) || n < 0) { editError.value = `${k}라인 수량은 0 이상의 정수로 입력하세요`; return }
+    out[k] = n
+  }
+  editSaving.value = true
+  editError.value = ''
+  try {
+    await rp.editAllocations(out)
+    editing.value = false
+  } catch (e) {
+    editError.value = e instanceof Error ? e.message : '값을 고치지 못했습니다'
+  } finally {
+    editSaving.value = false
+  }
+}
 
 /** PDF: 서버가 주면 내려받고, 없으면 브라우저 인쇄로 PDF 저장 */
 async function downloadPdf() {
@@ -297,18 +368,31 @@ async function downloadPdf() {
     <div class="body">
       <section class="panel side">
         <div class="ph"><h2>계획수정 보고서</h2><span class="meta">현재·이력</span></div>
-        <div class="list">
+        <div ref="listEl" class="list">
           <h3 class="list-section">추가 주문</h3>
           <div
-            :class="['trouble-card', 'order-card', { on: orderMode || isOrder }]"
+            :class="['trouble-card', 'order-card', { on: orderMode || isOrder, alert: !!pending && !pending.reportId }]"
             role="button"
             tabindex="0"
+            :aria-label="pending ? (pending.pending > 0 ? `추가 주문 ${pending.pending}개 배정 필요` : `목표 감소 ${-pending.pending}개 조정 필요`) : '추가 주문 배정 검토'"
             @click="openOrder"
             @keydown.enter.prevent="openOrder"
             @keydown.space.prevent="openOrder"
           >
-            <div class="trouble-top"><b>추가 주문 배정 검토</b></div>
-            <p>추가 주문이 들어왔을 때 지금 가동 라인과 새로 켤 라인에 나누는 안을 AI가 만듭니다.</p>
+            <div class="trouble-top">
+              <b>{{ pending ? (pending.pending > 0 ? `추가 주문 ${formatNumber(pending.pending)}개` : `목표 감소 ${formatNumber(-pending.pending)}개`) : '추가 주문 배정 검토' }}</b>
+              <time v-if="pending">{{ formatTime(pending.changedAt) }}</time>
+            </div>
+            <p v-if="pending">공장 목표 {{ formatNumber(pending.before) }} → {{ formatNumber(pending.after) }}개{{ pending.changedBy ? ` (${pending.changedBy})` : '' }} · {{ pending.pending > 0 ? '늘어난 수량을 라인에 나눠야 합니다.' : '줄어든 만큼 라인 계획을 줄이거나 정지해야 합니다.' }}</p>
+            <p v-else>추가 주문이 들어왔을 때 지금 가동 라인과 새로 켤 라인에 나누는 안을 AI가 만듭니다.</p>
+            <span v-if="pending" :class="['trouble-badge', { created: !!pending.reportId }]">{{ pending.reportId ? '검토 작성 · 결재 대기' : pending.pending > 0 ? `배정 대기 ${formatNumber(pending.pending)}개` : `감소 대기 ${formatNumber(-pending.pending)}개` }}</span>
+            <div v-if="pending && can('reportWrite')" class="quick" @click.stop @keydown.stop>
+              <button v-if="!pending.reportId" class="btn primary" type="button" :disabled="generating" @click="quickGenerate">
+                {{ generating ? 'AI 검토 만드는 중…' : pending.pending > 0 ? 'AI 추가 배정 바로 생성' : 'AI 감소 배정 바로 생성' }}
+              </button>
+              <button v-else class="btn" type="button" @click="openPendingReport">만든 검토 보기</button>
+              <span class="quick-note">카드를 누르면 새 추가 주문을 쓸 수 있어요</span>
+            </div>
           </div>
 
           <h3 class="list-section">현재 트러블 슈팅</h3>
@@ -326,7 +410,7 @@ async function downloadPdf() {
             <p>{{ t.text }}</p>
             <span :class="['trouble-badge', { created: t.made }]">{{ t.made ? `보고서 작성 완료${t.made > 1 ? ` · ${t.made}건` : ''}` : '보고서 미작성' }}</span>
           </div>
-          <p v-if="rp.troubles.value && troubleRows.length <= 1" class="period-empty">오늘 고장 건이 없습니다.</p>
+          <p v-if="rp.troubles.value && !troubleRows.length" class="period-empty">지금 진행 중인 고장이 없습니다.</p>
 
           <div class="previous-reports">
             <h3 class="list-section">이전에 작성한 보고서</h3>
@@ -364,9 +448,6 @@ async function downloadPdf() {
         <div class="doc-head">
           <div><h2>{{ title }}</h2><p>현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
           <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!canGenerate" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : orderSide ? 'AI 배정 검토 생성' : 'AI 보고서 생성' }}</button>
-          <button v-if="can('reportApprove') && isOrder" class="btn primary" type="button" :disabled="!canApply" @click="applyOrder">
-            {{ report?.approved ? '적용됨' : applying ? '적용 중…' : '승인하고 적용' }}
-          </button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
           <button class="btn" type="button" :disabled="!doc || !selectedId || slackBusy || generating" @click="sendSlack">{{ slackBusy ? '슬랙 전송 중…' : '슬랙 전송' }}</button>
@@ -381,7 +462,9 @@ async function downloadPdf() {
           :ready="!!docData"
           :can-write="can('reportWrite')"
           :can-approve="can('reportApprove')"
+          :busy="flowBusy"
           @write="writeFlow"
+          @recall="recallFlow"
           @approve="approveFlow"
           @send="sendFlow"
         />
@@ -406,12 +489,12 @@ async function downloadPdf() {
           <p v-if="flow.lastError.value" class="gen-error">결재 기록 실패: {{ flow.lastError.value }}</p>
           <p v-if="!can('reportWrite') && !report" class="gen-error">AI 보고서·추가 주문 배정 작성은 생산관리팀장 권한이에요.</p>
           <p v-if="slackMsg" :class="slackMsg.ok ? 'slack-msg' : 'gen-error'" role="status" aria-live="polite">{{ slackMsg.text }}</p>
-          <div v-if="applyResult" class="info-panel">
-            <h4>적용 결과 · {{ formatTime(applyResult.appliedAt).slice(0, 5) }}</h4>
+          <div v-if="isOrder && report?.approved && report.order" class="info-panel">
+            <h4>결재 · 적용 완료{{ report.approvedAt ? ` · ${formatTime(report.approvedAt).slice(0, 5)}` : '' }}</h4>
             <div class="info-grid">
-              <div><b>가동 시작</b>{{ applyResult.startedLines.length ? applyResult.startedLines.map((l) => `${l}라인`).join(', ') + (applyResult.lineCommandSent ? ' (가동 명령 전달됨 · 대시보드에서 확인)' : ' (가동 명령 전달 못 함)') : '없음' }}</div>
-              <div><b>오늘 목표</b>{{ applyResult.targets.map((t) => `${t.lineId} ${formatNumber(t.before)}→${formatNumber(t.after)}`).join(' · ') || '변경 없음' }}</div>
-              <div v-if="applyResult.notes.length"><b>참고</b>{{ applyResult.notes.join(' · ') }}</div>
+              <div><b>가동 시작</b>{{ report.order.newLines.length ? `${report.order.newLines.map((l) => `${l}라인`).join(', ')} (가동 명령 전달 · 대시보드에서 확인)` : '없음' }}</div>
+              <div v-if="report.order.stopLines?.length"><b>정지</b>{{ report.order.stopLines.map((l) => `${l}라인`).join(', ') }} (정지 명령 전달 · 계획정지로 표시)</div>
+              <div><b>오늘 목표</b>배정 수량만큼 라인 목표에 더함 ({{ formatNumber(v?.sums.add) }}개)</div>
             </div>
           </div>
           <div v-if="ov?.order" class="info-panel">
@@ -457,7 +540,8 @@ async function downloadPdf() {
               <div class="summary-item"><span>추가 주문</span><b>{{ formatNumber(ov.order.addQty) }}</b><small>개</small></div>
               <div class="summary-item"><span>가동 라인</span><b>{{ ov.order.current.lines.length }} → {{ ov.order.withNew.lines.length }}</b><small>개</small></div>
               <div class="summary-item"><span>배정 합</span><b>{{ formatNumber(v.sums.add) }}</b><small>개</small></div>
-              <div class="summary-item"><span>납기 미달</span><b>{{ formatNumber(v.unmet) }}</b><small>개</small></div>
+              <div v-if="v.overtime" class="summary-item"><span>잔업 · 생산 예정</span><b>~{{ formatTime(v.overtime.until) }}</b><small>{{ formatNumber(v.overtime.qty) }}개</small></div>
+              <div v-else class="summary-item"><span>납기 미달</span><b>{{ formatNumber(v.unmet) }}</b><small>개</small></div>
             </div>
             <div v-else class="summary-grid">
               <div class="summary-item"><span>생산 계획</span><b>{{ formatNumber(report?.stoppedPlan) }}</b><small>개</small></div>
@@ -473,7 +557,11 @@ async function downloadPdf() {
               <div>
                 <p>{{ v.occurred }}</p>
                 <dl class="facts">
-                  <dt>추가 수량</dt><dd>{{ formatNumber(ov.order.addQty) }}개</dd><dt>납기</dt><dd>{{ ov.due }}</dd>
+                  <template v-if="ov.order.targetBefore != null && ov.order.targetAfter != null">
+                    <dt>공장 목표</dt><dd>{{ formatNumber(ov.order.targetBefore) }} → {{ formatNumber(ov.order.targetAfter) }}개 (+{{ formatNumber(ov.order.targetAfter - ov.order.targetBefore) }})</dd>
+                  </template>
+                  <dt>{{ ov.order.addQty < 0 ? '줄일 수량' : '추가 수량' }}</dt><dd>{{ formatNumber(Math.abs(ov.order.addQty)) }}개</dd><dt>납기</dt><dd>{{ ov.due }}</dd>
+                  <template v-if="ov.order.stopLines?.length"><dt>정지할 라인</dt><dd>{{ ov.lines(ov.order.stopLines) }} (결재하면 정지 명령)</dd></template>
                   <dt>가동 중</dt><dd>{{ ov.lines(ov.order.runningLines) }}</dd><dt>새로 가동</dt><dd>{{ ov.newText }}</dd>
                   <dt>준비 시간</dt><dd>{{ ov.order.setupMinutes }}분</dd>
                 </dl>
@@ -527,6 +615,14 @@ async function downloadPdf() {
             <h3>4. 생산 재배정안</h3>
             <div>
               <p>{{ v.allocText }}</p>
+              <div v-if="canEdit" class="edit-bar no-print">
+                <template v-if="!editing"><button class="btn" type="button" @click="startEdit">배정 값 수정</button><span>결재 요청 전에만 고칠 수 있어요</span></template>
+                <template v-else>
+                  <button class="btn primary" type="button" :disabled="editSaving" @click="saveEdit">{{ editSaving ? '저장 중…' : '수정 저장' }}</button>
+                  <button class="btn" type="button" :disabled="editSaving" @click="editing = false">취소</button>
+                  <span v-if="editError" class="gen-error" role="alert">{{ editError }}</span>
+                </template>
+              </div>
               <table v-if="doc.rows.length" class="tbl">
                 <thead><tr><th>{{ report?.kind === 'paint' ? '설비' : '라인' }}</th><th class="num">남은 라인 계획</th><th class="num">남은 능력</th><th class="num">비율</th><th class="num">추가 배정</th></tr></thead>
                 <tbody>
@@ -535,11 +631,27 @@ async function downloadPdf() {
                     <td class="num">{{ formatNumber(x.remainingPlan) }}</td>
                     <td class="num">{{ formatNumber(x.capacity) }}</td>
                     <td class="num">{{ formatNumber(x.share, 1) }}%</td>
-                    <td class="num add">{{ formatNumber(x.add) }}</td>
+                    <td class="num add">
+                      <input
+                        v-if="editing && x.key in edits"
+                        v-model="edits[x.key]"
+                        class="add-input"
+                        inputmode="numeric"
+                        :aria-label="`${x.label} 추가 배정 수량`"
+                      >
+                      <template v-else>{{ formatNumber(x.add) }}</template>
+                    </td>
                   </tr>
                 </tbody>
                 <tfoot><tr><td>합계</td><td class="num">{{ formatNumber(doc.totalPlan) }}</td><td class="num">{{ formatNumber(v.sums.capacity) }}</td><td class="num">100%</td><td class="num">{{ formatNumber(v.sums.add) }}</td></tr></tfoot>
               </table>
+              <div v-if="v.overtime" class="overtime">
+                <b>잔업 · {{ formatTime(v.overtime.deadline) }} ~ {{ formatTime(v.overtime.until) }} (약 {{ formatNumber(v.overtime.minutes) }}분)</b>
+                <small class="overtime-note">근무 끝까지 남은 능력보다 많이 배정한 몫은 근무 뒤에 만듭니다.</small>
+                <ul>
+                  <li v-for="l in v.overtime.lines" :key="l.lineId">{{ l.lineId }}라인 · 잔업 {{ formatNumber(l.qty) }}개 · {{ formatTime(l.until) }} 종료 예정</li>
+                </ul>
+              </div>
             </div>
           </section>
 
@@ -673,13 +785,14 @@ async function downloadPdf() {
   font-size: 14px;
 }
 
+/* 추가 주문 / 현재 트러블 슈팅 / 이전에 작성한 보고서 구분 (11/20: 선을 진하게, 글씨를 한 단계 크게) */
 .list-section {
   margin: 0;
-  padding: 10px 20px 7px;
-  border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-2);
-  font-size: 12px;
-  font-weight: 700;
+  padding: var(--sp-3) 20px var(--sp-2);
+  border-top: var(--line-w-strong) solid var(--c-ink-3);
+  color: var(--c-ink);
+  font-size: var(--fs-row);
+  font-weight: var(--fw-strong);
 }
 
 .list > .list-section:first-child {
@@ -1270,6 +1383,61 @@ async function downloadPdf() {
 
 .tbl .num {
   text-align: right;
+}
+
+/* 배정 값 고치기 (11/20) */
+.edit-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
+.add-input {
+  width: 6em;
+  padding: 2px var(--sp-1);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* 잔업 안내 (11/21) */
+.overtime {
+  display: grid;
+  gap: var(--sp-1);
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+}
+
+.overtime-note {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+}
+
+.overtime ul {
+  margin: 0;
+  padding-left: var(--sp-4);
+}
+
+/* 계획 변경 카드: 바로 생성 버튼 (11/21) */
+.quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.quick-note {
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
 }
 
 .tbl tr.stopped td {

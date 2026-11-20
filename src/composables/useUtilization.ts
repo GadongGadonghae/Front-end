@@ -1,6 +1,7 @@
 // 가동률 (SCR-003, API-050·051, D-108 시안 G): 타임라인을 보여 주며 라인별 OEE를 비교한다.
 // 탭 = 생산 라인 6 · 코일입고 · 도장 · 출고. 라인을 누르면 그 라인 설비별로 내려간다.
 // 줄마다 OEE(기준 대비) · 손실 시간 · 24시간 띠(일) 또는 날짜 칸(주·월). 조건이 바뀌면 바로, 그대로 두면 1분마다 다시 부른다
+import { now as clockNow } from '@/clock'
 import { computed, ref, watch } from 'vue'
 import { source } from '@/data'
 import type { OeeQuery, OeeReport, Period, StateTimeline } from '@/types/analysis'
@@ -21,7 +22,7 @@ interface Unit { key: string; label: string; q: Partial<OeeQuery>; clickable: bo
 
 export function useUtilization(init: { tab?: string; line?: string } = {}) {
   const { master } = useMaster()
-  const today = toDateStr(Date.now())
+  const today = toDateStr(clockNow())
 
   // ── 화면 상태 ──
   const period = ref<Period>('day')

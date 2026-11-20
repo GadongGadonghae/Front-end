@@ -1,5 +1,6 @@
 // 오늘 생산 그래프 (SCR-001 7번, SCR-010 4번): 시간대별 누적 실적 vs 계획선.
 // 시간대별 값은 API-020을 열 때와 매시 정각에 부르고, 지금 시간대의 끝점은 1초 snapshot 실적으로 이어 그린다 (API 명세 6장)
+import { now as clockNow } from '@/clock'
 import { computed, onScopeDispose, shallowRef } from 'vue'
 import { source } from '@/data'
 import type { LineId } from '@/types/plant'
@@ -15,7 +16,7 @@ export function useTodayProduction(lineId?: LineId) {
   const load = () => source.q.getTodayHourly(lineId).then((h) => { hourly.value = h })
   let timer: ReturnType<typeof setTimeout> | null = null
   const scheduleNextHour = () => {
-    const d = new Date()
+    const d = new Date(clockNow())
     const ms = (60 - d.getMinutes()) * 60_000 - d.getSeconds() * 1000 + 500
     timer = setTimeout(() => { load(); scheduleNextHour() }, ms)
   }

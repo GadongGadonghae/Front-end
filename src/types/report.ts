@@ -78,6 +78,8 @@ export interface ReplanReport extends ReplanSummary {
   allocations: ReplanAllocation[]
   /** 목표 미달 예상 (0이면 달성 가능) */
   unmet: number
+  /** 잔업 (11/21): 근무 끝까지 못 만드는 몫을 근무 뒤에 만들 때. deadline = 근무 끝(납기), until = 생산 예정 종료 */
+  overtime?: { deadline: string; until: string; minutes: number; qty: number; lines: { lineId: string; qty: number; until: string }[] } | null
   target: number | null
   /** 표시용 문서번호 (실서버 AI-RPT-yyyyMMdd-NNN). 데모는 없음 */
   documentNo?: string
@@ -90,6 +92,27 @@ export interface ReplanReport extends ReplanSummary {
 }
 
 /** 추가 주문 배정 승인·적용 결과 (R-06) */
+/** 보고서 결재 상태 (11/20, v0.3.16): 작성 중(만들기만) → 작성(작성 완료·결재 요청) → 결재 완료 → 전송 완료. 회수하면 작성 중으로 */
+export type ReportFlowStatus = 'DRAFT' | 'WRITTEN' | 'APPROVED' | 'SENT'
+
+/** 서버에 기록된 보고서 결재 한 건 (R-11 · M-01). key = 'daily:날짜' · 'replan:계획수정 보고서 ID' */
+export interface ReportFlowRecord {
+  key: string
+  kind: 'daily' | 'replan'
+  title: string
+  status: ReportFlowStatus
+  campusId: string
+  factoryId: number
+  writtenBy: string | null
+  writtenAt: string | null
+  approvedBy: string | null
+  approvedAt: string | null
+  sentBy: string | null
+  sentAt: string | null
+  /** 결재 요청 때 찍은 문서 (임시 MES 열람용). 목록(R-11)에는 없음 */
+  doc: unknown
+}
+
 export interface ReplanApplyResult {
   appliedAt: string
   /** 가동 명령을 보낸 새 라인 */
@@ -119,6 +142,24 @@ export interface ReplanOrder {
   notes: string[]
   current: { lines: string[]; capacity: number; unmet: number }
   withNew: { lines: string[]; capacity: number; unmet: number }
+  /** 공장장이 목표를 올려 생긴 추가 주문이면 이전·새 공장 목표 (11/20). 아니면 null */
+  targetBefore?: number | null
+  targetAfter?: number | null
+  /** 목표 감소로 정지할 라인 (11/21). 결재하면 계획정지 + 정지 명령 */
+  stopLines?: string[]
+}
+
+/** 공장장이 오늘 목표를 올려서 생긴 배정 대기 (G-05, 11/20). pending = 아직 라인에 안 나눈 수량 */
+export interface PendingTarget {
+  changeId: number
+  date: string
+  before: number
+  after: number
+  pending: number
+  changedBy: string | null
+  changedAt: string
+  /** 이 변경으로 만든 추가 주문 배정 보고서 (없으면 null) */
+  reportId: number | null
 }
 
 // ── 원인 추적 (설명 가능한 AI 보고서) ──
@@ -216,6 +257,10 @@ export interface TargetRow {
   updatedBy: string | null
   /** 마지막으로 저장한 시각 (11/20 목표 변동 카드). 데모는 null */
   updatedAt?: string | null
+  /** 저장 결과만: 오늘 목표를 올려서 라인에 아직 안 나눈 수량 (추가 주문 · 배정 대기, 11/20) */
+  pending?: number
+  /** 저장 결과만: 저장 전 라인 목표 합 */
+  before?: number
 }
 
 /** N-01 계획수정 보고서 슬랙 전송 결과 (보낸 기록은 서버에 남지 않음) */

@@ -369,6 +369,8 @@ export interface ReassignmentDetailDto {
   stoppedDone: number | null
   targetQty: number | null
   unmetQty: number | null
+  /** 잔업 (11/21): 근무 끝(납기)까지 능력보다 많이 배정해 근무 뒤에 만드는 몫. 없으면 null */
+  overtime?: { deadline: string; until: string; minutes: number; qty: number; lines: { lineId: string; qty: number; until: string }[] } | null
   /** 공장장 승인(결재) (11/20, R-04) */
   approved?: boolean
   approvedBy?: string | null
@@ -419,6 +421,9 @@ export interface OrderInfoDto {
   notes: string[]
   current: { lines: string[]; capacity: number; unmet: number }
   withNew: { lines: string[]; capacity: number; unmet: number }
+  targetBefore?: number | null
+  targetAfter?: number | null
+  stopLines?: string[]
 }
 
 /** R-02 ai.causeTrace: 근거(E1…) · 원인 후보와 근거 강도(규칙 점수) · 근거 번호를 단 문장과 검증 결과 */
@@ -508,7 +513,7 @@ export interface FlowReportDto {
   kind: 'DAILY' | 'REPLAN'
   targetKey: string
   title: string
-  status: 'WRITTEN' | 'APPROVED' | 'SENT'
+  status: 'DRAFT' | 'WRITTEN' | 'APPROVED' | 'SENT'
   campusId: string
   factoryId: number
   replanReportId: number | null

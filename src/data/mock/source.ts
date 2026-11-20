@@ -445,6 +445,11 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getReplanReports: async (from, to) => reports.list(from, to),
       getReplanReport: async (id) => reports.get(id),
       getOrderAdditions: async (date) => reports.orderAdditions(date),
+      // 데모 데이터: 결재 상태는 브라우저 기록(useReportFlow)을 쓴다
+      getReportFlows: async () => null,
+      getMesReports: async () => null,
+      getPlannedStopLines: async () => [],
+      getPendingTarget: async () => null,
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),
@@ -475,6 +480,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       createReplanReport: async (eventId) => reports.create(eventId),
       approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
       syncReportFlow: async () => {},
+      editReplanAllocations: async (id, addQty) => reports.editAllocations(id, addQty),
       createTargetReport: async () => { throw new Error('데모 데이터에서는 목표 변동 보고서를 만들 수 없어요 (실서버 전용)') },
       createOrderReport: async (request) => reports.createOrder(request),
       applyOrderReport: async (id) => reports.applyOrder(id),

@@ -80,6 +80,11 @@ export const api = {
   G02: (q: Range & { lineId?: string }) => http.get<ProductionPlanDto[]>('/production/plans', { ...q }),
   /** G-03 일 생산 계획 설정 (P2) */
   G03: (date: string, body: { lineId: string; planQty: number }) => http.put<ProductionPlanDto>(`/production/plans/${date}`, body),
+  /** G-04 공장 목표 저장 (11/20): 오늘 목표를 올리면 라인은 그대로, 늘어난 수량은 배정 대기(pending) */
+  G04: (date: string, quantity: number) =>
+    http.put<{ date: string; before: number; after: number; pending: number; changeId: number | null; lines: ProductionPlanDto[] }>(`/production/plans/${date}/total`, { quantity }),
+  /** G-05 목표 증가 배정 대기 (없으면 204 → undefined) */
+  G05: (date: string) => http.get<import('@/types/report').PendingTarget | undefined>(`/production/plans/${date}/pending`),
 
   // ── 제품 추적 (P) ──
   /** P-01 제품 목록 (투입 시각 기준 기간, result = OK·NG·IN_PROGRESS) */
@@ -101,7 +106,7 @@ export const api = {
   /** R-04 보고서 승인(결재). 공장장만 (11/20) */
   R04: (reportId: number) => http.post<ReassignmentDetailDto>(`/reassignments/${reportId}/approve`, {}),
   /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로, 서버(AI)가 조건으로 해석 */
-  R05: (request: string) => http.post<ReassignmentDetailDto>('/reassignments/orders', { request }),
+  R05: (request: string, targetChangeId?: number) => http.post<ReassignmentDetailDto>('/reassignments/orders', { request, targetChangeId }),
   /** R-06 추가 주문 배정 승인·적용: 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 (한 번만) */
   R06: (reportId: number) => http.post<ApplyResponseDto>(`/reassignments/${reportId}/apply`, {}),
   // ── 보고서 결재·전송 (R-10 ~ R-14, 11/20 MES 명세 docs/api-spec-report-approval-mes.md) ──
@@ -113,6 +118,17 @@ export const api = {
   R13: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/approve`, {}),
   /** R-14 전송 (공장장, 결재 완료 후에만) → MES 수신함 */
   R14: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/send`, {}),
+  /** R-15 작성 완료 · 결재 요청 (생산관리팀장, 작성 중만). content = 그 순간 문서 (11/20) */
+  R15: (reportId: number, content?: unknown) => http.post<FlowReportDto>(`/reports/${reportId}/request`, { content }),
+  /** R-16 회수 (생산관리팀장, 결재 요청 중만) → 작성 중 (11/20) */
+  R16: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/recall`, {}),
+  /** R-07 배정 값 고치기 (생산관리팀장, 결재 요청 전만). body = { 라인: 추가 수량 } (11/20) */
+  R07: (reportId: number, addQty: Record<string, number>) => http.put<ReassignmentDetailDto>(`/reassignments/${reportId}/allocations`, addQty),
+  /** M-01 임시 MES 수신함 (캠퍼스장): 전송된 보고서, 내용 포함 */
+  MES01: (q: { campusId?: string; factoryId?: number } = {}) => http.get<Page<FlowReportDto>>('/mes/reports', { page: 1, size: 100, ...q }),
+  /** S-01 계획정지 조회. inProgress = 진행 중만 */
+  S01: (q: { from: string; to: string; lineId?: string; inProgress?: boolean }) =>
+    http.get<{ stopId: number; lineId: string; equipmentIds: string[]; reasonCode: string; startAt: string; endAt: string | null; inProgress: boolean }[]>('/planned-stops', q),
   /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 + 보고서 + LLM 요약). 웹훅 없음 503, 슬랙 실패 502 */
   N01: (reportId: number) => http.post<SlackSendDto>(`/reassignments/${reportId}/slack`),
 

@@ -2,6 +2,7 @@
 //  · 공정 중 추적: 지금 공정 안 제품 → 공정별 수 + 제품 여정 시간표. 설비 고장으로 멈춘 제품은 1초 현재 상태로 가린다
 //  · 이력 조회: 기간 · 라인 · 결과 · 제품 ID로 찾기 → 결과 도넛 + 제품 표 (50건씩)
 // 두 탭 모두 오른쪽에 고른 제품의 공정별 기록. 진행 중 목록은 10초, 이력은 1분마다 다시 부른다 (API 명세 6장 [가정: 추적 10초])
+import { now as clockNow } from '@/clock'
 import { computed, ref, watch } from 'vue'
 import { source } from '@/data'
 import type { Period } from '@/types/analysis'
@@ -39,7 +40,7 @@ export function useProduction(initialQ = '') {
   const { equipmentName, master } = useMaster()
   const snap = useLiveSnapshot()
   const now = useNow()
-  const today = toDateStr(Date.now())
+  const today = toDateStr(clockNow())
 
   // 기본은 이력 조회, 스위치를 켜면 현재 상황(공정 중 추적)
   const tab = ref<ProdTab>('hist')

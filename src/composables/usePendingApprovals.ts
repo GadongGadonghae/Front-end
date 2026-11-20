@@ -1,13 +1,13 @@
-// 결재 대기 카드 (11/20): 생산관리팀장이 AI 계획수정 보고서를 올리면 공장장 화면 오른쪽 위에 작게 알려요.
-// 오늘 만든 보고서 중 아직 승인 안 된 것. X로 닫으면 그때까지 본 보고서는 다시 안 떠요 (계정마다 브라우저에 기억). 10초마다 확인.
-import { computed, onUnmounted, shallowRef, watch } from 'vue'
-import { source } from '@/data'
+// 결재 대기 카드 (11/20): 생산관리팀장이 [작성 완료 · 결재 요청]을 누르면 공장장 화면 오른쪽 위에 작게 알려요.
+// AI 보고서를 만들기만 한 것(작성 중)은 알리지 않아요. 회수했다가 다시 요청하면 다시 알려요.
+// X로 닫으면 그때까지 본 요청은 다시 안 떠요 (계정마다 브라우저에 기억). 결재 상태는 useReportFlow가 5초마다 서버에서 읽어요.
+import { computed, ref } from 'vue'
 import { useAuth } from '@/composables/useAuth'
-import { toDateStr } from '@/lib/format'
-import type { ReplanSummary } from '@/types/report'
+import { useReportFlow, type ReportFlow } from '@/composables/useReportFlow'
 
-const EVERY_MS = 10_000
 const keyOf = (loginId: string) => `sfaas.approvalSeen.${loginId}`
+/** 같은 보고서라도 다시 결재 요청하면 새 알림 */
+const idOf = (f: ReportFlow) => `${f.key}@${f.writtenAt ?? ''}`
 
 function readSeen(loginId: string): string[] {
   try {
@@ -26,38 +26,24 @@ function writeSeen(loginId: string, ids: string[]) {
 
 export function usePendingApprovals() {
   const { role, loginId } = useAuth()
-  const pending = shallowRef<ReplanSummary[]>([])
-  let memory: string[] = []
-  let timer: ReturnType<typeof setInterval> | null = null
+  const flow = useReportFlow()
+  /** 이번 창에서 닫은 것 (저장소를 못 쓸 때도 다시 안 뜨게) */
+  const memory = ref<string[]>([])
 
-  async function check() {
+  const pending = computed(() => {
     const id = loginId.value
-    if (!id) return
-    const today = toDateStr(Date.now())
-    const list = await source.q.getReplanReports(today, today).catch(() => [])
-    const seen = new Set([...readSeen(id), ...memory])
-    pending.value = list.filter((r) => r.approved === false && !seen.has(r.id))
-  }
+    if (role.value !== 'PLANT_HEAD' || !id) return []
+    const seen = new Set([...readSeen(id), ...memory.value])
+    return flow.requested.value.filter((f) => !seen.has(idOf(f)))
+  })
 
-  /** X: 지금 보이는 보고서는 봤다고 기억 */
+  /** X: 지금 보이는 요청은 봤다고 기억 */
   function dismiss() {
     const id = loginId.value
-    const ids = pending.value.map((r) => r.id)
-    memory = [...memory, ...ids]
+    const ids = pending.value.map(idOf)
+    memory.value = [...memory.value, ...ids]
     if (id) writeSeen(id, [...readSeen(id), ...ids])
-    pending.value = []
   }
 
-  const active = computed(() => role.value === 'PLANT_HEAD')
-  watch(active, (on) => {
-    if (timer) clearInterval(timer)
-    timer = null
-    pending.value = []
-    if (!on) return
-    check()
-    timer = setInterval(check, EVERY_MS)
-  }, { immediate: true })
-  onUnmounted(() => { if (timer) clearInterval(timer) })
-
-  return { pending, dismiss, reload: check }
+  return { pending, dismiss, reload: flow.refresh }
 }

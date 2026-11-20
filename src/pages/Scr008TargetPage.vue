@@ -75,6 +75,7 @@ const { can } = useAuth()
           </template>
           <template #cell-quantity="{ row }">
             <b v-if="row.quantity != null" class="n">{{ formatNumber(row.quantity) }}</b>
+            <small v-if="row.pending" class="pending"> (배정 대기 {{ formatNumber(row.pending) }})</small>
             <span v-else class="unset">목표 미설정</span>
           </template>
           <template #cell-plan="{ row }"><span class="n">{{ formatNumber(row.plan) }}</span></template>
@@ -95,6 +96,12 @@ const { can } = useAuth()
 </template>
 
 <style scoped>
+/* 오늘 목표를 올려 아직 라인에 안 나눈 수량 (생산관리팀장 배정 보고서 → 결재 후 반영) */
+.pending {
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .perm-note {
   margin-bottom: var(--sp-3);
   color: var(--c-ink-3);

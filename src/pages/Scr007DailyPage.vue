@@ -4,6 +4,7 @@
      값은 getDailyReport(API-080) · 비가동 이력 · 계획수정 보고서 목록에서. 문장(종합·AI 마감 검토·품질 요약·인계사항)은 숫자로 만든 템플릿
      (일일 보고서 저장·LLM API는 아직 없음: 지난 날은 그날 마감 값으로 바로 보여 줌) -->
 <script setup lang="ts">
+import { now as clockNow } from '@/clock'
 import { computed, ref, shallowRef, watch } from 'vue'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -33,7 +34,7 @@ const { can } = useAuth()
 const flow = useReportFlow()
 
 const { equipmentName } = useMaster()
-const today = toDateStr(Date.now())
+const today = toDateStr(clockNow())
 const pastDays = Array.from({ length: PAST_DAYS }, (_, i) => toDateStr(Date.parse(today) - (i + 1) * DAY))
 
 /** 고른 날짜. 오늘은 [AI 일일 리포트 생성]을 눌러야 보고서가 보임 */
@@ -75,7 +76,7 @@ async function load() {
 watch(date, load, { immediate: true })
 
 function generate() {
-  generatedAt.value = new Date().toISOString()
+  generatedAt.value = new Date(clockNow()).toISOString()
   load()
 }
 function printPdf() {
@@ -101,7 +102,7 @@ const listed = computed(() => (periodInvalid.value ? [] : pastDays.filter((d) =>
 
 // ── 문서 값 ──
 const pct = (v: number | null | undefined) => (v == null ? '-' : `${formatNumber(v, 1)}%`)
-const nowIso = () => new Date().toISOString()
+const nowIso = () => new Date(clockNow()).toISOString()
 const doc = computed(() => {
   const r = report.value
   if (!r || !shown.value) return null
@@ -280,6 +281,7 @@ function writeFlow() {
           :can-write="can('reportWrite')"
           :can-approve="can('reportApprove')"
           @write="writeFlow"
+          @recall="flow.recall(flowKey)"
           @approve="flow.approve(flowKey)"
           @send="flow.send(flowKey)"
         />

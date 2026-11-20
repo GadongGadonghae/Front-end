@@ -1,6 +1,7 @@
 // 실제 백엔드 어댑터: 화면 계약(contracts.ts)을 백엔드 엔드포인트(endpoints.ts, 명세 v3.1/v3.2)로 채운다.
 // - 실시간은 STOMP 라이브러리 결정 전까지 REST 주기 조회로 대신한다 (상태 1초 M-01, 요약 10초, 알림 5초). 결정되면 W-01~04로 바꾼다
 // - 백엔드에 아직 없는 기능(예지보전·제품 내역·시간대별 생산·리포트 등, docs/API-차이-v3.1.md)은 빈 값을 돌려준다 → 화면은 "데이터 없음"
+import { now as clockNow } from '@/clock'
 import type { DataSource, Unsubscribe } from '@/data/contracts'
 import type { ControlLimit, DowntimeCodeDef, Equipment, EquipmentType, EquipmentTypeCode, Line, LineId, MasterData, Process, ProcessId, ProductionLineId } from '@/types/plant'
 import type { EquipmentLive, FlowPositions, PlantSnapshot, PlantSummary } from '@/types/live'
@@ -8,9 +9,9 @@ import type { AlarmEvent, HistoryEvent, HistoryQuery, StateEvent } from '@/types
 import type { TelemetryTick } from '@/types/process'
 import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { OeeReport } from '@/types/analysis'
-import type { DowntimeEventDto, EquipmentStatusDto, FlowPositionsDto, ProductDetailDto, ProductDto, ReassignmentDetailDto, ThresholdDto } from '@/data/api/dto'
+import type { DowntimeEventDto, EquipmentStatusDto, FlowPositionsDto, FlowReportDto, ProductDetailDto, ProductDto, ReassignmentDetailDto, ThresholdDto } from '@/data/api/dto'
 import type { Product, ProductDetail } from '@/types/production'
-import type { ReplanReport } from '@/types/report'
+import type { ReplanReport, ReportFlowRecord } from '@/types/report'
 import { api } from '@/data/api/endpoints'
 import { ApiError, token } from '@/data/api/http'
 import { isTodo, summarize } from '@/data/historyTodo'
@@ -54,9 +55,37 @@ function isoLocal(ms: number) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}${sign}${pad(Math.floor(Math.abs(off) / 60))}:${pad(Math.abs(off) % 60)}`
 }
 const dateOf = (ms: number) => isoLocal(ms).slice(0, 10)
+
+/** 지금 계획정지 중인 라인 (S-01, 진행 중만) */
+async function plannedStopLines(): Promise<LineId[]> {
+  const stops = await api.S01({ from: dateOf(clockNow() - 30 * 86_400_000), to: dateOf(clockNow()), inProgress: true })
+  return [...new Set(stops.filter((s) => s.inProgress).map((s) => s.lineId as LineId))]
+}
+
+/** 서버 결재 기록 → 화면 결재 기록. 계획수정 보고서 번호가 없는 기록(지워진 보고서)은 버림 */
+function flowRecordOf(r: FlowReportDto): ReportFlowRecord | null {
+  const daily = r.kind === 'DAILY'
+  if (!daily && r.replanReportId == null) return null
+  const c = r.content as { doc?: unknown } | null
+  return {
+    key: daily ? `daily:${r.targetKey}` : `replan:${r.replanReportId}`,
+    kind: daily ? 'daily' : 'replan',
+    title: r.title,
+    status: r.status,
+    campusId: r.campusId,
+    factoryId: r.factoryId,
+    writtenBy: r.writtenBy?.userName ?? null,
+    writtenAt: r.writtenAt,
+    approvedBy: r.approvedBy?.userName ?? null,
+    approvedAt: r.approvedAt,
+    sentBy: r.sentBy?.userName ?? null,
+    sentAt: r.sentAt,
+    doc: c == null ? null : daily ? c : c.doc ?? null,
+  }
+}
 const dayStartMs = (date: string) => new Date(`${date}T00:00:00`).getTime()
 // 백엔드 기간 쿼리 from·to는 날짜(yyyy-MM-dd, to 포함)만 받는다. 시각을 붙이면 400
-const todayRange = () => ({ from: dateOf(Date.now()), to: dateOf(Date.now()) })
+const todayRange = () => ({ from: dateOf(clockNow()), to: dateOf(clockNow()) })
 function periodRange(period: 'day' | 'week' | 'month', date: string) {
   const d = new Date(`${date}T00:00:00`)
   if (period === 'day') return { first: date, last: date }
@@ -152,7 +181,7 @@ const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
   kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
   stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
   allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
-  unmet: r.unmetQty ?? 0, target: r.targetQty ?? null, documentNo: r.documentNo,
+  unmet: r.unmetQty ?? 0, target: r.targetQty ?? null, documentNo: r.documentNo, overtime: r.overtime ?? null,
   approved: r.approved ?? false, approvedBy: r.approvedBy ?? null, approvedAt: r.approvedAt ?? null,
   ai: r.ai ? {
     title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
@@ -179,11 +208,11 @@ async function allEvents(q: EventScope) {
 /** 비가동 사유별 시간·건수. 기간 [from, to] 안에 든 길이만 (진행 중은 지금까지) */
 function downtimeOf(events: DowntimeEventDto[], from: string, to: string): OeeReport['downtime'] {
   const a = dayStartMs(from)
-  const b = Math.min(dayStartMs(to) + 86_400_000, Date.now())
+  const b = Math.min(dayStartMs(to) + 86_400_000, clockNow())
   const by = new Map<DowntimeCode, { sec: number; count: number }>()
   for (const e of events) {
     const s = Math.max(a, Date.parse(e.startAt))
-    const t = Math.min(b, e.endAt ? Date.parse(e.endAt) : Date.now())
+    const t = Math.min(b, e.endAt ? Date.parse(e.endAt) : clockNow())
     const v = by.get(e.reasonCode as DowntimeCode) ?? { sec: 0, count: 0 }
     v.count += 1
     if (t > s) v.sec += Math.round((t - s) / 1000)
@@ -203,7 +232,12 @@ function processSum(per: Awaited<ReturnType<typeof perLineCounts>>, process: Pro
 const STATE_RANK: Record<StateCode, number> = { D: 5, DC: 4, S: 3, I: 2, R: 1 }
 type Seg = { state: StateCode; from: number; to: number }
 /** 여러 설비의 상태 구간을 라인 대표 상태 하나로: 그 순간 가장 나쁜 상태 (D > DC > S > I > R, 판정 우선순위와 같음) */
-function worstOf(lists: Seg[][], until: number): Seg[] {
+/** 라인 대표 상태용 (11/21): 제품 사이 짧은 대기(2분 미만)는 가동으로 본다. 느린 공장은 설비마다 틈이 계속 생겨 라인이 대기로만 칠해졌음 */
+const SHORT_IDLE_SEC = 120
+const smoothIdle = (segs: Seg[]): Seg[] => segs.map((s) => (s.state === 'I' && s.to - s.from < SHORT_IDLE_SEC ? { ...s, state: 'R' as StateCode } : s))
+
+function worstOf(lists0: Seg[][], until: number): Seg[] {
+  const lists = lists0.map(smoothIdle)
   const cuts = [...new Set([0, until, ...lists.flat().flatMap((s) => [s.from, s.to])])].filter((x) => x >= 0 && x <= until).sort((x, y) => x - y)
   const out: Seg[] = []
   for (let i = 0; i < cuts.length - 1; i++) {
@@ -291,7 +325,7 @@ export function createApiSource(): DataSource {
   async function snapshot(): Promise<PlantSnapshot> {
     const [status, counts, coil] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M16()])
     return {
-      at: isoLocal(Date.now()),
+      at: isoLocal(clockNow()),
       equipment: status.map(liveOf),
       plant: { done: counts.ok },
       lines: counts.byGroup.map((g) => ({ lineId: g.key as LineId, done: g.good })),
@@ -301,7 +335,7 @@ export function createApiSource(): DataSource {
   }
 
   async function summary(): Promise<PlantSummary> {
-    const today = dateOf(Date.now())
+    const today = dateOf(clockNow())
     const r = todayRange()
     const [u, counts, plans, byLine, perLine, wips] = await Promise.all([
       api.U01(r), api.M07({ groupBy: 'line' }), api.G02({ from: today, to: today }).catch(() => []), api.U04(r),
@@ -314,7 +348,7 @@ export function createApiSource(): DataSource {
     const target = plans.length ? plans.reduce((a, p) => a + p.planQty, 0) : null
     const planOf = (l: string) => plans.find((p) => p.lineId === l)?.planQty ?? null
     return {
-      at: isoLocal(Date.now()),
+      at: isoLocal(clockNow()),
       plant: {
         target, done: counts.ok, rate: target ? Math.round((counts.ok / target) * 1000) / 10 : null,
         oee: { oee: u.oee, availability: u.availability, performance: u.performance, quality: u.quality },
@@ -354,7 +388,7 @@ export function createApiSource(): DataSource {
       const emit = (a: AlarmEvent) => alarmListeners.forEach((cb) => cb(a))
       if (!first) {
         for (const [id, e] of now) if (!prev.has(id)) emit({ kind: 'raised', event: e })
-        for (const [id, e] of prev) if (!now.has(id)) emit({ kind: 'cleared', event: { ...e, end: isoLocal(Date.now()) } })
+        for (const [id, e] of prev) if (!now.has(id)) emit({ kind: 'cleared', event: { ...e, end: isoLocal(clockNow()) } })
       }
       prev = now
       first = false
@@ -391,24 +425,24 @@ export function createApiSource(): DataSource {
       onRisk(cb) {
         return poll(RISK_MS, async () => {
           const m = await masterOnce()
-          cb(sensorRisks(m.equipment, Date.now() / 1000))
+          cb(sensorRisks(m.equipment, clockNow() / 1000))
         })
       },
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
         // after: 그 시각보다 뒤의 점만 (M-03, 11/19 백엔드 추가). 처음은 구독한 시각부터 (그 앞은 getTelemetry가 받음)
-        let lastTs = isoLocal(Date.now())
+        let lastTs = isoLocal(clockNow())
         return poll(TELEMETRY_MS, async () => {
-          const today = dateOf(Date.now())
+          const today = dateOf(clockNow())
           const m = await api.M03(equipmentId, { from: today, to: today, after: lastTs })
           const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
           for (const v of values) if (Date.parse(v.t) > Date.parse(lastTs)) lastTs = v.t
-          if (values.length) cb({ equipmentId, values: [...values, ...sensorTickValues(equipmentId, values.map((v) => v.t), Date.now() / 1000)] })
+          if (values.length) cb({ equipmentId, values: [...values, ...sensorTickValues(equipmentId, values.map((v) => v.t), clockNow() / 1000)] })
         })
       },
     },
     q: {
       getMaster: master,
-      getTodayHourly: async (lineId) => ({ ...(await hourlyOf(dateOf(Date.now()), lineId)), lineId: lineId ?? null }),
+      getTodayHourly: async (lineId) => ({ ...(await hourlyOf(dateOf(clockNow()), lineId)), lineId: lineId ?? null }),
       getTodayStateEvents: async (filter) => todayEvents(isLine(filter?.area) ? { lineId: filter.area } : { process: areaProcess(filter?.area) }),
       getTodayRiskEvents: async () => [],
       async getProcessToday(lineId, process) {
@@ -434,13 +468,13 @@ export function createApiSource(): DataSource {
         }
       },
       async getTelemetry(equipmentId, range) {
-        const to = Date.now()
+        const to = clockNow()
         const from = range === 'today' ? dayStartMs(dateOf(to)) : to - (range === '1h' ? 3_600_000 : 8 * 3_600_000)
         const m = await api.M03(equipmentId, { from: dateOf(from), to: dateOf(to), interval: range === '1h' ? 'raw' : '5s' })
         return {
           equipmentId, range,
           // 설비 상태 센서(온도·진동·전류)는 더미: 공정 관리값과 같은 시각에 붙인다
-          items: withSensors(equipmentId, m.metrics.map((x) => ({ item: x.metric, unit: x.unit, source: 'process' as const, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })), Date.now() / 1000),
+          items: withSensors(equipmentId, m.metrics.map((x) => ({ item: x.metric, unit: x.unit, source: 'process' as const, lower: x.limitLow, upper: x.limitHigh, points: x.points.map((p) => ({ t: p.ts, value: p.value, result: p.result })) })), clockNow() / 1000),
         }
       },
       getStateEvents: async ({ equipmentId }) => todayEvents({ equipmentId }),
@@ -508,7 +542,7 @@ export function createApiSource(): DataSource {
         }
       },
       async getStateTimeline(q) {
-        const until = q.date === dateOf(Date.now()) ? Math.floor((Date.now() - dayStartMs(q.date)) / 1000) : 86_400
+        const until = q.date === dateOf(clockNow()) ? Math.floor((clockNow() - dayStartMs(q.date)) / 1000) : 86_400
         const r = rangeOf(q.date, q.date)
         const sec = (iso: string) => Math.max(0, (Date.parse(iso) - dayStartMs(q.date)) / 1000)
         const segOf = async (id: string): Promise<Seg[]> => (await api.U12(id, r).catch(() => []))
@@ -541,13 +575,13 @@ export function createApiSource(): DataSource {
         })
         return { ...p, items: p.items.map(eventOf) }
       },
-      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S', 'DC'] }), Date.now()),
+      getHistorySummary: async (q) => summarize(await historyAll({ ...q, states: ['D', 'I', 'S', 'DC'] }), clockNow()),
       getRiskHistory: async (q) => ({ items: [], total: 0, page: q.page, size: 50 }),
       // 일일 생산 리포트 (11/19): 전용 API 없이 있는 API를 모아서 만든다
       //  목표 G-02 · 실적·불량 M-07(라인별, 공정별은 라인 6개 합) · OEE U-01 · 라인 OEE U-04 · 비가동 U-07 · 재공 M-13 + 코일 M-16(오늘만)
       async getDailyReport(date) {
         const r = { from: date, to: date }
-        const isToday = date === dateOf(Date.now())
+        const isToday = date === dateOf(clockNow())
         const [counts, plans, util, byLine, down, wip, coil, perLine] = await Promise.all([
           api.M07({ date, groupBy: 'line' }),
           api.G02(r).catch(() => []),
@@ -578,7 +612,7 @@ export function createApiSource(): DataSource {
         const stateOfCode = (c: string): StopState => CODES.find((x) => x.code === c)?.state ?? 'S'
         return {
           date, closed: !isToday,
-          at: isToday ? isoLocal(Date.now()) : isoLocal(dayStartMs(date) + 86_400_000),
+          at: isToday ? isoLocal(clockNow()) : isoLocal(dayStartMs(date) + 86_400_000),
           target, done: counts.ok, rate: target ? round1((counts.ok / target) * 100) : null,
           oee: { oee: util?.oee ?? null, availability: util?.availability ?? null, performance: util?.performance ?? null, quality: util?.quality ?? null },
           ngTotal: counts.processNg + counts.ngVision,
@@ -602,6 +636,10 @@ export function createApiSource(): DataSource {
         }))
       },
       // 그날 승인·적용된 추가 주문 배정: R-01 목록에서 order·승인 건만 골라 R-02로 라인별 추가 수량을 더한다 (하루 몇 건뿐)
+      getReportFlows: async () => (await api.R11({ size: 100 })).items.map(flowRecordOf).filter((x): x is ReportFlowRecord => !!x),
+      getMesReports: async () => (await api.MES01()).items.map(flowRecordOf).filter((x): x is ReportFlowRecord => !!x),
+      getPlannedStopLines: plannedStopLines,
+      getPendingTarget: async (date) => (await api.G05(date)) ?? null,
       async getOrderAdditions(date) {
         const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
         const out: Partial<Record<LineId, number>> = {}
@@ -630,20 +668,26 @@ export function createApiSource(): DataSource {
       },
       async getTargets(from, to) {
         // 목표 = 라인 계획 합(G-02), 실적 = 그날 출고 양품(G-01 unit=day, 오늘까지), 수정자 = 그날 마지막으로 저장한 사람 (11/20)
-        const today = dateOf(Date.now())
-        const [plans, actual] = await Promise.all([
+        const today = dateOf(clockNow())
+        const [plans, actual, pending] = await Promise.all([
           api.G02({ from, to }),
           from <= today ? api.G01({ from, to: to < today ? to : today, unit: 'day' }).catch(() => []) : Promise.resolve([]),
+          // 🆕 11/21: 오늘 목표를 올렸으면 결재 전까지 라인 계획은 그대로 → 공장 목표는 공장장이 정한 새 값(after)으로 보여 준다
+          from <= today && today <= to ? api.G05(today).catch(() => undefined) : Promise.resolve(undefined),
         ])
         const dates = [...new Set(plans.map((p) => p.date))].sort().reverse()
         return dates.map((d) => {
           const day = plans.filter((p) => p.date === d)
           const last = [...day].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))[0]
           const rows = actual.filter((a) => a.period === d)
+          const lineSum = day.reduce((a, p) => a + p.planQty, 0)
+          const p = d === today && pending ? pending : null
+          const changedLater = !!p && (!last?.updatedAt || p.changedAt > last.updatedAt)
           return {
-            date: d, quantity: day.reduce((a, p) => a + p.planQty, 0),
+            date: d, quantity: p ? p.after : lineSum,
             done: d <= today ? rows.reduce((a, r) => a + r.actualQty, 0) : null,
-            updatedBy: last?.updatedBy ?? null, updatedAt: last?.updatedAt ?? null,
+            updatedBy: changedLater ? p!.changedBy : last?.updatedBy ?? null, updatedAt: changedLater ? p!.changedAt : last?.updatedAt ?? null,
+            pending: p?.pending ?? 0,
           }
         })
       },
@@ -709,7 +753,7 @@ export function createApiSource(): DataSource {
           throw e
         }
       },
-      getRisks: async () => sensorRisks((await masterOnce()).equipment, Date.now() / 1000),
+      getRisks: async () => sensorRisks((await masterOnce()).equipment, clockNow() / 1000),
       getPdmEta: async () => null,
     },
     cmd: {
@@ -735,22 +779,27 @@ export function createApiSource(): DataSource {
       approveReplanReport: async (reportId) => replanOf(await api.R04(Number(reportId))),
       async syncReportFlow(action, key, content) {
         const [kind, id] = key.split(':')
-        // 계획수정 보고서는 AI 보고서를 만들 때(R-03) 서버가 이미 '작성'으로 기록해요 → 일일 보고서만 작성(R-10)
-        if (action === 'write') {
-          if (kind === 'daily') await api.R10({ kind: 'DAILY', targetKey: id, content })
+        // 일일 보고서: 작성 완료·결재 요청 = R-10 (서버가 바로 '작성'으로). 계획수정 보고서는 AI 보고서를 만들 때 서버가 '작성 중'으로 기록 → R-15
+        if (action === 'write' && kind === 'daily') {
+          await api.R10({ kind: 'DAILY', targetKey: id, content })
           return
         }
         const list = await api.R11(kind === 'replan' ? { replanId: Number(id) } : { kind: 'DAILY' })
         const row = kind === 'replan' ? list.items[0] : list.items.find((r) => r.targetKey === id)
-        if (!row) throw new Error('서버에 보고서 기록이 없어요. 작성부터 다시 해 주세요')
-        if (action === 'approve') {
-          if (row.status === 'WRITTEN') await api.R13(row.reportId)   // 계획수정이면 서버가 계획·도장 경로에 적용
+        if (!row) throw new Error('서버에 보고서 기록이 없어요. AI 보고서를 다시 만들어 주세요')
+        if (action === 'write') {
+          if (row.status === 'DRAFT') await api.R15(row.reportId, content)
+        } else if (action === 'recall') {
+          if (row.status === 'WRITTEN') await api.R16(row.reportId)
+        } else if (action === 'approve') {
+          if (row.status === 'WRITTEN') await api.R13(row.reportId)   // 계획수정이면 서버가 계획·도장 경로에 적용 (추가 주문은 라인 가동까지)
         } else if (row.status !== 'SENT') {
           await api.R14(row.reportId)
         }
       },
+      editReplanAllocations: async (reportId, addQty) => replanOf(await api.R07(Number(reportId), addQty)),
       createTargetReport: async (additionalRequest) => replanOf(await api.R03T(additionalRequest?.trim() || undefined)),
-      createOrderReport: async (request) => replanOf(await api.R05(request.trim())),
+      createOrderReport: async (request, targetChangeId) => replanOf(await api.R05(request.trim(), targetChangeId)),
       async applyOrderReport(id) {
         const r = await api.R06(Number(id))
         return { appliedAt: r.appliedAt, startedLines: r.startedLines, targets: r.targets, lineCommandSent: r.lineCommandSent, notes: r.notes }
@@ -766,14 +815,12 @@ export function createApiSource(): DataSource {
         } catch (e) { return fail(e) }
       },
       async saveTarget(date, quantity) {
-        // 공장 목표 → 라인별 계획(G-03)으로 나눠 저장 (D-87: 라인 계획 = 목표 ÷ 6)
-        // 몫을 모든 라인에, 나머지는 앞 라인부터 1개씩 → 합이 입력값과 같다 (1000 → 167·167·167·167·166·166)
-        const each = Math.floor(quantity / LINES.length)
-        const rest = quantity % LINES.length
-        const results = await Promise.allSettled(LINES.map((l, i) => api.G03(date, { lineId: l, planQty: each + (i < rest ? 1 : 0) })))
-        const failed = LINES.filter((_, i) => results[i].status === 'rejected')
-        if (failed.length) return { ok: false, error: `${failed.map((l) => `${l}라인`).join(', ')} 계획을 저장하지 못했습니다` }
-        return { ok: true, value: { date, quantity, done: null, updatedBy: null } }
+        // G-04 (11/20): 서버가 가동 라인(오늘은 계획정지 라인 빼고)에 나눠 저장. 오늘 목표를 올리면 라인은 그대로 두고
+        // 늘어난 수량을 배정 대기로 → 생산관리팀장 추가 주문 배정 보고서 → 공장장 결재 때 라인 목표에 들어간다
+        try {
+          const r = await api.G04(date, quantity)
+          return { ok: true, value: { date, quantity, done: null, updatedBy: null, pending: r.pending, before: r.before } }
+        } catch (e) { return fail(e) }
       },
       async setPaintRoute(lineId, paintId, reason) {
         try { return { ok: true, value: await api.M09(lineId, { paintId, reason }) } } catch (e) { return fail(e) }

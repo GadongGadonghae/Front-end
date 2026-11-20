@@ -44,20 +44,24 @@ const target = useTargetChange()
 const qty = (n: number | null) => (n == null ? '미설정' : `${formatNumber(n)}개`)
 /** 목표 변동 카드 → 목표 기준 AI 보고서 작성 화면 (11/20) */
 function writeTargetReport() {
+  const c = target.change.value
   target.dismiss()
-  router.push({ path: '/reports/replan', query: { event: 'TARGET' } })
+  // 목표가 올랐으면 늘어난 수량 = 추가 주문 → 추가 주문 배정 검토 (계획수정 보고서 화면에서 깜빡이는 추가 주문 카드)
+  // 11/21: 늘든 줄든 계획수정 보고서 화면의 깜빡이는 계획 변경 카드로 (감소면 정지·감산 검토)
+  if (c) router.push({ path: '/reports/replan', query: { order: '1' } })
 }
-// 결재 대기 카드: 공장장에게만, 생산관리팀장이 보고서를 올리면 (11/20)
+// 결재 대기 카드: 공장장에게만, 생산관리팀장이 [작성 완료 · 결재 요청]을 누르면 (11/20)
 const approvals = usePendingApprovals()
 const latestPending = computed(() => approvals.pending.value[0] ?? null)
-const pendingName = computed(() => {
-  const r = latestPending.value
-  return !r ? '' : r.stateEventId === 'TARGET' ? '생산 목표 변경' : equipmentName(r.equipmentId)
-})
+/** "계획수정 보고서 · 추가 주문 배정" 같은 제목. 일일 보고서는 그대로 */
+const pendingName = computed(() => latestPending.value?.title ?? '')
+/** 보고서로: 계획수정 보고서는 그 보고서를 열면 왼쪽에서 추가 주문 / 현재 트러블 슈팅 칸이 골라져 보여요 */
 function openPending() {
-  const r = latestPending.value
+  const f = latestPending.value
   approvals.dismiss()
-  if (r) router.push(`/reports/replan/${r.id}`)
+  if (!f) return
+  const [kind, id] = f.key.split(':')
+  router.push(kind === 'replan' ? `/reports/replan/${id}` : '/reports/daily')
 }
 
 async function onLogout() {
@@ -111,8 +115,8 @@ function viewFault() {
     <aside v-if="latestPending" class="target-card no-print" role="status" aria-live="polite">
       <div class="tc-body">
         <b>결재할 보고서가 올라왔어요</b>
-        <span class="tc-qty">AI 계획수정 보고서 · {{ pendingName }}{{ approvals.pending.value.length > 1 ? ` 외 ${approvals.pending.value.length - 1}건` : '' }}</span>
-        <small>{{ formatTime(latestPending.createdAt) }} 작성</small>
+        <span class="tc-qty">{{ pendingName }}{{ approvals.pending.value.length > 1 ? ` 외 ${approvals.pending.value.length - 1}건` : '' }}</span>
+        <small>{{ latestPending.writtenBy ?? '' }}{{ latestPending.writtenAt ? ` · ${formatTime(latestPending.writtenAt)} 결재 요청` : '' }}</small>
         <button class="tc-go" type="button" @click="openPending">보고서 보기 ›</button>
       </div>
       <button class="tc-close" type="button" aria-label="결재 알림 닫기" title="닫기" @click="approvals.dismiss()"><BaseIcon name="x" :size="16" /></button>

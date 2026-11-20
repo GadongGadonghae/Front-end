@@ -1,6 +1,7 @@
 // 알람 이력 (SCR-006, API-070·042, D-117): 고장(D)과 통신 끊김(DC)만. 대기·정지는 가동률·공정 상세 비가동 이력에서 본다
 // 필터 순서 기간 → 라인 → 공정 → 종류(전체·고장·통신 끊김 중 하나) → 코드 → 진행 중만, 기본 오늘·전체 (D-84, D-117). 기간 최대 31일, 50건씩 (D-66)
 // 필터·페이지가 바뀌면 다시 부른다. 진행 중 건의 지속시간은 화면 시계로 늘리고, 알람이 생기거나 풀리면 다시 부른다 (API 명세 4.6)
+import { now as clockNow } from '@/clock'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { source } from '@/data'
 import type { HistoryEvent, HistoryQuery, HistoryState, HistorySummaryQuery, HistoryTodo, RiskEvent, RiskQuery } from '@/types/events'
@@ -82,7 +83,7 @@ export interface RiskRow {
 export function useAlarmHistory() {
   const { master, equipmentById } = useMaster()
   const now = useNow()
-  const today = toDateStr(Date.now())
+  const today = toDateStr(clockNow())
 
   const tab = ref<HistoryTab>('alarm')
   const from = ref(today)

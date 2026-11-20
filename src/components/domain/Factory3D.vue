@@ -22,6 +22,8 @@ const props = defineProps<{
   now: number
   /** 오늘 승인·적용된 추가 주문 배정 수량 (라인별, 배정 칸 "+N 추가 배정"). 배정량은 lineSummaries.plan */
   additions?: Partial<Record<LineId, number>>
+  /** 오늘 비전 검사 양품·불량 (비전 칸 · 출하 적재 상자, 11/21) */
+  vision?: { ok: number; ng: number } | null
 }>()
 const emit = defineEmits<{
   'open-line': [id: LineId]
@@ -104,7 +106,8 @@ onMounted(() => {
       if (popId.value) { closePop(); return }
       selectLine(L)
     },
-    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : emit('open-outbound')),
+    // 11/21 비전 검사는 출고 화면 대신 비전 설비 창 (양품·불량은 칸에 바로), 적재는 출고 화면
+    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : z === 'vision' ? pick('VI') : emit('open-outbound')),
     onEmpty: () => {
       if (popId.value) closePop()
       else if (selLine.value) selectLine(null)
@@ -130,10 +133,13 @@ function push() {
   s.setIssues(issues.value.map((e) => ({ equipmentId: e.id, state: e.state })))
   s.setRoutes(Object.fromEntries(props.lines.filter((l) => l.kind === 'production').map((l) => [l.id, l.currentPaintId])))
   s.setFlow(props.flow)
+  // 출하 적재: 오늘 출고 양품 (비전 검사 양품 = 출고). 없으면 라인별 실적 합
+  s.setShipped(props.vision?.ok ?? props.lineSummaries.filter((x) => x.lineId !== 'PT').reduce((a, x) => a + (x.done ?? 0), 0))
+  s.setVision(props.vision ?? null)
   s.setAllocation(Object.fromEntries(props.lineSummaries.filter((x) => x.lineId !== 'PT')
     .map((x) => [x.lineId, { done: x.done, plan: x.plan, added: props.additions?.[x.lineId] ?? 0 }])))
 }
-watch(() => [props.live, props.lines, props.flow, issues.value, props.now, props.lineSummaries, props.additions], push)
+watch(() => [props.live, props.lines, props.flow, issues.value, props.now, props.lineSummaries, props.additions, props.vision], push)
 
 const pop = computed(() => {
   const id = popId.value
@@ -456,6 +462,24 @@ const panel = computed(() => {
 .stage :deep(.f3d-alloc .add) {
   color: var(--c-accent);
   font-weight: var(--fw-strong);
+}
+
+/* 비전 검사 칸: 양품·불량 (11/21) */
+.stage :deep(.f3d-vi) {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  padding: 2px var(--sp-2);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.stage :deep(.f3d-vi .ng) {
+  color: var(--c-ink-2);
 }
 
 /* 재공 수 (상자 아이콘 + 수) · 코일 재고 */
