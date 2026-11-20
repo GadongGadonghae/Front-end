@@ -9,7 +9,8 @@ import BaseEmpty from '@/components/base/BaseEmpty.vue'
 import type { HistoryRowView } from '@/types/view'
 
 // save는 저장 결과를 기다려야 해서 이벤트가 아니라 함수로 받는다
-const props = defineProps<{ rows: HistoryRowView[]; save: (id: string, memo: string) => Promise<unknown> }>()
+// readonly: 조치 쓰기 권한이 없는 계정 (11/20 계정별 권한) → 메모 쓰기 버튼을 숨긴다
+const props = defineProps<{ rows: HistoryRowView[]; save: (id: string, memo: string) => Promise<unknown>; readonly?: boolean }>()
 
 /** 메모를 쓰고 있는 행과 그 글. 열면 입력에 초점, 닫으면 연 버튼으로 */
 const memo = useInlineEdit('downtime-memo')
@@ -38,7 +39,7 @@ const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r
       <div v-else class="memo-line">
         <span v-if="r.memo" class="memo-text">{{ r.memo.text }} <span class="by">· {{ r.memo.by ?? '-' }} {{ r.memo.at }}</span></span>
         <span v-else class="memo-none">조치 메모 없음</span>
-        <button class="link" type="button" :data-edit="memo.attr(r.id, 'open')" @click="memo.open(r.id, r.memo?.text ?? '')">{{ r.memo ? '메모 고치기' : '메모 쓰기' }}</button>
+        <button v-if="!readonly" class="link" type="button" :data-edit="memo.attr(r.id, 'open')" @click="memo.open(r.id, r.memo?.text ?? '')">{{ r.memo ? '메모 고치기' : '메모 쓰기' }}</button>
       </div>
     </li>
   </ul>

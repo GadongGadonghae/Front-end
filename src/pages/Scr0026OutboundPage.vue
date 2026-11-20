@@ -13,10 +13,12 @@ import InspectionPanel from '@/components/domain/InspectionPanel.vue'
 import DowntimeHistory from '@/components/domain/DowntimeHistory.vue'
 import { useOutbound } from '@/composables/useEndpoints'
 import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
+import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
 const { card, inspections, byLine, equipmentId } = useOutbound()
 const history = useEquipmentHistory(equipmentId)
+const { can } = useAuth()
 const d = inspections.data
 const openProduct = (id: string) => router.push({ path: '/production', query: { q: id } })
 </script>
@@ -50,7 +52,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         </BasePanel>
       </div>
       <BasePanel title="비가동 이력" :meta="`${card?.name ?? '비전'} · 오늘`">
-        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" />
+        <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :readonly="!can('action', equipmentId ?? undefined)" />
       </BasePanel>
     </div>
   </PageLayout>

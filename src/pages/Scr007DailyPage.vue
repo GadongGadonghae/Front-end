@@ -12,7 +12,10 @@ import { dateWithDay } from '@/composables/useReports'
 import { source } from '@/data'
 import { DOWNTIME_NAME, PROCESS_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
-import { downloadDailyDoc } from '@/lib/dailyDoc'
+import { downloadDailyDoc, type DailyDocData } from '@/lib/dailyDoc'
+import ReportApproval from '@/components/domain/ReportApproval.vue'
+import { useAuth } from '@/composables/useAuth'
+import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 import type { DailyReport, ReplanSummary } from '@/types/report'
 import type { HistoryEvent } from '@/types/events'
 
@@ -26,6 +29,8 @@ const DAY = 86_400_000
 const SHIFT = '일 단위 (00:00~24:00)'
 const SHIFT_SHORT = '일 단위'
 const AUTHOR = source.demo ? '김현수' : ''
+const { can } = useAuth()
+const flow = useReportFlow()
 
 const { equipmentName } = useMaster()
 const today = toDateStr(Date.now())
@@ -35,7 +40,10 @@ const pastDays = Array.from({ length: PAST_DAYS }, (_, i) => toDateStr(Date.pars
 const date = ref(today)
 const isToday = computed(() => date.value === today)
 const generatedAt = ref<string | null>(null)
-const shown = computed(() => !isToday.value || generatedAt.value !== null)
+/** 오늘 보고서를 팀장이 이미 작성(결재 요청)했으면 다른 계정에서도 보이게 */
+const todayFlow = computed(() => flow.flowOf(`daily:${today}`))
+const madeAt = computed(() => generatedAt.value ?? todayFlow.value?.writtenAt ?? null)
+const shown = computed(() => !isToday.value || madeAt.value !== null)
 
 // ── 값 불러오기 ──
 const report = shallowRef<DailyReport | null>(null)
@@ -100,8 +108,8 @@ const doc = computed(() => {
   const lines = r.lines.filter((l) => l.lineId !== 'PT')
   const plan = r.target ?? lines.reduce((a, l) => a + (l.plan ?? 0), 0)
   const rate = plan ? (r.done / plan) * 100 : null
-  const at = isToday.value && generatedAt.value
-    ? `${toDateStr(Date.parse(generatedAt.value))} ${formatTime(generatedAt.value)}`
+  const at = isToday.value && madeAt.value
+    ? `${toDateStr(Date.parse(madeAt.value))} ${formatTime(madeAt.value)}`
     : `${r.date} 24:00`
   const processes = r.processes.map((p) => ({
     name: p.process === 'INSPECTION' ? '출고 비전' : PROCESS_NAME[p.process],
@@ -129,7 +137,7 @@ const doc = computed(() => {
     no: `DAILY-${r.date.replaceAll('-', '')}-D`,
     at,
     date: dateWithDay(r.date),
-    status: isToday.value ? '검토 대기' : '작성 완료',
+    status: flowLine(flow.flowOf(`daily:${r.date}`)).label,
     plan,
     rate,
     summary: `${r.date} ${r.closed ? '' : `(${formatTime(r.at).slice(0, 5)} 기준) `}생산계획 ${formatNumber(plan)}개 대비 양품 ${formatNumber(r.done)}개를 생산하여 달성률 ${pct(rate)}로 ${r.closed ? '마감했습니다' : '진행 중입니다'}. 불량은 ${formatNumber(r.ngTotal)}개입니다.`,
@@ -153,36 +161,51 @@ const doc = computed(() => {
   }
 })
 
-const docBusy = ref(false)
-async function downloadDoc() {
+/** .doc 양식 값. 내려받기와 결재 작성(MES로 보낼 내용)에 같이 쓴다 */
+const docData = computed<DailyDocData | null>(() => {
   const r = report.value
   const d = doc.value
-  if (!r || !d || docBusy.value) return
+  if (!r || !d) return null
+  return {
+    fileName: `${d.no}.doc`,
+    values: {
+      DOC_NO: d.no, DOC_AT: d.at, PROD_DATE: d.date, SHIFT, STATUS: d.status,
+      SUM_PLAN: `${formatNumber(d.plan)}개`, SUM_ACTUAL: `${formatNumber(r.done)}개`, SUM_RATE: pct(d.rate), SUM_DEFECT: `${formatNumber(r.ngTotal)}개`,
+      SUMMARY_TEXT: d.summary,
+      TOTAL_0: '합계', TOTAL_1: formatNumber(d.plan), TOTAL_2: formatNumber(r.done), TOTAL_3: pct(d.rate), TOTAL_5: formatNumber(d.totalNg),
+      M0: pct(r.oee.oee), M1: pct(r.oee.availability), M2: pct(r.oee.performance), M3: pct(r.oee.quality),
+      AI_REVIEW: d.review, QUALITY: d.quality,
+    },
+    tables: {
+      LINES: d.lines.map((l) => [l.name, formatNumber(l.plan), formatNumber(l.done), pct(l.rate), pct(l.oee), formatNumber(l.ng)]),
+      PROC: d.processes.map((p) => [p.name, formatNumber(p.output), formatNumber(p.ng), pct(p.rate)]),
+      DOWN: d.down.length ? d.down.map((x) => [x.target, x.cause, x.time, x.report]) : [['-', '비가동 없음', '-', '-']],
+      WIP: d.wip.map((w) => [w.from, w.to, w.qty]),
+      HANDOVER: d.handover.map((h, i) => [`${i + 1}. ${h}`]),
+    },
+  }
+})
+
+const docBusy = ref(false)
+async function downloadDoc() {
+  const dd = docData.value
+  if (!dd || docBusy.value) return
   docBusy.value = true
   try {
-    await downloadDailyDoc({
-      fileName: `${d.no}.doc`,
-      values: {
-        DOC_NO: d.no, DOC_AT: d.at, PROD_DATE: d.date, SHIFT, STATUS: d.status,
-        SUM_PLAN: `${formatNumber(d.plan)}개`, SUM_ACTUAL: `${formatNumber(r.done)}개`, SUM_RATE: pct(d.rate), SUM_DEFECT: `${formatNumber(r.ngTotal)}개`,
-        SUMMARY_TEXT: d.summary,
-        TOTAL_0: '합계', TOTAL_1: formatNumber(d.plan), TOTAL_2: formatNumber(r.done), TOTAL_3: pct(d.rate), TOTAL_5: formatNumber(d.totalNg),
-        M0: pct(r.oee.oee), M1: pct(r.oee.availability), M2: pct(r.oee.performance), M3: pct(r.oee.quality),
-        AI_REVIEW: d.review, QUALITY: d.quality,
-      },
-      tables: {
-        LINES: d.lines.map((l) => [l.name, formatNumber(l.plan), formatNumber(l.done), pct(l.rate), pct(l.oee), formatNumber(l.ng)]),
-        PROC: d.processes.map((p) => [p.name, formatNumber(p.output), formatNumber(p.ng), pct(p.rate)]),
-        DOWN: d.down.length ? d.down.map((x) => [x.target, x.cause, x.time, x.report]) : [['-', '비가동 없음', '-', '-']],
-        WIP: d.wip.map((w) => [w.from, w.to, w.qty]),
-        HANDOVER: d.handover.map((h, i) => [`${i + 1}. ${h}`]),
-      },
-    })
+    await downloadDailyDoc(dd)
   } catch (e) {
     error.value = e instanceof Error ? e.message : '.doc 파일을 만들지 못했습니다'
   } finally {
     docBusy.value = false
   }
+}
+
+// ── 결재·전송 (11/20): 작성 = 생산 관리 팀장, 결재·전송 = 공장장 ──
+const flowKey = computed(() => `daily:${date.value}`)
+const flowView = computed(() => flowLine(flow.flowOf(flowKey.value)))
+function writeFlow() {
+  const dd = docData.value
+  if (dd) flow.write(flowKey.value, 'daily', `일일 생산 보고서 · ${date.value}`, dd)
 }
 </script>
 
@@ -206,9 +229,9 @@ async function downloadDoc() {
             @keydown.enter.prevent="date = today"
             @keydown.space.prevent="date = today"
           >
-            <div><b>{{ today }} {{ SHIFT_SHORT }}</b><time>{{ generatedAt ? `${formatTime(generatedAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
-            <p>오늘 생산 마감 · {{ generatedAt ? '보고서 작성 완료' : '보고서 미작성' }}</p>
-            <span :class="['draft-badge', { created: generatedAt }]">{{ generatedAt ? '보고서 작성 완료' : '보고서 미작성' }}</span>
+            <div><b>{{ today }} {{ SHIFT_SHORT }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
+            <p>오늘 생산 마감 · {{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</p>
+            <span :class="['draft-badge', { created: madeAt }]">{{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</span>
           </div>
 
           <div class="previous-reports">
@@ -243,10 +266,23 @@ async function downloadDoc() {
             <h2>{{ doc ? `일일 생산 보고서 · ${date} ${SHIFT_SHORT}` : '일일 생산 보고서' }}</h2>
             <p>{{ doc ? `${doc.at} 작성 · 생산 마감 기록` : '하루 생산실적을 마감하고 기록하는 보고서' }}</p>
           </div>
-          <button class="btn primary" type="button" :disabled="!isToday || loading" @click="generate">{{ isToday && generatedAt ? '다시 생성' : 'AI 일일 리포트 생성' }}</button>
+          <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!isToday || loading || flowView.status === 'SENT'" @click="generate">{{ isToday && madeAt ? '다시 생성' : 'AI 일일 리포트 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="printPdf">PDF 다운로드</button>
         </div>
+        <ReportApproval
+          class="no-print"
+          :status="flowView.status"
+          :written="flowView.written"
+          :approved="flowView.approved"
+          :sent="flowView.sent"
+          :ready="!!docData"
+          :can-write="can('reportWrite')"
+          :can-approve="can('reportApprove')"
+          @write="writeFlow"
+          @approve="flow.approve(flowKey)"
+          @send="flow.send(flowKey)"
+        />
 
         <div v-if="error" class="daily-empty"><b>일일 리포트를 만들 수 없습니다</b><span>{{ error }}</span></div>
         <div v-else-if="loading && shown" class="daily-empty"><b>불러오는 중</b></div>
@@ -345,8 +381,8 @@ async function downloadDoc() {
           <section><h3>6. 다음 근무조 인계사항</h3><ol class="report-list"><li v-for="(h, i) in doc.handover" :key="i">{{ h }}</li></ol></section>
 
           <table class="approval">
-            <thead><tr><th>작성</th><th>생산관리 팀장</th></tr></thead>
-            <tbody><tr><td>{{ AUTHOR }}</td><td /></tr></tbody>
+            <thead><tr><th>작성 · 생산 관리 팀장</th><th>결재 · 공장장</th></tr></thead>
+            <tbody><tr><td>{{ flowView.writer ?? AUTHOR }}</td><td>{{ flowView.approver ?? '' }}</td></tr></tbody>
           </table>
           <p class="note2">※ 본 문서는 생산 마감 기록이며, 생성 이후 원천 데이터 변경과 관계없이 작성 이력으로 보존합니다. AI 검토 문장은 마감 숫자로 만든 초안입니다.</p>
         </article>
@@ -357,6 +393,10 @@ async function downloadDoc() {
 
 <!-- 값·간격·색은 시안 B-daily.html / b.css 그대로 (시안 변수 → 앱 토큰). 보고서 종이는 인쇄용이라 검은 글씨·맑은 고딕 고정 -->
 <style scoped>
+.flow {
+  margin-top: 12px;
+}
+
 .title {
   margin: 0;
   font-size: 22px;

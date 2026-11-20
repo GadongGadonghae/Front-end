@@ -2,6 +2,8 @@
      설비 종류 → 설비 고르기 → 관리값 표 (항목 · 단위 · 하한 · 상한 · 마지막 수정). 변경 이력 목록 없음 (D-73)
      하한 > 상한이면 그 줄 아래에 오류를 보이고 저장하지 않는다. 저장하면 상태 판정·위험도에 바로 반영 (D-28) -->
 <script setup lang="ts">
+import { useAuth } from '@/composables/useAuth'
+import { PERM_OWNER } from '@/lib/access'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
@@ -19,6 +21,7 @@ const TABS = [
   { key: 'limits', label: '관리값 기준', to: '/settings/limits' },
   { key: 'users', label: '사용자 관리', to: '/settings/users' },
 ]
+const { can } = useAuth()
 </script>
 
 <template>
@@ -39,7 +42,8 @@ const TABS = [
           </div>
         </template>
 
-        <form class="form" @submit.prevent="c.save">
+        <p v-if="!can('limits')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.limits }}만 바꿀 수 있습니다</p>
+        <form class="form" :inert="!can('limits')" @submit.prevent="can('limits') && c.save()">
           <table aria-label="관리값 기준">
             <colgroup><col /><col class="c-unit" /><col class="c-lim" /><col class="c-lim" /><col class="c-mod" /></colgroup>
             <thead>
@@ -104,6 +108,12 @@ const TABS = [
 </template>
 
 <style scoped>
+.perm-note {
+  margin-bottom: var(--sp-3);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
