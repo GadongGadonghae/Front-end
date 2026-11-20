@@ -4,7 +4,7 @@ import { http } from '@/data/api/http'
 import type {
   AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
-  ProductionSummaryDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
+  ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ReassignmentSummaryDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
 
@@ -81,11 +81,21 @@ export const api = {
   /** G-03 일 생산 계획 설정 (P2) */
   G03: (date: string, body: { lineId: string; planQty: number }) => http.put<ProductionPlanDto>(`/production/plans/${date}`, body),
 
+  // ── 제품 추적 (P) ──
+  /** P-01 제품 목록 (투입 시각 기준 기간, result = OK·NG·IN_PROGRESS) */
+  P01: (q: Range & { lineId?: string; result?: 'OK' | 'NG' | 'IN_PROGRESS'; page: number; size: number }) => http.get<Page<ProductDto>>('/products', { ...q }),
+  /** P-02 제품 이력 (공정별 단계) */
+  P02: (productId: string) => http.get<ProductDetailDto>(`/products/${encodeURIComponent(productId)}`),
+  /** P-03 공정 불량 제품 목록 (process = SLITTING·PRESS·WELDING·PAINTING) */
+  P03: (q: Range & { lineId?: string; process?: string; page: number; size: number }) => http.get<Page<ProcessNgDto>>('/production/process-ng', { ...q }),
+
   // ── 재배정 (R) ──
   /** R-01 재배정 보고서 목록 */
   R01: (q: Range & { page: number; size: number }) => http.get<Page<ReassignmentSummaryDto>>('/reassignments', { ...q }),
   /** R-02 재배정 보고서 상세 */
   R02: (reportId: number) => http.get<ReassignmentDetailDto>(`/reassignments/${reportId}`),
+  /** R-03 AI 계획수정 보고서 만들기 (고장 건으로, 누를 때마다 새 보고서). additionalRequest = AI 추가 요청 */
+  R03: (downtimeId: number, additionalRequest?: string) => http.post<ReassignmentDetailDto>('/reassignments', { downtimeId, additionalRequest }),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

@@ -19,7 +19,7 @@ const MENU = [
   { name: '가동률', to: '/utilization' },
   { name: '예지보전', to: '/pdm' },
   { name: '알람이력', to: '/alarms' },
-  { name: '리포트', to: '/reports/daily' },
+  { name: 'AI 리포트', to: '/reports/daily' },
   { name: '설정', to: '/settings/target' },
 ] as const
 

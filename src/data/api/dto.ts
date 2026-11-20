@@ -284,6 +284,40 @@ export interface ProductionPlanDto {
   planQty: number
 }
 
+// ── 제품 추적 (P) ──
+
+/** P-01 제품 목록 한 줄. finalResult = OK(비전 OK) / NG(공정 NG 또는 비전 NG) / IN_PROGRESS */
+export interface ProductDto {
+  productId: string
+  lineId: string
+  inputAt: string
+  finalResult: 'OK' | 'NG' | 'IN_PROGRESS'
+  scrappedProcess: string | null
+  scrappedEquipmentId: string | null
+  finishedAt: string | null
+}
+
+/** P-02 제품 이력. 프레스는 PR1~PR4가 단계 4개. 처리 중이면 endedAt·result가 null */
+export interface ProductDetailDto {
+  productId: string
+  lineId: string
+  finalResult: 'OK' | 'NG' | 'IN_PROGRESS'
+  scrappedProcess: string | null
+  scrappedEquipmentId: string | null
+  steps: { process: string; equipmentId: string; at: string | null; startedAt: string | null; endedAt: string | null; values: Record<string, unknown>; result: 'OK' | 'NG' | null }[]
+}
+
+/** P-03 공정 불량 제품 한 줄 */
+export interface ProcessNgDto {
+  productId: string
+  lineId: string
+  process: string
+  equipmentId: string
+  at: string
+  itemName: string | null
+  reason: string | null
+}
+
 // ── 재배정 (R) ──
 
 /** R-01 */
@@ -295,15 +329,42 @@ export interface ReassignmentSummaryDto {
   stopMin: number
   lossQty: number
   createdAt: string
+  /** 고장 사유 코드 (11/19 추가) */
+  code: ReasonCode
 }
 
-/** R-02 */
+/** R-02 · R-03. 앞 5칸은 처음 명세, 나머지는 11/19 계획수정 보고서 화면용 (예전 보고서는 null일 수 있음) */
 export interface ReassignmentDetailDto {
   reportId: number
   downtimeId: number
-  sourceLineId: string
+  sourceLineId: string | null
+  /** 부족 수량 */
   lossQty: number
-  details: { targetLineId: string; spareCapacity: number; addQty: number }[]
+  /** targetLineId: 라인 ID, 도장 보고서면 설비 ID(PT1·PT2). share: 남은 능력 비율(%) */
+  details: { targetLineId: string; spareCapacity: number; addQty: number; remainingPlan: number | null; share: number }[]
+  /** 표시용 문서번호 AI-RPT-yyyyMMdd-NNN */
+  documentNo: string
+  equipmentId: string
+  code: ReasonCode
+  detail: string | null
+  startedAt: string
+  createdAt: string
+  createdBy: string | null
+  kind: 'line' | 'paint' | 'vision' | null
+  baseAt: string | null
+  remainingSec: number | null
+  ctSec: number | null
+  stoppedPlan: number | null
+  stoppedDone: number | null
+  targetQty: number | null
+  unmetQty: number | null
+  /** AI 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */
+  ai: {
+    title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null
+    /** AI 추가 요청과 그 해석 (제외·정지 라인, 우선 기준 BALANCED·DUE_DATE·SAFETY) */
+    additionalRequest: string | null
+    requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[] } | null
+  } | null
 }
 
 // ── 관리·공통 (C) ──

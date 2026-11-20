@@ -8,7 +8,9 @@ import type { AlarmEvent, HistoryEvent, StateEvent } from '@/types/events'
 import type { TelemetryTick } from '@/types/process'
 import type { DowntimeCode, StopState } from '@/types/state'
 import type { OeeReport } from '@/types/analysis'
-import type { DowntimeEventDto, EquipmentStatusDto, ThresholdDto } from '@/data/api/dto'
+import type { DowntimeEventDto, EquipmentStatusDto, FlowPositionsDto, ProductDetailDto, ProductDto, ReassignmentDetailDto, ThresholdDto } from '@/data/api/dto'
+import type { Product, ProductDetail } from '@/types/production'
+import type { ReplanReport } from '@/types/report'
 import { api } from '@/data/api/endpoints'
 import { ApiError, token } from '@/data/api/http'
 
@@ -78,6 +80,73 @@ const eventOf = (e: DowntimeEventDto): HistoryEvent => ({
   id: String(e.eventId), equipmentId: e.equipmentId, state: e.status, code: e.reasonCode, detail: e.detail,
   start: e.startAt, end: e.endAt, memo: e.memo || null, memoBy: e.actionUserName, memoAt: e.actionAt,
   reportId: null, alarmLevel: null, notify: null,
+})
+// ── 제품 추적 (P-01·P-02 → 생산 조회 화면) ──
+const STEPS: ProcessId[] = ['SLITTING', 'PRESS', 'WELDING', 'PAINTING', 'INSPECTION']
+const productResult = (f: ProductDto['finalResult']): Product['result'] => (f === 'OK' ? 'ok' : f === 'NG' ? 'ng' : 'wip')
+/** M-17 위치 → 지금 공정. 설비 안이면 그 공정, 공정 사이(pile)면 다음 공정으로 이동 중 */
+function processAt(p: FlowPositionsDto['products'][number]): ProcessId {
+  const eq = p.equipmentId ?? ''
+  if (eq) return eq.endsWith('-SL') ? 'SLITTING' : eq.includes('-PR') ? 'PRESS' : eq.endsWith('-WD') ? 'WELDING' : eq.startsWith('PT') ? 'PAINTING' : 'INSPECTION'
+  const pile = p.pile ?? ''
+  return pile.endsWith('SL-PR') ? 'PRESS' : pile.endsWith('PR-WD') ? 'WELDING' : pile.endsWith('WD-PT') ? 'PAINTING' : 'INSPECTION'
+}
+/** P-01 한 줄의 공정별 결과. 불량은 그 공정이 ng·뒤는 no, 진행 중은 지금 공정(cur, 모르면 프레스 단 사이)이 now */
+function stepsOf(r: ProductDto, cur: ProcessId | undefined): Product['steps'] {
+  const ngAt = r.scrappedProcess ? STEPS.indexOf(r.scrappedProcess as ProcessId) : STEPS.length - 1
+  const curAt = STEPS.indexOf(cur ?? 'PRESS')
+  return STEPS.map((process, i) => ({
+    process,
+    result: r.finalResult === 'OK' ? 'ok'
+      : r.finalResult === 'NG' ? (i < ngAt ? 'ok' : i === ngAt ? 'ng' : 'no')
+        : (i < curAt ? 'ok' : i === curAt ? 'now' : 'no'),
+  }))
+}
+const productOf = (r: ProductDto, cur?: ProcessId): Product => ({
+  id: r.productId, lineId: r.lineId as LineId, inputAt: r.inputAt, doneAt: r.finishedAt,
+  steps: stepsOf(r, cur), result: productResult(r.finalResult), ngProcess: (r.scrappedProcess as ProcessId | null) ?? null,
+})
+/** P-02 → 공정별 기록 5칸. 프레스 4단은 한 칸으로 (첫 단 시작 ~ 4단 끝, 한 단이라도 NG면 NG) */
+function productDetailOf(d: ProductDetailDto): ProductDetail {
+  const records: ProductDetail['records'] = STEPS.map((process) => {
+    const ss = d.steps.filter((s) => s.process === process)
+    if (!ss.length) return { process, equipment: null, from: null, to: null, judgement: null, reason: null }
+    const last = ss[ss.length - 1]
+    const ng = ss.find((s) => s.result === 'NG')
+    const done = (s: typeof last) => !!(s.endedAt ?? s.result)
+    const finished = process === 'PRESS' ? ss.length >= 4 && done(last) : done(last)
+    const to = ng ? ng.endedAt ?? ng.at : finished ? last.endedAt ?? last.at : null
+    return {
+      process,
+      equipment: (ng ?? last).equipmentId,
+      from: ss[0].startedAt ?? ss[0].at,
+      to,
+      judgement: ng ? 'ng' : to ? 'ok' : null,
+      reason: ng ? (process === 'INSPECTION' ? '비전 검사 불량' : ng.equipmentId + ' 관리값 이탈') : null,
+    }
+  })
+  const steps: Product['steps'] = records.map((r) => ({ process: r.process, result: r.judgement === 'ng' ? 'ng' : r.to ? 'ok' : r.from ? 'now' : 'no' }))
+  const inspected = records[records.length - 1]
+  return {
+    id: d.productId, lineId: d.lineId as LineId,
+    inputAt: records[0].from ?? '', doneAt: d.finalResult === 'OK' ? inspected.to : null,
+    steps, result: productResult(d.finalResult), ngProcess: (d.scrappedProcess as ProcessId | null) ?? null,
+    records,
+  }
+}
+
+/** R-02·R-03 → 계획수정 보고서 화면. 예전 보고서(계산 칸 없음)는 0·null로 채운다 */
+const replanOf = (r: ReassignmentDetailDto): ReplanReport => ({
+  id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode,
+  createdBy: r.createdBy ?? '-', stateEventId: String(r.downtimeId), start: r.startedAt, detail: r.detail,
+  kind: r.kind ?? 'line', baseAt: r.baseAt ?? r.createdAt, remainingSec: r.remainingSec ?? 0, ctSec: r.ctSec ?? 0,
+  stoppedPlan: r.stoppedPlan ?? 0, stoppedDone: r.stoppedDone ?? 0, shortage: r.lossQty,
+  allocations: r.details.map((d) => ({ target: d.targetLineId, remainingPlan: d.remainingPlan ?? 0, capacity: d.spareCapacity, share: d.share ?? 0, add: d.addQty })),
+  unmet: r.unmetQty ?? 0, target: r.targetQty ?? null, documentNo: r.documentNo,
+  ai: r.ai ? {
+    title: r.ai.title, summary: r.ai.summary, actions: r.ai.actions ?? [], risks: r.ai.risks ?? [], model: r.ai.model, mock: r.ai.mock,
+    fallbackReason: r.ai.fallbackReason ?? null, additionalRequest: r.ai.additionalRequest ?? null, interpretation: r.ai.requestInterpretation ?? null,
+  } : null,
 })
 const fail = (e: unknown) => ({ ok: false as const, error: e instanceof ApiError ? e.message : String(e) })
 
@@ -329,10 +398,69 @@ export function createApiSource(): DataSource {
         return { ...p, items: p.items.map(eventOf) }
       },
       getRiskHistory: async (q) => ({ items: [], total: 0, page: q.page, size: 50 }),
-      // 차순위 (리포트·예지보전·제품 내역): 백엔드 없음
-      getDailyReport: async () => { throw new Error('일일 생산 리포트는 차순위: 백엔드 API 없음') },
-      getReplanReports: async () => [],
-      getReplanReport: async () => null,
+      // 일일 생산 리포트 (11/19): 전용 API 없이 있는 API를 모아서 만든다
+      //  목표 G-02 · 실적·불량 M-07(라인별, 공정별은 라인 6개 합) · OEE U-01 · 라인 OEE U-04 · 비가동 U-07 · 재공 M-13 + 코일 M-16(오늘만)
+      async getDailyReport(date) {
+        const r = { from: date, to: date }
+        const isToday = date === dateOf(Date.now())
+        const [counts, plans, util, byLine, down, wip, coil, perLine] = await Promise.all([
+          api.M07({ date, groupBy: 'line' }),
+          api.G02(r).catch(() => []),
+          api.U01(r).catch(() => null),
+          api.U04(r).catch(() => []),
+          api.U07({ ...r, minMinutes: 1 }).catch(() => null),
+          isToday ? api.M13().catch(() => []) : Promise.resolve([]),
+          isToday ? api.M16({ date }).catch(() => null) : Promise.resolve(null),
+          Promise.all(LINES.map((l) => api.M07({ date, lineId: l, groupBy: 'line' }).catch(() => null))),
+        ])
+        const round1 = (n: number) => Math.round(n * 10) / 10
+        const target = plans.length ? plans.reduce((a, p) => a + p.planQty, 0) : null
+        const lines = LINES.map((l) => {
+          const plan = plans.find((p) => p.lineId === l)?.planQty ?? null
+          const g = counts.byGroup.find((x) => x.key === l)
+          const done = g?.good ?? 0
+          return { lineId: l as LineId, plan, done, rate: plan ? round1((done / plan) * 100) : null, oee: byLine.find((x) => x.lineId === l)?.oee ?? null, ng: g ? g.ng : null }
+        })
+        const proc = (process: 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING') => perLine.reduce(
+          (a, c) => {
+            const x = c?.byProcess?.find((p) => p.process === process)
+            return { output: a.output + (x?.produced ?? 0), ng: a.ng + (x?.ng ?? 0) }
+          }, { output: 0, ng: 0 })
+        const processes = [
+          ...(['SLITTING', 'PRESS', 'WELDING', 'PAINTING'] as const).map((p) => ({ process: p, ...proc(p) })),
+          { process: 'INSPECTION' as const, output: counts.inspected, ng: counts.ngVision },
+        ]
+        const stateOfCode = (c: string): StopState => CODES.find((x) => x.code === c)?.state ?? 'S'
+        return {
+          date, closed: !isToday,
+          at: isToday ? isoLocal(Date.now()) : isoLocal(dayStartMs(date) + 86_400_000),
+          target, done: counts.ok, rate: target ? round1((counts.ok / target) * 100) : null,
+          oee: { oee: util?.oee ?? null, availability: util?.availability ?? null, performance: util?.performance ?? null, quality: util?.quality ?? null },
+          ngTotal: counts.processNg + counts.ngVision,
+          lines, processes,
+          downtime: (down?.byReason ?? []).filter((x) => x.count > 0)
+            .map((x) => ({ code: x.reasonCode as DowntimeCode, state: stateOfCode(x.reasonCode), sec: Math.round(x.minutes * 60), count: x.count }))
+            .sort((a, b) => b.sec - a.sec),
+          // 재공은 "지금" 값만 있어서 오늘만 (지난 날 마감 재공은 기록이 없음)
+          wip: [
+            ...(coil ? [{ from: 'COIL' as const, to: 'SLITTING' as const, qty: coil.stockRolls, unit: 'roll' as const }] : []),
+            ...wip.filter((w) => w.process !== 'COIL').map((w) => ({ from: w.process as ProcessId, to: w.nextProcess as ProcessId, qty: w.wipQty, unit: 'ea' as const })),
+          ],
+        }
+      },
+      // 계획수정 보고서: R-01 목록 · R-02 내용 (11/19)
+      async getReplanReports(from, to) {
+        const p = await api.R01({ from, to, page: 1, size: 100 })
+        return p.items.map((r) => ({ id: String(r.reportId), createdAt: r.createdAt, equipmentId: r.equipmentId, code: r.code as DowntimeCode, stateEventId: String(r.downtimeId) }))
+      },
+      async getReplanReport(id) {
+        try {
+          return replanOf(await api.R02(Number(id)))
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) return null
+          throw e
+        }
+      },
       getReplanPdf: async () => null,
       async getTargets(from, to) {
         const plans = await api.G02({ from, to })
@@ -346,16 +474,24 @@ export function createApiSource(): DataSource {
       async getProductionSummary(q) {
         const { first, last } = periodRange(q.period, q.date)
         const r = rangeOf(first, last)
-        const [sum, counts, yieldTrend, hourly] = await Promise.all([
+        const total = (result?: 'NG' | 'IN_PROGRESS') => api.P01({ ...r, lineId: q.lineId, result, page: 1, size: 1 }).then((p) => p.total).catch(() => null)
+        const ngOf = (process: string) => api.P03({ ...r, lineId: q.lineId, process, page: 1, size: 1 }).then((p) => p.total).catch(() => 0)
+        const [sum, counts, yieldTrend, hourly, input, wip, ng, ngProc] = await Promise.all([
           api.G01({ ...r, unit: 'day', lineId: q.lineId }).catch(() => []), api.M07({ date: q.date, lineId: q.lineId, groupBy: 'line' }), api.U11({ ...r, unit: 'day' }).catch(() => []),
           q.period === 'day' ? hourlyOf(q.date, q.lineId).catch(() => null) : Promise.resolve(null),
+          total(), total('IN_PROGRESS'), total('NG'),
+          Promise.all((['SLITTING', 'PRESS', 'WELDING', 'PAINTING'] as const).map(async (p) => [p, await ngOf(p)] as const)),
         ])
+        // 공정별 불량 = P-03 건수, 출고 비전 불량 = 전체 불량(P-01 NG) - 공정 불량 (투입 시각 기준 기간, 11/19)
+        const processNg = ngProc.reduce((a, [, n]) => a + n, 0)
+        const ngByProcess: Partial<Record<ProcessId, number>> = Object.fromEntries(ngProc)
+        ngByProcess.INSPECTION = Math.max(0, (ng ?? processNg) - processNg)
         const plan = sum.length ? sum.reduce((a, s) => a + s.planQty, 0) : null
         const done = sum.length ? sum.reduce((a, s) => a + s.actualQty, 0) : counts.ok
         return {
           from: r.from, to: r.to, plan, done, rate: plan ? Math.round((done / plan) * 1000) / 10 : null,
-          input: counts.total, wip: 0,
-          ngByProcess: Object.fromEntries((counts.byProcess ?? []).map((p) => [p.process, p.ng])),
+          input: input ?? counts.total, wip: wip ?? 0,
+          ngByProcess,
           byLine: LINES.map((l) => ({ lineId: l, plan: sum.filter((s) => s.lineId === l).reduce((a, s) => a + s.planQty, 0) || null, done: sum.filter((s) => s.lineId === l).reduce((a, s) => a + s.actualQty, 0) })),
           // 일: G-01 unit=hour 시간대별 누적 (x = 그 시간이 끝난 시각). 주·월 일별 추이는 아직 비움
           trend: (hourly?.hours ?? []).map((h) => ({ x: h.hour + 1, label: `${pad(h.hour + 1)}시`, done: h.cumulative, plan: h.planCumulative })), trendKind: q.period === 'day' ? 'hourly' : 'daily',
@@ -363,8 +499,36 @@ export function createApiSource(): DataSource {
           yieldTrend: yieldTrend.map((y) => ({ date: y.period, label: `${Number(y.period.slice(5, 7))}/${Number(y.period.slice(8, 10))}`, total: y.total, good: y.good, rate: y.yieldRate })),
         }
       },
-      getProducts: async (q) => ({ items: [], total: 0, page: q.page ?? 1, size: 50 }),
-      getProduct: async () => null,
+      // 생산 조회: P-01 목록 (진행 중은 M-17 위치로 지금 공정 표시), 제품 ID 검색·공정별 기록은 P-02 (11/19)
+      async getProducts(q) {
+        const page = q.page ?? 1
+        if (q.q) {
+          try {
+            const d = productDetailOf(await api.P02(q.q))
+            return { items: [d], total: 1, page: 1, size: 50 }
+          } catch (e) {
+            if (e instanceof ApiError && e.status === 404) return { items: [], total: 0, page: 1, size: 50 }
+            throw e
+          }
+        }
+        const { first, last } = periodRange(q.period, q.date)
+        const result = q.result === 'ok' ? 'OK' as const : q.result === 'ng' ? 'NG' as const : q.result === 'wip' ? 'IN_PROGRESS' as const : undefined
+        const needPos = q.result !== 'ok' && q.result !== 'ng'
+        const [p, pos] = await Promise.all([
+          api.P01({ ...rangeOf(first, last), lineId: q.lineId, result, page, size: 50 }),
+          needPos ? api.M17().catch(() => null) : Promise.resolve(null),
+        ])
+        const where = new Map((pos?.products ?? []).map((x) => [x.productId, processAt(x)]))
+        return { ...p, items: p.items.map((r) => productOf(r, where.get(r.productId))) }
+      },
+      async getProduct(productId) {
+        try {
+          return productDetailOf(await api.P02(productId))
+        } catch (e) {
+          if (e instanceof ApiError && e.status === 404) return null
+          throw e
+        }
+      },
       getRisks: async () => [],
       getPdmEta: async () => null,
     },
@@ -386,7 +550,8 @@ export function createApiSource(): DataSource {
         // U-09 응답은 바뀐 뒤의 비가동 1건 (U-08 items[]와 같은 모양, 11/19 백엔드 변경)
         return eventOf(await api.U09(Number(eventId), { memo: memo.trim() }))
       },
-      createReplanReport: async () => { throw new Error('계획수정 보고서는 백엔드가 자동으로 만든다 (R-01)') },
+      // R-03: 고장 건(비가동 eventId = downtimeId)으로 AI 보고서 만들기. 누를 때마다 새 보고서 (추가 요청을 바꿔 다시 만들 수 있게)
+      createReplanReport: async (stateEventId, additionalRequest) => replanOf(await api.R03(Number(stateEventId), additionalRequest?.trim() || undefined)),
       async saveTarget(date, quantity) {
         // 공장 목표 → 라인별 계획(G-03)으로 나눠 저장 (D-87: 라인 계획 = 목표 ÷ 6)
         // 몫을 모든 라인에, 나머지는 앞 라인부터 1개씩 → 합이 입력값과 같다 (1000 → 167·167·167·167·166·166)

@@ -99,7 +99,7 @@ export interface Commands {
   /** U-09 조치 메모 저장. 빈 글이면 삭제. 담당자는 로그인 사용자 (D-84) */
   saveActionMemo(eventId: string, memo: string): Promise<StateEvent>
   /** 백엔드 없음 (자동 생성) [차순위] 계획수정 보고서 만들기 (고장 D 건만, D-68). 이미 있으면 그 보고서 */
-  createReplanReport(stateEventId: string): Promise<ReplanReport>
+  createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** G-03 (6라인에 나눠 저장) 하루 목표 저장 (같은 날 덮어씀). 지난 날짜면 실패 (409, D-71) */
   saveTarget(date: string, quantity: number): Promise<SaveResult<TargetRow>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */

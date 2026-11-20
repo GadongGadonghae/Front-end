@@ -66,7 +66,7 @@ const memo = useInlineEdit('alarm-memo')
 const { draft } = memo
 const save = (id: string) => memo.submit(() => h.saveMemo(id, draft.value))
 
-const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?create=${r.id}`)
+const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${r.reportId}` : `/reports/replan?event=${r.id}`)
 const noState = computed(() => !states.value.D && !states.value.I && !states.value.S)
 </script>
 
