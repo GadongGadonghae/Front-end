@@ -30,9 +30,14 @@ export interface InverterStatus {
 }
 
 /** API-040 관리값 추이 한 항목 */
+/** 값이 어디서 오는지: process = 공정 관리값(백엔드 수집) · inverter = 슬리팅 인버터 · sensor = 설비 상태 센서(온도·진동·전류, 지금은 프론트 더미) */
+export type MetricSource = 'process' | 'inverter' | 'sensor'
+
 export interface TelemetryItem {
   item: string
   unit: string
+  /** 없으면 process */
+  source?: MetricSource
   /** 미정이면 null → 기준선 없이 "기준 미정" */
   lower: number | null
   upper: number | null

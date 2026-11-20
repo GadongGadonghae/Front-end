@@ -59,7 +59,8 @@ const select = (id: string) => router.replace({ query: { ...route.query, eq: id 
 const range = ref<TelemetryRange>('1h')
 const series = useTelemetry(selectedId, range)
 const SPEED_ITEMS = ['commandHz', 'outputHz']
-const items = computed(() => (series.value?.items ?? []).map((i) => i.item).filter((n) => !SPEED_ITEMS.includes(n)))
+// 설비 상태 센서(더미)는 예지보전 화면에서만 본다
+const items = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor').map((i) => i.item).filter((n) => !SPEED_ITEMS.includes(n)))
 const item = ref('')
 watch(items, (list) => { if (!list.includes(item.value)) item.value = list[0] ?? '' }, { immediate: true })
 const chart = computed(() => telemetryChart(series.value, item.value, range.value, now.value))
@@ -81,7 +82,7 @@ const inspections = useInspections(process, paint ? undefined : lineId)
 const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
 // 관리값 지금 (슬리팅 시뮬레이터·용접): 항목별 마지막 값과 기준
-const latest = computed(() => (series.value?.items ?? []).filter((i) => !SPEED_ITEMS.includes(i.item)).map((i) => {
+const latest = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor' && !SPEED_ITEMS.includes(i.item)).map((i) => {
   const v = i.points.at(-1)?.value ?? null
   const out = v != null && ((i.upper != null && v > i.upper) || (i.lower != null && v < i.lower))
   return { item: i.item, unit: i.unit, value: v, limit: i.lower == null && i.upper == null ? '기준 미정' : `${formatNumber(i.lower, 1)} ~ ${formatNumber(i.upper, 1)}`, out }
