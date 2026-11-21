@@ -1,0 +1,166 @@
+{
+  "label": "개선후",
+  "date": "2026-11-21T10:56:02.207Z",
+  "commit": "ef1264f",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "idle": {
+      "jsMs": 150,
+      "taskMs": 284,
+      "longCount": 0
+    },
+    "enter": {
+      "readyMs": 60,
+      "longCount": 0,
+      "longMax": 0,
+      "longSum": 0
+    },
+    "revisit": {
+      "firstMs": 883,
+      "secondMs": 60
+    },
+    "requests": {
+      "idle10s": 79,
+      "toLine": 39,
+      "toLineLive": 22,
+      "toUtil": 53,
+      "toUtilLive": 34,
+      "backQuick": 33,
+      "backQuickLive": 31,
+      "away30s": 68,
+      "away30sLive": 18,
+      "utilAway10s": 12,
+      "utilAwayLive": 0,
+      "backLate": 37,
+      "backLateLive": 31
+    },
+    "memory": {
+      "heapStartMb": 13.6,
+      "heapEndMb": 14.7,
+      "domEnd": 753,
+      "listenersEnd": 173
+    }
+  },
+  "raw": {
+    "idle": [
+      {
+        "jsMs": 126,
+        "taskMs": 224,
+        "longCount": 0
+      },
+      {
+        "jsMs": 172,
+        "taskMs": 311,
+        "longCount": 0
+      },
+      {
+        "jsMs": 150,
+        "taskMs": 284,
+        "longCount": 0
+      }
+    ],
+    "enter": [
+      {
+        "readyMs": 69,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 58,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 60,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      }
+    ],
+    "revisit": [
+      {
+        "firstMs": 883,
+        "secondMs": 65
+      },
+      {
+        "firstMs": 868,
+        "secondMs": 58
+      },
+      {
+        "firstMs": 884,
+        "secondMs": 60
+      }
+    ],
+    "requests": [
+      {
+        "idle10s": 79,
+        "toLine": 39,
+        "toLineLive": 22,
+        "toUtil": 53,
+        "toUtilLive": 34,
+        "backQuick": 33,
+        "backQuickLive": 31,
+        "away30s": 68,
+        "away30sLive": 18,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 37,
+        "backLateLive": 31
+      },
+      {
+        "idle10s": 79,
+        "toLine": 34,
+        "toLineLive": 17,
+        "toUtil": 53,
+        "toUtilLive": 34,
+        "backQuick": 33,
+        "backQuickLive": 31,
+        "away30s": 68,
+        "away30sLive": 18,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 37,
+        "backLateLive": 31
+      },
+      {
+        "idle10s": 79,
+        "toLine": 39,
+        "toLineLive": 22,
+        "toUtil": 53,
+        "toUtilLive": 34,
+        "backQuick": 28,
+        "backQuickLive": 26,
+        "away30s": 73,
+        "away30sLive": 23,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 37,
+        "backLateLive": 31
+      }
+    ],
+    "memory": [
+      {
+        "heapStartMb": 13.6,
+        "heapEndMb": 14.8,
+        "domEnd": 753,
+        "listenersEnd": 173
+      },
+      {
+        "heapStartMb": 13.6,
+        "heapEndMb": 14.7,
+        "domEnd": 753,
+        "listenersEnd": 173
+      },
+      {
+        "heapStartMb": 13.6,
+        "heapEndMb": 14.6,
+        "domEnd": 752,
+        "listenersEnd": 173
+      }
+    ]
+  }
+}

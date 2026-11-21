@@ -1,0 +1,158 @@
+{
+  "label": "개선후-유지5초",
+  "date": "2026-11-21T03:24:15.771Z",
+  "commit": "0886bfa",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "idle": {
+      "jsMs": 150,
+      "taskMs": 242,
+      "longCount": 0
+    },
+    "enter": {
+      "readyMs": 52,
+      "longCount": 0,
+      "longMax": 0,
+      "longSum": 0
+    },
+    "revisit": {
+      "firstMs": 889,
+      "secondMs": 54
+    },
+    "requests": {
+      "idle10s": 79,
+      "toUtil": 41,
+      "toUtilLive": 23,
+      "backQuick": 12,
+      "backQuickLive": 10,
+      "away30s": 99,
+      "away30sLive": 49,
+      "utilAway10s": 12,
+      "utilAwayLive": 0,
+      "backLate": 33,
+      "backLateLive": 31
+    },
+    "memory": {
+      "heapStartMb": 14.1,
+      "heapEndMb": 14.6,
+      "domEnd": 752,
+      "listenersEnd": 173
+    }
+  },
+  "raw": {
+    "idle": [
+      {
+        "jsMs": 172,
+        "taskMs": 305,
+        "longCount": 0
+      },
+      {
+        "jsMs": 128,
+        "taskMs": 215,
+        "longCount": 0
+      },
+      {
+        "jsMs": 150,
+        "taskMs": 242,
+        "longCount": 0
+      }
+    ],
+    "enter": [
+      {
+        "readyMs": 43,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 86,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 52,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      }
+    ],
+    "revisit": [
+      {
+        "firstMs": 889,
+        "secondMs": 54
+      },
+      {
+        "firstMs": 909,
+        "secondMs": 59
+      },
+      {
+        "firstMs": 877,
+        "secondMs": 43
+      }
+    ],
+    "requests": [
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 99,
+        "away30sLive": 49,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 28,
+        "backLateLive": 26
+      },
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 99,
+        "away30sLive": 49,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 33,
+        "backLateLive": 31
+      },
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 99,
+        "away30sLive": 49,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 33,
+        "backLateLive": 31
+      }
+    ],
+    "memory": [
+      {
+        "heapStartMb": 13.6,
+        "heapEndMb": 14.6,
+        "domEnd": 758,
+        "listenersEnd": 173
+      },
+      {
+        "heapStartMb": 14.2,
+        "heapEndMb": 14.9,
+        "domEnd": 752,
+        "listenersEnd": 173
+      },
+      {
+        "heapStartMb": 14.1,
+        "heapEndMb": 14.3,
+        "domEnd": 752,
+        "listenersEnd": 173
+      }
+    ]
+  }
+}

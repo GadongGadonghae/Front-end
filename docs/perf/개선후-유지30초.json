@@ -1,0 +1,66 @@
+{
+  "label": "개선후-유지30초",
+  "date": "2026-11-21T03:18:53.126Z",
+  "commit": "605367a",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "requests": {
+      "idle10s": 79,
+      "toUtil": 41,
+      "toUtilLive": 23,
+      "backQuick": 12,
+      "backQuickLive": 10,
+      "away30s": 256,
+      "away30sLive": 206,
+      "utilAway10s": 12,
+      "utilAwayLive": 0,
+      "backLate": 33,
+      "backLateLive": 31
+    }
+  },
+  "raw": {
+    "requests": [
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 256,
+        "away30sLive": 206,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 28,
+        "backLateLive": 26
+      },
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 256,
+        "away30sLive": 206,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 33,
+        "backLateLive": 31
+      },
+      {
+        "idle10s": 79,
+        "toUtil": 41,
+        "toUtilLive": 23,
+        "backQuick": 12,
+        "backQuickLive": 10,
+        "away30s": 256,
+        "away30sLive": 206,
+        "utilAway10s": 12,
+        "utilAwayLive": 0,
+        "backLate": 33,
+        "backLateLive": 31
+      }
+    ]
+  }
+}
