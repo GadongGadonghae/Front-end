@@ -37,7 +37,7 @@ const LABELS = {
   idle: ['대시보드를 띄워 둔 5초', { jsMs: '자바스크립트 시간(ms)', taskMs: '브라우저 작업 시간(ms)', longCount: '긴 작업(50ms+) 수' }],
   enter: ['가동률 → 대시보드', { readyMs: '3D 이름표가 뜨기까지(ms)', longCount: '긴 작업 수 (2초 안)', longMax: '가장 긴 작업(ms)', longSum: '긴 작업 합(ms)' }],
   revisit: [`가동률 다시 들어가기 (데모 조회 ${MOCK_DELAY}ms 지연)`, { firstMs: '처음 들어갈 때 값이 뜨기까지(ms)', secondMs: '다시 들어갈 때 값이 뜨기까지(ms)' }],
-  requests: ['실서버 모드 요청 수 (가짜 응답)', { idle10s: '대시보드 10초 동안', toUtil: '대시보드 → 가동률 이동 2초 안', toUtilLive: '  그중 실시간 구독 요청', utilAway10s: '가동률에 35초 머문 뒤 10초 동안', utilAwayLive: '  그중 실시간 구독 요청', toDash: '가동률 → 대시보드 이동 2초 안', toDashLive: '  그중 실시간 구독 요청' }],
+  requests: ['실서버 모드 요청 수 (가짜 응답)', { idle10s: '대시보드 10초 동안', toUtil: '대시보드 → 가동률 2초 안', toUtilLive: '  그중 실시간 구독 요청', backQuick: '2초 만에 대시보드로 돌아올 때 2초 안', backQuickLive: '  그중 실시간 구독 요청', away30s: '대시보드 → 가동률 뒤 30초 동안 합', away30sLive: '  그중 실시간 구독 요청', utilAway10s: '가동률에 35초 머문 뒤 10초 동안', utilAwayLive: '  그중 실시간 구독 요청', backLate: '45초 만에 대시보드로 돌아올 때 2초 안', backLateLive: '  그중 실시간 구독 요청' }],
   memory: ['대시보드 ↔ 가동률 18번 오간 뒤', { heapStartMb: '처음 힙(MB)', heapEndMb: '18번 뒤 힙(MB)', domEnd: '18번 뒤 DOM 노드', listenersEnd: '18번 뒤 이벤트 리스너' }],
 }
 /** 실시간 구독(1초 상태 · 10초 요약 · 3D 물류)이 부르는 API */
@@ -224,8 +224,19 @@ async function requests(browser, base) {
   await page.waitForTimeout(2000)
   const toUtil = hits.length
   const toUtilLive = live(hits)
-  // 다른 화면에 오래 있을 때 대시보드 몫 구독이 계속 도는지 (구독 유지 30초가 지난 뒤)
-  await page.waitForTimeout(33_000)
+  // 금방 돌아올 때 (구독 유지 30초 안)
+  hits = []
+  await nav(page, '대시보드')
+  await page.waitForTimeout(2000)
+  const backQuick = hits.length
+  const backQuickLive = live(hits)
+  // 떠난 뒤 30초 동안 모두 몇 건 나가는지 (떠난 화면 몫 구독이 얼마나 더 도는지), 그 뒤 다른 화면에 머무는 동안
+  hits = []
+  await nav(page, '가동률')
+  await page.waitForTimeout(30_000)
+  const away30s = hits.length
+  const away30sLive = live(hits)
+  await page.waitForTimeout(5_000)
   hits = []
   await page.waitForTimeout(10_000)
   const utilAway10s = hits.length
@@ -233,10 +244,10 @@ async function requests(browser, base) {
   hits = []
   await nav(page, '대시보드')
   await page.waitForTimeout(2000)
-  const toDash = hits.length
-  const toDashLive = live(hits)
+  const backLate = hits.length
+  const backLateLive = live(hits)
   await ctx.close()
-  return { idle10s, toUtil, toUtilLive, utilAway10s, utilAwayLive, toDash, toDashLive }
+  return { idle10s, toUtil, toUtilLive, backQuick, backQuickLive, away30s, away30sLive, utilAway10s, utilAwayLive, backLate, backLateLive }
 }
 
 /** 대시보드 ↔ 가동률을 18번 오간 뒤 메모리 (메모리 정리 후) */
