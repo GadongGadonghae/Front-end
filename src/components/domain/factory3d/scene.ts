@@ -5,6 +5,8 @@
 // 라인 바닥에 마우스를 올리면 그 라인 외곽선, 누르면 라인 선택 (on.onLine). 빈 곳을 누르면 on.onEmpty
 // 마우스: 왼쪽 끌기 = 이동, 휠 = 확대, 오른쪽 끌기 = 회전 (탑뷰에서 오른쪽을 누르면 3D로)
 // 값은 밖에서 넣는다 (setStates · setIssues · setRoutes · setFlow). 이 파일은 데이터를 부르지 않는다
+// 그리기는 바뀐 것이 있을 때만 (성능 개선 1, docs/10_성능검토.md): 카메라가 움직이거나, 값·마우스가 바뀌었거나, 상자가 옮겨 가는 동안(초당 BOX_FPS번까지)
+// 대시보드를 떠나 있는 동안은 pause()로 멈추고 돌아오면 resume() (성능 개선 2)
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { makeKit } from '@/components/domain/factory3d/equipment'
@@ -62,6 +64,8 @@ const PILE_DZ = 3.2
 const PILE_CAP = 63
 const MAX_BOXES = 1800
 const MOVE_MS = 900
+/** 상자만 움직일 때 그리는 횟수 (초당). 카메라가 움직이면 매 프레임 */
+const BOX_FPS = 24
 /** 탑뷰에 담을 범위 (배정 칸 ~ 출하). 11/21: 배정 칸(x −94)도 탑뷰에 보이게 왼쪽을 넓힘 */
 const TOP_FRAME = { x0: -104, x1: 99, z0: -47, z1: 40 }
 /** 출하 적재: 상자 1개 = 제품 20개, 파렛트에 3×3씩 쌓음 */
@@ -81,6 +85,8 @@ interface Tag {
   w: number; h: number
   /** 이상 표시처럼 서로 겹치면 위로 비켜 쌓는 이름표 */
   stack?: boolean
+  /** 지난번에 쓴 transform·display (같으면 DOM을 건드리지 않는다) */
+  tf?: string; disp?: string
 }
 interface Eq {
   id: string; line: ProductionLineId | null; kind: 'SL' | 'PR' | 'WD' | 'PT' | 'VI'; no: string
@@ -89,6 +95,8 @@ interface Eq {
   work: [number, number, number]
   group: THREE.Group; pad: THREE.Mesh; caps: THREE.Mesh[]; card: Tag
   state: StateCode; note: string | null; dim: boolean; cardKey: string
+  /** 지난번에 칠한 상태 · 고장 깜빡임 켜짐 (바뀔 때만 다시 칠한다) */
+  painted: StateCode | null; hot: boolean
 }
 interface Pile { x: number; z: number; bz: number; lab: Tag; stack: string[]; n: number }
 interface Box {
@@ -97,6 +105,8 @@ interface Box {
   draw: THREE.Vector3
   /** 움직이는 중이면 컨베이어를 따라가는 꺾은선 */
   path: THREE.Vector3[] | null; lens: number[]; t0: number
+  /** 상자 묶음(InstancedMesh)에서의 번호. 안 그리면 -1 */
+  i: number
 }
 
 type Mat = THREE.MeshStandardMaterial
@@ -132,13 +142,19 @@ function ringGeo(w: number, d: number, band: number, r: number) {
 }
 
 export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneHandlers) {
-  const W = () => host.clientWidth || 1
-  const H = () => host.clientHeight || 1
+  // 크기는 ResizeObserver가 알려 줄 때만 읽는다 (매 프레임 clientWidth를 읽으면 레이아웃 계산이 끼어든다)
+  let cw = host.clientWidth || 1
+  let ch = host.clientHeight || 1
+  const W = () => cw
+  const H = () => ch
 
   const renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
   renderer.setSize(W(), H())
   renderer.shadowMap.enabled = true
+  // 그림자는 모형이 바뀔 때만 다시 그린다 (매 프레임 그림자 지도를 다시 그리면 그리기 비용이 크게 는다)
+  renderer.shadowMap.autoUpdate = false
+  renderer.shadowMap.needsUpdate = true
   host.appendChild(renderer.domElement)
   const scene = new THREE.Scene()
   scene.background = new THREE.Color(C.bg)
@@ -208,6 +224,9 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const polySel = poly('sel')
   const polyHov = poly('hov')
   layer.appendChild(svg)
+  // ── 그리기 예약: 바뀐 것이 있으면 다음 프레임에 한 번 그린다 ──
+  let dirty = true
+  const invalidate = () => { dirty = true }
   const tags: Tag[] = []
   const tag = (html: string, cls: string, pos: [number, number, number], only: Tag['only'] = null, anchor: Tag['anchor'] = 'b'): Tag => {
     const el = document.createElement('div')
@@ -224,6 +243,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     t.el.dataset.k = html
     t.el.innerHTML = html
     t.w = -1
+    invalidate()
   }
 
   // ── 설비 ──
@@ -231,11 +251,14 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const addEq = (g: THREE.Group, m: Pick<Eq, 'id' | 'line' | 'kind' | 'no' | 'x' | 'z' | 'h' | 'work'> & { pw?: number; pd?: number }) => {
     scene.add(g)
     const caps: THREE.Mesh[] = []
+    // 설비 하나 안에서는 같은 원본 재질의 복제본 하나를 같이 쓴다 (부품마다 복제하면 재질이 천 개 넘게 되어 그릴 때마다 값 올리기가 늘어난다)
+    const own = new Map<Mat, Mat>()
     g.traverse((o) => {
       if (!(o as THREE.Mesh).isMesh) return
       const mat = matOf(o)
       const isCap = mat === capM
-      ;(o as THREE.Mesh).material = mat.clone()
+      if (!own.has(mat)) own.set(mat, mat.clone())
+      ;(o as THREE.Mesh).material = own.get(mat)!
       o.userData.eq = m.id
       if (isCap) caps.push(o as THREE.Mesh)
     })
@@ -250,9 +273,9 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     const card = tag(`<button type="button" class="f3d-chip" data-eq="${m.id}"></button>`, '', [m.x, 1, m.z], 'top')
     const btn = card.el.firstElementChild as HTMLButtonElement
     btn.addEventListener('click', () => on.onPick(m.id))
-    btn.addEventListener('pointerenter', () => { hoverEq = m.id })
-    btn.addEventListener('pointerleave', () => { if (hoverEq === m.id) hoverEq = null })
-    EQ.set(m.id, { ...m, pw, pd, group: g, pad, caps, card, state: 'R', note: null, dim: false, cardKey: '' })
+    btn.addEventListener('pointerenter', () => { hoverEq = m.id; invalidate() })
+    btn.addEventListener('pointerleave', () => { if (hoverEq === m.id) { hoverEq = null; invalidate() } })
+    EQ.set(m.id, { ...m, pw, pd, group: g, pad, caps, card, state: 'R', note: null, dim: false, cardKey: '', painted: null, hot: false })
   }
 
   for (let i = 0; i < 12; i++) {
@@ -275,6 +298,16 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     PILES.set(key, { x, z, bz, lab: tag('', 'f3d-cnt', [x, 5.2, z], '3d'), stack: [], n: 0 })
   }
 
+  /** 묶음(라인·도장) 안 설비가 아닌 부품: 원본 재질마다 복제본 하나 (흐리게·채도 낮추기를 묶음별로 따로 하려고) */
+  const ownMats = (objs: THREE.Object3D[]) => {
+    const own = new Map<Mat, Mat>()
+    objs.forEach((o) => o.traverse((m) => {
+      if (!(m as THREE.Mesh).isMesh || m.userData.eq) return
+      const mat = matOf(m)
+      if (!own.has(mat)) own.set(mat, mat.clone())
+      ;(m as THREE.Mesh).material = own.get(mat)!
+    }))
+  }
   const lineObjs: Record<string, THREE.Object3D[]> = {}
   LINES.forEach((L, i) => {
     const z = lineZ(i)
@@ -306,7 +339,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     pileAt(`${L}:PR-WD`, 8.5, z)
     pileAt(`${L}:WD-PT`, 24.5, z)
     lineObjs[L] = scene.children.slice(n0)
-    lineObjs[L].forEach((o) => o.traverse((m) => { if ((m as THREE.Mesh).isMesh && !m.userData.eq) (m as THREE.Mesh).material = matOf(m).clone() }))
+    ownMats(lineObjs[L])
   })
   const transfer = box(2.2, 0.6, 36, belt.clone(), XFER_X, 0, 0)
   const paintObjs: THREE.Object3D[][] = [[], []]
@@ -324,7 +357,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     box(2.2, 0.6, Math.abs(z), belt.clone(), OUT_X, 0, z / 2)
     pileAt(`PT${pi + 1}:PT-VI`, 62, z)
     paintObjs[pi] = scene.children.slice(n0)
-    paintObjs[pi].forEach((o) => o.traverse((m) => { if ((m as THREE.Mesh).isMesh && !m.userData.eq) (m as THREE.Mesh).material = matOf(m).clone() }))
+    ownMats(paintObjs[pi])
   })
   const vg = new THREE.Group()
   vg.position.set(74, 0, 0)
@@ -460,6 +493,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       ;['SL-PR', 'PR-WD', 'WD-PT'].forEach((k) => fade(PILES.get(`${L}:${k}`)!.lab, dim, 0.25))
       fade(lineTags[i], dim, 0.5)
     })
+    boxesDirty = true
+    renderer.shadowMap.needsUpdate = true
     refreshOutlines()
   }
   /** 외곽선: 고른 라인 = 진하게, 마우스가 올라간 라인 = 옅게 + 옅은 면. 탑뷰 카드가 떠 있으면 SVG가 대신 그린다 */
@@ -475,6 +510,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       t.el.classList.toggle('on', LINES[i] === sel)
       t.el.classList.toggle('hov', LINES[i] === hoverLine && LINES[i] !== sel)
     })
+    invalidate()
   }
 
   // 정지된 라인(설비가 모두 S): 채도·명도를 낮춘다. 상태 색 뚜껑·바닥 칸은 그대로
@@ -492,13 +528,14 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       mat.color.setHex(mat.userData.c0)
       if (off) { mat.color.getHSL(hsl); mat.color.setHSL(hsl.h, hsl.s * 0.3, hsl.l * 0.78) }
     }))
+    invalidate()
   }
 
   // ── 이상 표시 (상태 글자 + 이름 알약)와 화면 밖 고장 단추 ──
   const bangs = new Map<string, { t: Tag; state: StateCode }>()
   const setIssues = (list: SceneIssue[]) => {
     const keep = new Set(list.map((x) => x.equipmentId))
-    for (const [id, b] of bangs) if (!keep.has(id)) { b.t.el.remove(); tags.splice(tags.indexOf(b.t), 1); bangs.delete(id) }
+    for (const [id, b] of bangs) if (!keep.has(id)) { b.t.el.remove(); tags.splice(tags.indexOf(b.t), 1); bangs.delete(id); invalidate() }
     for (const it of list) {
       const e = EQ.get(it.equipmentId)
       if (!e) continue
@@ -519,6 +556,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
         btn.innerHTML = html
         btn.setAttribute('aria-label', `${e.id} ${STATE_NAME[it.state]} 보기`)
         b.t.w = -1
+        invalidate()
       }
     }
   }
@@ -623,7 +661,15 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     b.slot = P.stack.length
     P.stack.push(id)
   }
+  let boxesDirty = true
+  /** 움직이는 상자가 있는지 (지난 그림 기준) */
+  let boxesMoving = false
+  let lastFlow: FlowPositions | null = null
   const setFlow = (f: FlowPositions | null) => {
+    // 같은 값이 다시 오면 (다른 값이 바뀌어 push가 불릴 때) 아무것도 안 한다
+    if (f === lastFlow) return
+    lastFlow = f
+    boxesDirty = true
     const now = performance.now()
     const next = new Map((f?.products ?? []).map((p) => [p.productId, p]))
     // 1) 더미를 떠난 상자: 맨 위 상자가 떠나는 것처럼 보이게 맨 위 상자와 자리를 바꾼 뒤 뺀다 (남은 상자는 움직이지 않음)
@@ -648,7 +694,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     for (const [id, p] of next) {
       const b = boxes.get(id)
       if (!b) {
-        const nb: Box = { line: p.lineId, loc: p.location, slot: -1, draw: new THREE.Vector3(), path: null, lens: [], t0: now }
+        const nb: Box = { line: p.lineId, loc: p.location, slot: -1, draw: new THREE.Vector3(), path: null, lens: [], t0: now, i: -1 }
         pushSlot(nb, id)
         target(nb, nb.draw)
         boxes.set(id, nb)
@@ -671,22 +717,46 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     for (const P of PILES.values()) P.n = 0
     for (const p of next.values()) if ('pile' in p.location) { const P = PILES.get(p.location.pile); if (P) P.n += 1 }
     coilWip = f?.coilWip ?? 0
+    invalidate()
   }
   const pidPool = Array.from({ length: 36 }, () => { const t = tag('', 'f3d-pid', [0, 0, 0], '3d'); t.el.hidden = true; return t })
-  const drawBoxes = (now: number) => {
-    let n = 0
+  const ease = (k: number) => -(Math.cos(Math.PI * k) - 1) / 2
+  /** 상자 그리기: 자리가 바뀐 때(setFlow·선택)만 전체를 다시 쓰고, 그 밖엔 움직이는 상자만 고친다. 움직이는 상자가 남았으면 true */
+  const drawBoxes = (now: number): boolean => {
     const snap = reduced()
+    let moving = false
+    const posOf = (b: Box) => {
+      if (!b.path) return target(b, tmpV)
+      moving = true
+      const k = snap ? 1 : Math.min(1, (now - b.t0) / MOVE_MS)
+      const p = along(b, ease(k), tmpV)
+      if (k >= 1) b.path = null
+      return p
+    }
+    if (!boxesDirty) {
+      for (const b of boxes.values()) {
+        if (!b.path) continue
+        if (b.i < 0) { boxesDirty = true; break }
+        const p = posOf(b)!
+        b.draw.copy(p)
+        tmpM.makeTranslation(p.x, p.y, p.z)
+        boxMesh.setMatrixAt(b.i, tmpM)
+      }
+      if (!boxesDirty) {
+        if (moving) boxMesh.instanceMatrix.needsUpdate = true
+        return moving
+      }
+      moving = false
+    }
+    let n = 0
     for (const b of boxes.values()) {
-      if (n >= MAX_BOXES) break
-      let pos: THREE.Vector3 | null
-      if (b.path) {
-        const k = snap ? 1 : Math.min(1, (now - b.t0) / MOVE_MS)
-        pos = along(b, -(Math.cos(Math.PI * k) - 1) / 2, tmpV)
-        if (k >= 1) b.path = null
-      } else pos = target(b, tmpV)
-      if (!pos) continue
-      b.draw.copy(pos)
-      tmpM.makeTranslation(pos.x, pos.y, pos.z)
+      b.i = -1
+      if (n >= MAX_BOXES) continue
+      const p = posOf(b)
+      if (!p) continue
+      b.draw.copy(p)
+      b.i = n
+      tmpM.makeTranslation(p.x, p.y, p.z)
       boxMesh.setMatrixAt(n, tmpM)
       tmpC.copy(prodC)
       if (sel && b.line !== sel) tmpC.lerp(bgC, 0.8)
@@ -696,7 +766,12 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     boxMesh.count = n
     boxMesh.instanceMatrix.needsUpdate = true
     if (boxMesh.instanceColor) boxMesh.instanceColor.needsUpdate = true
-    // 제품 ID: 가까이 확대하면 화면 가운데 근처만. 쌓인 재공 상자는 수 이름표가 따로 있어 빼고 (겹쳐 읽히지 않는다)
+    boxesDirty = false
+    return moving
+  }
+  /** 제품 ID: 가까이 확대하면 화면 가운데 근처만. 쌓인 재공 상자는 수 이름표가 따로 있어 빼고 (겹쳐 읽히지 않는다) */
+  let pidOn = false
+  const drawPids = () => {
     let used = 0
     if (!topUi && cam.position.distanceTo(ctl.target) < 70) {
       const cand: [number, string, THREE.Vector3][] = []
@@ -707,49 +782,65 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       }
       cand.sort((a, b) => a[0] - b[0]).slice(0, pidPool.length).forEach(([, id, at]) => {
         const t = pidPool[used++]
-        setHtml(t, `${id[0]}-${id.slice(-4)}`)
-        t.el.title = id
+        if (t.el.dataset.k !== id) { t.el.dataset.k = id; t.el.textContent = `${id[0]}-${id.slice(-4)}`; t.el.title = id; t.w = -1 }
         t.pos.copy(at).y += BOX_H / 2 + 0.2
         t.el.hidden = false
+        placeTag(t, W(), H(), null)
       })
     }
+    if (!used && !pidOn) return
     for (let i = used; i < pidPool.length; i++) pidPool[i].el.hidden = true
+    pidOn = used > 0
   }
 
   // ── 상태 색 ──
+  let downCount = 0
   const setStates = (list: SceneState[]) => {
-    for (const s of list) { const e = EQ.get(s.id); if (e) { e.state = s.state; e.note = s.note ?? null } }
+    let changed = false
+    for (const s of list) {
+      const e = EQ.get(s.id)
+      if (!e) continue
+      e.note = s.note ?? null
+      if (e.state !== s.state) { e.state = s.state; changed = true }
+    }
+    if (!changed) return
+    downCount = [...EQ.values()].filter((e) => e.state === 'D').length
+    invalidate()
     for (const L of LINES) {
       const es = [...EQ.values()].filter((e) => e.line === L)
       tintLine(L, es.every((e) => e.state === 'S'))
     }
   }
-  const paint = (now: number) => {
-    const blink = Math.sin(now / 180) > 0
+  /** 상태 색·바닥 칸·탑뷰 칩·재공 수. 바뀐 설비만 칠한다 (blink = 고장 깜빡임 켜짐) */
+  const paint = (blink: boolean) => {
     for (const e of EQ.values()) {
       const c = C.state[e.state]
-      e.caps.forEach((m) => matOf(m).color.set(c))
       const pm = e.pad.material as THREE.MeshBasicMaterial
-      pm.color.set(c)
+      if (e.painted !== e.state) {
+        e.painted = e.state
+        e.caps.forEach((m) => matOf(m).color.set(c))
+        pm.color.set(c)
+      }
       pm.opacity = e.dim ? 0.08 : topUi ? 0.75 : e.id === hoverEq || e.id === focusId ? 0.6 : 0.35
       const hot = e.state === 'D' && blink
-      e.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) matOf(o).emissive.setHex(hot ? 0x8a1c1c : 0) })
-      if (topUi) {
+      if (hot !== e.hot) {
+        e.hot = hot
+        e.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) matOf(o).emissive.setHex(hot ? 0x8a1c1c : 0) })
+      }
+      if (topUi && e.cardKey !== e.state) {
         // 가동(R)은 색으로 충분해 설비번호만. 이상 상태는 색만으로 구분하지 않게 상태 글자를 붙인다 (CLAUDE.md 색약 대비)
-        const key = `${e.state}|${e.note ?? ''}`
-        if (e.cardKey !== key) {
-          e.cardKey = key
-          const btn = e.card.el.firstElementChild as HTMLElement
-          btn.className = `f3d-chip st-${e.state}`
-          btn.textContent = e.state === 'R' ? e.no : `${e.no} ${e.state}`
-          btn.setAttribute('aria-label', `${e.id} ${STATE_NAME[e.state]}${e.note ? ` ${e.note}` : ''}`)
-          e.card.w = -1
-        }
+        e.cardKey = e.state
+        const btn = e.card.el.firstElementChild as HTMLElement
+        btn.className = `f3d-chip st-${e.state}`
+        btn.textContent = e.state === 'R' ? e.no : `${e.no} ${e.state}`
+        btn.setAttribute('aria-label', `${e.id} ${STATE_NAME[e.state]}`)
+        e.card.w = -1
       }
     }
     for (const P of PILES.values()) {
       setHtml(P.lab, `${ICON_BOX}${P.n > PILE_CAP ? `${PILE_CAP}+` : P.n}`)
-      P.lab.el.style.visibility = P.n ? '' : 'hidden'
+      const vis = P.n ? '' : 'hidden'
+      if (P.lab.el.style.visibility !== vis) P.lab.el.style.visibility = vis
     }
     setHtml(coilLab, `코일 재고 ${(coilWip / 20).toFixed(1)}롤`) // coilWip은 제품 수 (1롤 = 20개), 슬리팅 전이라 롤로 보여 줌
   }
@@ -767,6 +858,31 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     if (!a) { p.setAttribute('points', ''); return }
     p.setAttribute('points', corners(a.z).map(([x, z]) => toPx(tmpV.set(x, 0, z), w, h)?.map((n) => n.toFixed(1)).join(',') ?? '').join(' '))
   }
+  const setTf = (t: Tag, tf: string) => { if (t.tf !== tf) { t.tf = tf; t.el.style.transform = tf } }
+  const OFF = 'translate(-9999px,0)'
+  /** 이름표 하나를 화면 좌표에 놓는다. placed = 서로 비켜 쌓을 이름표들의 자리 */
+  const placeTag = (t: Tag, w: number, h: number, placed: [number, number, number, number][] | null) => {
+    const shown = !t.only || (t.only === 'top') === topUi
+    const disp = shown ? '' : 'none'
+    if (t.disp !== disp) { t.disp = disp; t.el.style.display = disp }
+    if (!shown) return
+    const at = toPx(t.pos, w, h)
+    if (!at) { setTf(t, OFF); return }
+    if (t.w < 0 || !t.w) { t.w = t.el.offsetWidth; t.h = t.el.offsetHeight }
+    const x = t.anchor === 'r' ? at[0] - t.w : at[0] - t.w / 2
+    let y = t.anchor === 'b' ? at[1] - t.h : at[1] - t.h / 2
+    // 반 넘게 화면 밖이면 숨긴다 (가장자리에 이름표 조각만 걸리지 않게)
+    if (y + t.h / 2 < 0 || y + t.h / 2 > h || x + t.w / 2 < 0 || x + t.w / 2 > w) { setTf(t, OFF); return }
+    if (t.stack && placed) {
+      for (let k = 0; k < 6; k++) {
+        const hit = placed.find((r) => x < r[0] + r[2] && x + t.w > r[0] && y < r[1] + r[3] && y + t.h > r[1])
+        if (!hit) break
+        y = hit[1] - t.h - 4
+      }
+      placed.push([x, y, t.w, t.h])
+    }
+    setTf(t, `translate(${Math.round(x)}px,${Math.round(y)}px)`)
+  }
   const placeTags = () => {
     const w = W()
     const h = H()
@@ -774,28 +890,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     drawPoly(polyHov, hoverLine !== sel ? hoverLine : null, w, h)
     // 이상 표시끼리 겹치면 위로 비켜 쌓는다 (이웃 설비가 함께 고장·대기일 때)
     const placed: [number, number, number, number][] = []
-    for (const t of tags) {
-      if (t.el.hidden) continue
-      const shown = !t.only || (t.only === 'top') === topUi
-      t.el.style.display = shown ? '' : 'none'
-      if (!shown) continue
-      const at = toPx(t.pos, w, h)
-      if (!at) { t.el.style.transform = 'translate(-9999px,0)'; continue }
-      if (t.w < 0 || !t.w) { t.w = t.el.offsetWidth; t.h = t.el.offsetHeight }
-      const x = t.anchor === 'r' ? at[0] - t.w : at[0] - t.w / 2
-      let y = t.anchor === 'b' ? at[1] - t.h : at[1] - t.h / 2
-      // 반 넘게 화면 밖이면 숨긴다 (가장자리에 이름표 조각만 걸리지 않게)
-      if (y + t.h / 2 < 0 || y + t.h / 2 > h || x + t.w / 2 < 0 || x + t.w / 2 > w) { t.el.style.transform = 'translate(-9999px,0)'; continue }
-      if (t.stack) {
-        for (let k = 0; k < 6; k++) {
-          const hit = placed.find((r) => x < r[0] + r[2] && x + t.w > r[0] && y < r[1] + r[3] && y + t.h > r[1])
-          if (!hit) break
-          y = hit[1] - t.h - 4
-        }
-        placed.push([x, y, t.w, t.h])
-      }
-      t.el.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`
-    }
+    for (const t of tags) if (!t.el.hidden) placeTag(t, w, h, placed)
   }
 
   // ── 카메라 이동: 지금 자리에서 목표 자리까지 과녁 둘레를 돌며(구면 보간) 부드럽게 ──
@@ -859,6 +954,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   let saved: Pose | null = null
   /** 탑뷰로 가기 전 3D 자리 (3D로 돌아올 때 여기로) */
   let back3d: Pose | null = null
+  /** 라인 상세로 다이빙하기 전 자리 (대시보드로 돌아오면 이 자리) */
+  let beforeDive: Pose | null = null
   let onMode: ((m: ViewMode) => void) | null = null
   /** 탑뷰에 도착해 카드가 떠 있는 상태 (설비에 다가가 있거나 날고 있으면 아님) */
   let topUi = false
@@ -876,6 +973,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const ringM = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, depthWrite: false })
   let ring: THREE.Mesh | null = null
   const setRing = (e: Eq | null) => {
+    invalidate()
     if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null }
     if (!e) return
     ring = new THREE.Mesh(ringGeo(e.pw + 1.4, e.pd + 1.4, 0.32, 0.9), ringM)
@@ -912,6 +1010,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const dive = (L: ProductionLineId, done: () => void) => {
     const i = LINES.indexOf(L)
     if (i < 0) { done(); return }
+    beforeDive = saved ?? pose()
     focusId = null
     saved = null
     setRing(null)
@@ -962,7 +1061,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   renderer.domElement.addEventListener('pointerleave', () => { inside = false; hoverDirty = true })
   const doHover = () => {
     const h = inside ? pickAt(mx, my) : null
-    hoverEq = h?.eq ?? null
+    if ((h?.eq ?? null) !== hoverEq) { hoverEq = h?.eq ?? null; invalidate() }
     const L = h?.line ?? null
     if (L !== hoverLine) { hoverLine = L; refreshOutlines() }
     renderer.domElement.style.cursor = h ? 'pointer' : ''
@@ -970,26 +1069,66 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
 
   // ── 크기·그리기 ──
   const ro = new ResizeObserver(() => {
-    cam.aspect = W() / H()
+    const w = host.clientWidth
+    const h = host.clientHeight
+    if (!w || !h) return // 보관 중(KeepAlive)에는 크기가 0
+    cw = w
+    ch = h
+    cam.aspect = w / h
     cam.updateProjectionMatrix()
-    renderer.setSize(W(), H())
+    renderer.setSize(w, h)
+    for (const t of tags) t.tf = undefined
+    invalidate()
   })
   ro.observe(host)
   let raf = 0
+  let paused = false
+  let lastBlink = false
+  let lastBoxFrame = 0
+  /** 매 프레임: 바뀐 것이 없으면 아무것도 안 하고 끝 */
   const loop = (now: number) => {
     raf = requestAnimationFrame(loop)
-    tween?.(now)
-    ctl.update()
+    if (paused) return
+    let camMoved = false
+    if (tween) { tween(now); camMoved = true }
+    if (ctl.update()) camMoved = true
     syncTopUi()
     if (hoverDirty) { hoverDirty = false; doHover() }
-    paint(now)
-    drawBoxes(now)
-    placeTags()
-    drawEdges()
+    const blink = downCount > 0 && Math.sin(now / 180) > 0
+    const blinkFlip = blink !== lastBlink
+    // 상자만 움직일 때는 초당 BOX_FPS번까지
+    const boxFrame = (boxesDirty || boxesMoving) && now - lastBoxFrame >= 1000 / BOX_FPS
+    if (!camMoved && !dirty && !blinkFlip && !boxFrame) return
+    lastBlink = blink
+    const full = camMoved || dirty
+    dirty = false
+    if (full || blinkFlip) paint(blink)
+    if (full || boxFrame) { boxesMoving = drawBoxes(now); lastBoxFrame = now }
+    // paint가 이름표 글을 바꿨으면(dirty) 이번 프레임에 같이 놓는다
+    if (full || dirty) { placeTags(); drawEdges() }
+    dirty = false
+    drawPids()
     renderer.render(scene, cam)
   }
   drawRoutes()
   raf = requestAnimationFrame(loop)
+
+  /** 대시보드를 떠날 때 (KeepAlive 보관): 그리기를 멈추고, 설비·라인에 다가가 있던 카메라는 그 전 자리로 */
+  const pause = () => {
+    paused = true
+    tween = null
+    dest = null
+    const back = beforeDive ?? saved
+    beforeDive = null
+    saved = null
+    focusId = null
+    setRing(null)
+    if (back) { cam.position.copy(back.pos); ctl.target.copy(back.tgt); ctl.update() }
+  }
+  const resume = () => {
+    paused = false
+    invalidate()
+  }
 
   return {
     setStates,
@@ -1000,7 +1139,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       for (const L of LINES) next[L] = r[L] === 'PT2' ? 1 : r[L] === 'PT1' ? 0 : routes[L]
       if (LINES.some((L) => next[L] !== routes[L])) { routes = next; drawRoutes() }
     },
-    select(L: ProductionLineId | null) { sel = L; applyDim() },
+    select(L: ProductionLineId | null) { if (sel !== L) { sel = L; applyDim() } },
     /** 비전 검사 칸: 오늘 검사 양품·불량 수 */
     setVision(v: { ok: number; ng: number } | null) {
       const key = v ? `${v.ok}|${v.ng}` : ''
@@ -1023,6 +1162,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       }
       shipMesh.count = k
       shipMesh.instanceMatrix.needsUpdate = true
+      renderer.shadowMap.needsUpdate = true
+      invalidate()
       setHtml(shipLab, `출하 ${v.toLocaleString('ko-KR')}개`)
       shipLab.el.style.visibility = v ? '' : 'hidden'
     },
@@ -1032,9 +1173,15 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
         const r = rows[L]
         const el = allocTags[i].el
         const pct = r?.done != null && r.plan ? Math.min(100, Math.round((r.done / r.plan) * 100)) : 0
-        el.innerHTML = `<span class="top"><b>${L}</b><span class="n"><b>${num(r?.done)}</b> / ${num(r?.plan)}</span></span>`
+        const html = `<span class="top"><b>${L}</b><span class="n"><b>${num(r?.done)}</b> / ${num(r?.plan)}</span></span>`
           + `<span class="bar"><i style="width:${pct}%"></i></span>`
           + (r?.added ? `<span class="add">+${num(r.added)} 추가 배정</span>` : '')
+        // 1초마다 불려도 값이 같으면 DOM을 건드리지 않는다
+        if (el.dataset.k === html) return
+        el.dataset.k = html
+        el.innerHTML = html
+        allocTags[i].w = -1
+        invalidate()
         el.classList.toggle('more', !!r?.added)
         el.setAttribute('aria-label', `${L}라인 현재 생산 ${num(r?.done)}, 배정 ${num(r?.plan)}${r?.added ? `, 오늘 추가 배정 ${num(r.added)}` : ''}`)
       })
@@ -1044,6 +1191,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     focus,
     unfocus,
     dive,
+    pause,
+    resume,
     dispose() {
       cancelAnimationFrame(raf)
       ro.disconnect()
