@@ -3,7 +3,7 @@
      설비를 누르면 카메라가 그 설비로 다가가고(화면 가운데) 왼쪽에 설비 팝업. 닫으면(× · Esc · 팝업 밖) 누르기 전 자리로
      라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽 위에 간단한 라인 카드. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
 import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
 import LinePanel from '@/components/domain/factory3d/LinePanel.vue'
@@ -87,13 +87,13 @@ function setView(m: ViewMode) {
 // 팝업 밖을 누르면 닫는다. 3D 장면 안은 scene이 알려 준다 (설비 = 바꿔 열기, 빈 곳·라인 = 닫기)
 function onDocClick(ev: MouseEvent) {
   const t = ev.target as Node | null
-  if (!popId.value || !t) return
+  if (!active || !popId.value || !t) return
   if (popEl.value?.contains(t) || host.value?.contains(t)) return
   if ((t as Element).closest?.('[data-keep-pop]')) return
   closePop()
 }
 function onKey(ev: KeyboardEvent) {
-  if (ev.key !== 'Escape') return
+  if (ev.key !== 'Escape' || !active) return
   if (popId.value) closePop()
   else if (selLine.value) selectLine(null)
 }
@@ -118,6 +118,18 @@ onMounted(() => {
   push()
   document.addEventListener('click', onDocClick, true)
   document.addEventListener('keydown', onKey)
+})
+// 대시보드가 보관(KeepAlive)되는 동안: 3D 그리기를 멈추고, 열려 있던 설비 팝업은 닫는다 (다가가 있던 카메라는 그 전 자리로)
+let active = true
+onDeactivated(() => {
+  active = false
+  closePop(false)
+  scene.value?.pause()
+})
+onActivated(() => {
+  active = true
+  scene.value?.resume()
+  scene.value?.select(selLine.value)
 })
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick, true)
