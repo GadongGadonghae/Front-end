@@ -58,7 +58,7 @@ export function useUtilization(init: { tab?: string; line?: string } = {}) {
       Promise.all(list.map((u) => source.q.getOee({ ...base, ...u.q }))),
     ])
     return { summary, timeline, rows: list.map((u, i) => ({ u, r: reports[i] as OeeReport })) }
-  }, POLL_MS, key)
+  }, POLL_MS, key, 'util')
 
   // ── 보이는 모양 ──
   const summary = computed(() => data.value?.summary ?? null)

@@ -12,7 +12,7 @@ import { formatNumber } from '@/lib/format'
 /** 코일입고: 1분마다 기록·재고 추이, 오늘 입고·재고 숫자는 1초 snapshot (API 명세 6장) */
 export function useInbound() {
   const snapshot = useLiveSnapshot()
-  const { data } = usePoll(() => source.q.getInboundToday(), 60_000)
+  const { data } = usePoll(() => source.q.getInboundToday(), 60_000, undefined, 'inbound-today')
   const figures = computed(() => ({
     today: snapshot.value?.inbound.today ?? data.value?.today ?? null,
     stock: snapshot.value?.inbound.stock ?? data.value?.stock ?? null,

@@ -35,7 +35,7 @@ export function useProcessDetail(area: AreaId, process: ProcessId) {
 
   const { data: today } = usePoll(
     () => (area === 'VI' ? Promise.resolve(null) : source.q.getProcessToday(area, process)),
-    PROCESS_POLL_MS,
+    PROCESS_POLL_MS, undefined, `process-today:${area}:${process}`,
   )
 
   const equipment = computed(() => (master.value?.equipment ?? []).filter((e) => e.area === area && e.process === process).sort((a, b) => a.order - b.order))

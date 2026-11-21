@@ -9,7 +9,7 @@ import { formatTime } from '@/lib/format'
 
 export function useInspections(process: ProcessId, lineId?: LineId, where: 'equipment' | 'line' = 'equipment') {
   const { equipmentName } = useMaster()
-  const { data } = usePoll(() => source.q.getInspectionsToday(process, lineId), 30_000)
+  const { data } = usePoll(() => source.q.getInspectionsToday(process, lineId), 30_000, undefined, `inspections:${process}:${lineId ?? ''}`)
   const rows = computed<DefectRowView[]>(() => (data.value?.defects ?? []).map((d) => ({
     key: d.productId,
     time: formatTime(d.t),
@@ -21,6 +21,6 @@ export function useInspections(process: ProcessId, lineId?: LineId, where: 'equi
 }
 
 export function useMicrostops(equipmentId: Ref<string | null>) {
-  const { data } = usePoll(() => (equipmentId.value ? source.q.getMicrostopsToday(equipmentId.value) : Promise.resolve(null)), 60_000, equipmentId)
+  const { data } = usePoll(() => (equipmentId.value ? source.q.getMicrostopsToday(equipmentId.value) : Promise.resolve(null)), 60_000, equipmentId, 'microstops')
   return data
 }
