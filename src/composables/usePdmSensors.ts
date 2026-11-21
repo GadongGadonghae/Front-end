@@ -1,5 +1,5 @@
 // 예지보전 (SCR-004) 고른 설비의 센서 한눈에: 센서 카드(지금 값 · 위험도 · 1시간 미니 그래프)와 센서별 오늘 이력 띠
-// 공정 관리값은 백엔드 수집 값, 온도·진동·전류 같은 설비 상태 센서는 더미 (data/dummy/sensors.ts)
+// 설비 상태 센서(온도·진동·전류, 더미 data/dummy/sensors.ts)만. 공정 관리값·인버터 값은 라인 화면(공정 상세)에서 본다
 import { computed, ref, type Ref } from 'vue'
 import type { TelemetryItem, TelemetryRange } from '@/types/process'
 import type { StateCode } from '@/types/state'
@@ -12,10 +12,7 @@ import { metricLabel } from '@/lib/metrics'
 const WINDOW_MS = 600_000
 /** 이보다 길게 점이 비면 멈춘 구간으로 본다 */
 const GAP_MS = 5 * 60_000
-/** 위험도를 보지 않는 항목 (슬리팅 속도 그래프용) */
-const SPEED_ITEMS = ['commandHz', 'outputHz']
 const SOURCE_LABEL = { process: '공정값', inverter: '인버터', sensor: '센서 더미' } as const
-const SOURCE_ORDER = { process: 0, inverter: 1, sensor: 2 } as const
 
 export type LaneGrade = 'normal' | 'warn' | 'danger' | 'down' | 'none'
 
@@ -40,8 +37,8 @@ export function usePdmSensors(selectedId: Ref<string | null>, state: Ref<StateCo
   const hour = useTelemetry(selectedId, hourRange)
   const today = useTelemetry(selectedId, todayRange)
 
-  const shown = (items: TelemetryItem[]) => items.filter((i) => !SPEED_ITEMS.includes(i.item))
-    .sort((a, b) => SOURCE_ORDER[a.source ?? 'process'] - SOURCE_ORDER[b.source ?? 'process'])
+  /** 예지보전은 설비 상태 센서만 (라인 화면의 공정 관리값·인버터 값과 나눔) */
+  const shown = (items: TelemetryItem[]) => items.filter((i) => i.source === 'sensor')
 
   /** 센서 카드: 지금 값 · 최근 10분 위험도 · 1시간 전과 비교 · 1시간 미니 그래프 */
   const tiles = computed(() => {

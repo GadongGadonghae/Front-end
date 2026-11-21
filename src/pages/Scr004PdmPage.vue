@@ -1,7 +1,8 @@
 <!-- SCR-004 예지보전 (화면정의서 SCR-004, 시안 B-pdm)
      왼쪽: 등급별 대수 → 위험도 목록 (위험 → 주의 → 정상은 접어 둠, D-61). 지금 고장 난 설비는 따로
      오른쪽: 설비 고르기(구역 → 설비) → 고른 설비 이름·등급·상태 + 센서 카드(지금 값·위험도·1시간 미니 그래프)
-            → 고른 센서 추이(상·하한 점선, 80%·90% 옅은 선) · 센서별 오늘 이력. 온도·진동·전류 등 설비 센서는 더미 (data/dummy/sensors.ts)
+            → 고른 센서 추이(상·하한 점선, 80%·90% 옅은 선) · 센서별 오늘 이력. 온도·진동·전류 등 설비 상태 센서만 (더미, data/dummy/sensors.ts)
+     공정 관리값(압력·전류·전압·가압 시간 등)은 라인 화면(공정 상세)에서만 본다 — 같은 값을 두 화면에 두지 않음
      예지보전 표시는 칸 바깥 테두리 (DESIGN.md): 주의 = 노랑 실선, 위험 = 빨강 점선, 항상 "주의"·"위험" 글자와 함께 -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
@@ -76,7 +77,7 @@ const topGroups = computed(() => [
   <PageLayout>
     <template #head>
       <h1 class="title">예지보전</h1>
-      <span class="note">관리값이 있는 설비 38대 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · {{ WARN }}% 주의 · {{ DANGER }}% 위험</span>
+      <span class="note">설비 38대 · 설비 상태 센서(온도·진동·전류)로 판단, 공정 관리값은 라인 화면에서 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · {{ WARN }}% 주의 · {{ DANGER }}% 위험</span>
     </template>
 
     <div class="layout">
@@ -142,7 +143,7 @@ const topGroups = computed(() => [
               <StatusKey :state="sel.state" size="sm" />
               <span :class="['tag', sel.grade]">{{ GRADE_WORD[sel.grade] }}</span>
               <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
-              <span class="meta">센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 온도·진동·전류 등 설비 센서는 더미 값</span>
+              <span class="meta">상태 센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 센서 값은 더미</span>
             </div>
             <h2 v-else>설비를 고르세요</h2>
           </template>
