@@ -51,6 +51,7 @@ Vue 3 + Vite + TypeScript. 공장 설비 39대의 상태를 1초마다 보여 �
 **코드**
 - Vue 3 SFC + TypeScript. UI 라이브러리·차트 라이브러리를 새로 추가하려면 먼저 묻는다.
 - 커밋 전 `npm run check`(타입 검사 + ESLint + Stylelint). 층 사이 의존 방향은 ESLint가 막는다 (FRONTEND.md 2장).
+- 성능에 닿는 변경(3D·구독·주기 조회·화면 전환)은 `npm run perf`로 전후를 재서 `docs/10_성능검토.md`에 남긴다 (FRONTEND.md 7장 "성능").
 
 **기록 (기억이 아니라 저장소에)**
 - 지켜야 할 규칙은 **반드시 이 파일이나 `DESIGN.md`·`FRONTEND.md`에** 적는다. 기억(`~/.claude`)은 PC도 브랜치도 넘지 못한다. 기억에는 "이 작업은 끝났다" 같은 상황만 남긴다.

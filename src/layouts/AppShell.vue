@@ -108,7 +108,7 @@ onMounted(() => {
     </header>
 
     <!-- 주소(경로)가 바뀌면 화면을 새로 만든다: 라인·공정 탭 전환. ?eq= 같은 쿼리만 바뀌면 그대로 -->
-    <!-- 대시보드는 떠나도 버리지 않고 보관한다 (3D 장면을 다시 만들지 않게, 성능 개선 2 · docs/10_성능검토.md). 나머지 화면은 그대로 -->
+    <!-- 대시보드는 떠나도 버리지 않고 보관한다 (3D 장면을 다시 만들지 않게, D-120 · docs/10_성능검토.md). 나머지 화면은 그대로 -->
     <main class="main print-flow">
       <RouterView v-slot="{ Component, route: r }">
         <KeepAlive :include="KEEP_ALIVE"><component :is="Component" :key="r.path" /></KeepAlive>

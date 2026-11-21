@@ -273,7 +273,8 @@ export interface DataSource { live: LiveChannel; q: Queries; cmd: Commands }
 - mock은 데이터정의서 3장 기준정보(라인·공정·설비 39대·관리값 기준)를 그대로 두고, 시나리오(정상 가동, L2 프레스 3단 고장, 재공부족 대기, 예지보전 주의·위험 등)로 상태를 만든다.
 - 데모 값을 보여 줄 때는 화면에 "데모 값"임을 표시한다 (CLAUDE.md).
 - 타입 이름은 데이터정의서 엔티티 영어 이름을 따른다 (`Equipment`, `StateEvent`, `Inspection`, `DailySummary` …). 각 타입 주석에 DT 번호를 적는다.
-- 화면에서 1초 구독은 composable이 맡고, 화면을 떠나면 구독을 끊는다 (`onScopeDispose`).
+- 화면에서 1초 구독은 composable이 맡는다. 실시간 구독(상태 · 요약 · 3D 물류)은 `composables/sharedLive.ts`로 앱 전체가 하나를 같이 쓰고, 쓰는 곳이 없어져도 30초 두었다가 끊는다 (화면 전환 때 다시 열면 실서버에 요청이 한꺼번에 나감, docs/10_성능검토.md).
+- 주기 조회(`usePoll`)는 넷째 인자 `cacheName`을 주면 마지막 값을 기억해, 같은 조회로 다시 들어온 화면이 응답을 기다리며 비어 있지 않다. 조회에 쓰는 값 중 `key`에 없는 것(라인 ID 등)은 이름에 넣는다 (예: `line-today:${lineId}`).
 
 ---
 
@@ -300,6 +301,11 @@ export interface DataSource { live: LiveChannel; q: Queries; cmd: Commands }
   1920×940 (1920×1080 모니터에서 주소창·탭을 뺀 높이, 기준), 1536×730 (노트북 125% 배율, 가장 낮음), 1440×810.
   창 전체 높이(1080)로만 보면 아래쪽 칸이 눌리는 문제를 놓친다 (2026-11-17 대시보드에서 실제로 놓침).
 - 지원하는 가장 좁은 창은 1280px (`--app-min-w`). 이보다 좁으면 가로 스크롤이 생기고 화면은 무너지지 않는다.
+
+**성능 (docs/10_성능검토.md)**
+- 성능에 닿는 변경(3D, 구독, 주기 조회, 화면 전환)은 `npm run perf -- --label 이름`으로 전후를 같은 조건에서 재고, `npm run perf -- --compare 전 후` 표를 문서에 남긴다. 결과는 `docs/perf/*.json`.
+- 3D 장면(`factory3d/scene.ts`)은 **바뀐 것이 있을 때만 그린다.** 장면에 보이는 것을 바꾸는 코드는 끝에 `invalidate()`를 부른다 (이름표 글은 `setHtml`이 대신 부름). 모형(그림자를 드리우는 것)을 바꾸면 `renderer.shadowMap.needsUpdate = true`. 매 프레임 DOM을 읽거나(`clientWidth`) 같은 값을 다시 쓰지 않는다.
+- 대시보드는 `AppShell`의 `KeepAlive`로 보관된다. 대시보드 아래 부품에서 문서 전체 이벤트(`document.addEventListener`)를 걸면 보관 중(`onDeactivated`)에는 반응하지 않게 막는다.
 - 높이가 모자라 칸이 낮아지면 칸 안 배치를 옆으로 놓아 해결한다 (예: 대시보드 오늘 생산 = 숫자 왼쪽 열 + 그래프 오른쪽). 그래프는 `--chart-min-h`보다 납작해지지 않게 한다.
 
 ---

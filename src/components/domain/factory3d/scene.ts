@@ -5,7 +5,7 @@
 // 라인 바닥에 마우스를 올리면 그 라인 외곽선, 누르면 라인 선택 (on.onLine). 빈 곳을 누르면 on.onEmpty
 // 마우스: 왼쪽 끌기 = 이동, 휠 = 확대, 오른쪽 끌기 = 회전 (탑뷰에서 오른쪽을 누르면 3D로)
 // 값은 밖에서 넣는다 (setStates · setIssues · setRoutes · setFlow). 이 파일은 데이터를 부르지 않는다
-// 그리기는 바뀐 것이 있을 때만 (성능 개선 1, docs/10_성능검토.md): 카메라가 움직이거나, 값·마우스가 바뀌었거나, 상자가 옮겨 가는 동안(초당 BOX_FPS번까지)
+// 그리기는 바뀐 것이 있을 때만 (성능 개선 1 · D-120, docs/10_성능검토.md): 카메라가 움직이거나, 값·마우스가 바뀌었거나, 상자가 옮겨 가는 동안(초당 BOX_FPS번까지)
 // 대시보드를 떠나 있는 동안은 pause()로 멈추고 돌아오면 resume() (성능 개선 2)
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
