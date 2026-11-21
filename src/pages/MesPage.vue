@@ -10,6 +10,7 @@ import ChartDonut from '@/components/charts/ChartDonut.vue'
 import ChartProgress from '@/components/charts/ChartProgress.vue'
 import MesReportView from '@/components/domain/MesReportView.vue'
 import { useAuth } from '@/composables/useAuth'
+import { useBack } from '@/composables/useBack'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 import { downloadDailyDoc } from '@/lib/dailyDoc'
 import { downloadReplanDoc } from '@/lib/replanDoc'
@@ -17,6 +18,7 @@ import { downloadReplanDoc } from '@/lib/replanDoc'
 const router = useRouter()
 const { userName, roleName, logout } = useAuth()
 const flow = useReportFlow()
+const { canBack, goBack } = useBack()
 // 받은 보고서: 실서버는 M-01 수신함(다른 컴퓨터에서 보낸 것도), 데모 데이터는 이 브라우저 기록. 10초마다 다시 읽기 (11/20)
 let mesTimer: ReturnType<typeof setInterval> | null = null
 onMounted(() => { flow.refreshMes(); mesTimer = setInterval(flow.refreshMes, 10_000) })
@@ -92,6 +94,11 @@ const pct = (done: number, plan: number) => `${((done / plan) * 100).toFixed(1)}
 // ── 수신 보고서 ──
 const pickedKey = ref<string | null>(null)
 const picked = computed(() => flow.sent.value.find((f) => f.key === pickedKey.value) ?? flow.sent.value[0] ?? null)
+/** 11/21 우리 시스템 보고서 화면 그대로: 결재 키(replan:보고서번호 · daily:날짜) → 문서만 보기 주소 */
+const pickedSrc = computed(() => {
+  const m = /^(replan|daily):(.+)$/.exec(picked.value?.key ?? '')
+  return m ? `/doc/${m[1]}/${encodeURIComponent(m[2])}` : null
+})
 const KIND = { daily: '일일 생산 마감', replan: '생산계획 수정 검토' }
 // 공장별 란: 실제로 보고서를 보내는 곳은 우리 시스템(차체 캠퍼스 공장 1)뿐. 나머지 공장은 빈 란 (더미 공장 목록)
 const isOurs = (campus: string, factory: string) => campus === '차체 캠퍼스' && factory === '공장 1'
@@ -111,8 +118,8 @@ async function onLogout() {
 <template>
   <div :class="['mes', { home: view === 'home' }]">
     <header class="top">
+      <button v-if="canBack" type="button" class="out" aria-label="이전 화면" @click="goBack">‹ 이전</button>
       <b class="brand">차체 캠퍼스 MES</b>
-      <span class="tag">임시 구현 · 시연용</span>
       <span class="sp" />
       <RouterLink class="link" to="/">라인 가동 시스템 보기 ›</RouterLink>
       <span class="user">{{ userName }} · {{ roleName }}</span>
@@ -127,7 +134,7 @@ async function onLogout() {
           type="button"
           :class="['menu', { on: m.open && view === m.open }]"
           :disabled="!m.open"
-          :title="m.open ? undefined : '시연 범위 밖 (임시 MES)'"
+          :title="m.open ? undefined : '준비 중인 메뉴'"
           @click="m.open && (view = m.open)"
         >
           <span>{{ m.name }}</span>
@@ -270,7 +277,7 @@ async function onLogout() {
                 </div>
                 <BaseButton size="sm" @click="download">Word(.doc) 받기</BaseButton>
               </div>
-              <MesReportView :daily="picked.daily" :replan="picked.replan" />
+              <MesReportView :daily="picked.daily" :replan="picked.replan" :src="pickedSrc" />
             </template>
             <p v-else class="empty">보고서를 고르면 내용이 보입니다.</p>
           </section>
@@ -301,14 +308,6 @@ async function onLogout() {
 .brand {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
-}
-
-.tag {
-  padding: 2px var(--sp-2);
-  border: var(--line-w) solid currentcolor;
-  border-radius: var(--r-1);
-  font-size: var(--fs-row);
-  font-weight: var(--fw-regular);
 }
 
 .sp {

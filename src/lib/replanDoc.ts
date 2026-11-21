@@ -43,7 +43,8 @@ function durationText(totalSec: number) {
   return `${h ? `${h}시간 ` : ''}${m}분 ${s % 60}초`
 }
 
-export async function downloadReplanDoc(d: ReplanDocData) {
+/** 양식을 채운 문서 HTML (Word 내려받기와 임시 MES 화면이 같은 문서를 쓰게, 11/21) */
+export async function replanDocHtml(d: ReplanDocData): Promise<string> {
   const res = await fetch(TEMPLATE)
   if (!res.ok) throw new Error(`보고서 양식을 불러오지 못했습니다 (${res.status})`)
   let doc = new TextDecoder('utf-16le').decode(await res.arrayBuffer())
@@ -76,7 +77,11 @@ export async function downloadReplanDoc(d: ReplanDocData) {
   }
   for (const [k, html] of Object.entries(sections)) doc = doc.split(`{{${k}}}`).join(html)
   if (/\{\{[A-Z_]+\}\}/.test(doc)) throw new Error('보고서 양식 항목을 다 채우지 못했습니다')
+  return doc
+}
 
+export async function downloadReplanDoc(d: ReplanDocData) {
+  const doc = await replanDocHtml(d)
   // UTF-16LE + BOM으로 다시 저장 (Word가 이 형식으로 읽음)
   const bytes = new Uint8Array(2 + doc.length * 2)
   bytes[0] = 0xff

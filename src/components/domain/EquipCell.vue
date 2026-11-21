@@ -1,6 +1,6 @@
 <!-- 설비 칸: 칸 전체를 상태 색으로 칠한다 (DESIGN.md Components "설비 칸")
      작게(배치도, SCR-001 1번): 이름 · 상태 코드·명칭 · 고장이면 지속시간 · 예지보전 비율
-     크게(라인 흐름, SCR-010 3번): 이름 → 고장·대기면 비가동 코드와 사유 → 오늘 사이클·평균 CT → 코드·명칭·지속시간
+     크게(라인 흐름, SCR-010 3번): 이름 → 오늘 사이클·불량·평균 CT (모든 상태·설비에서 같은 자리, 11/21) → (아래쪽) 고장·대기 사유 → 코드·명칭·지속시간
      칸이 좁으면 명칭을 숨기고 코드 글자는 남긴다 (색만으로 말하지 않기) -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -19,15 +19,18 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
         <span v-if="large.pdm" class="pdm">{{ large.pdm.text }}</span>
       </div>
       <p class="eid">{{ large.id }}</p>
-      <p v-if="large.reason" class="why"><b>{{ large.reason.code }}</b><span v-if="large.reason.detail">{{ large.reason.detail }}</span></p>
-      <p v-if="large.note" class="note">{{ large.note }}</p>
       <dl v-if="large.info.length" class="info">
         <template v-for="i in large.info" :key="i.label"><dt>{{ i.label }}</dt><dd :class="{ alert: i.alert }">{{ i.value }}</dd></template>
       </dl>
-      <div class="foot">
-        <span class="code">{{ large.state }}</span>
-        <span class="word">{{ STATE_NAME[large.state] }}</span>
-        <span class="dur">{{ large.duration }}</span>
+      <!-- 사유·메모는 아래쪽 상태 줄 바로 위 (숫자 칸이 밀리지 않게) -->
+      <div class="bottom">
+        <p v-if="large.reason" class="why"><b>{{ large.reason.code }}</b><span v-if="large.reason.detail">{{ large.reason.detail }}</span></p>
+        <p v-if="large.note" class="note">{{ large.note }}</p>
+        <div class="foot">
+          <span class="code">{{ large.state }}</span>
+          <span class="word">{{ STATE_NAME[large.state] }}</span>
+          <span class="dur">{{ large.duration }}</span>
+        </div>
       </div>
     </div>
 
@@ -157,11 +160,18 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
   color: var(--c-down);
 }
 
+.bottom {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin-top: auto;
+  min-width: 0;
+}
+
 .foot {
   display: flex;
   align-items: baseline;
   gap: var(--sp-2);
-  margin-top: auto;
   white-space: nowrap;
 }
 

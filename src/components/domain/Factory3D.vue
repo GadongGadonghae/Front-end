@@ -49,6 +49,24 @@ const isIssue = (e: EquipmentLive) => e.state === 'D' || e.state === 'DC' || (e.
 const issues = computed(() => props.live.filter((e) => isIssue(e) && !acked.value.has(ackKey(e))))
 const secOf = (l: EquipmentLive) => Math.max(0, Math.floor((props.now - Date.parse(l.since)) / 1000))
 
+// ── 왼쪽 패널 (11/21): 라인별 생산 / 배정. 3D·탑뷰 모두 같은 자리 ──
+/** 라인 상태: 설비 하나라도 고장이면 down(깜빡임), 설비가 모두 정지(S)면 stop(회색) */
+function lineState(L: string): 'down' | 'stop' | null {
+  const ls = props.equipment.filter((e) => e.area === L).map((e) => liveById.value.get(e.id)?.state)
+  if (ls.some((x) => x === 'D')) return 'down'
+  if (ls.length && ls.every((x) => x === 'S')) return 'stop'
+  return null
+}
+const allocRows = computed(() => props.lineSummaries.filter((x) => x.lineId !== 'PT').map((x) => ({
+  id: x.lineId,
+  done: x.done,
+  plan: x.plan,
+  added: props.additions?.[x.lineId] ?? 0,
+  pct: x.done != null && x.plan ? Math.min(100, Math.round((x.done / x.plan) * 100)) : 0,
+  st: lineState(x.lineId),
+})))
+const num = (n: number | null | undefined) => (n == null ? '-' : n.toLocaleString('ko-KR'))
+
 function colors(): SceneColors {
   const css = getComputedStyle(host.value!)
   const v = (n: string) => css.getPropertyValue(n).trim()
@@ -61,8 +79,12 @@ function colors(): SceneColors {
 }
 
 // ── 설비 팝업 (왼쪽) ──
-function pick(id: string) {
+/** 11/21 이상 설비(고장 · 통신 끊김 · 원인 있는 대기)만 다가가서 창을 열어요. 정상 설비는 눌러도 그대로 (볼 게 상태 색뿐이라)
+ *  force = 비전 검사 칸처럼 구역 단추로 부를 때는 상태와 상관없이 열어요 */
+function pick(id: string, force = false) {
   if (!eqById.value.has(id)) return
+  const l = liveById.value.get(id)
+  if (!force && !(l && isIssue(l))) return
   popId.value = id
   scene.value?.focus(id)
   // 라인 상세가 열려 있으면 그 설비의 라인으로 따라간다
@@ -107,7 +129,7 @@ onMounted(() => {
       selectLine(L)
     },
     // 11/21 비전 검사는 출고 화면 대신 비전 설비 창 (양품·불량은 칸에 바로), 적재는 출고 화면
-    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : z === 'vision' ? pick('VI') : emit('open-outbound')),
+    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : z === 'vision' ? pick('VI', true) : emit('open-outbound')),
     onEmpty: () => {
       if (popId.value) closePop()
       else if (selLine.value) selectLine(null)
@@ -135,9 +157,6 @@ function push() {
   s.setFlow(props.flow)
   // 출하 적재: 오늘 출고 양품 (비전 검사 양품 = 출고). 없으면 라인별 실적 합
   s.setShipped(props.vision?.ok ?? props.lineSummaries.filter((x) => x.lineId !== 'PT').reduce((a, x) => a + (x.done ?? 0), 0))
-  s.setVision(props.vision ?? null)
-  s.setAllocation(Object.fromEntries(props.lineSummaries.filter((x) => x.lineId !== 'PT')
-    .map((x) => [x.lineId, { done: x.done, plan: x.plan, added: props.additions?.[x.lineId] ?? 0 }])))
 }
 watch(() => [props.live, props.lines, props.flow, issues.value, props.now, props.lineSummaries, props.additions, props.vision], push)
 
@@ -195,7 +214,22 @@ const panel = computed(() => {
       <button type="button" :aria-pressed="view === '3d'" @click="setView('3d')">3D</button>
       <button type="button" :aria-pressed="view === 'top'" @click="setView('top')">탑뷰</button>
     </div>
-    <p class="hint">라인 바닥을 누르면 라인 상세 · 설비를 누르면 가까이 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전 · 제품 상자는 데모 값</p>
+    <p class="hint">라인 바닥을 누르면 라인 상세 · 고장 설비를 누르면 가까이 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전</p>
+
+    <aside v-if="!pop" class="side" aria-label="라인별 생산 / 배정" data-keep-pop>
+      <section>
+        <h3>배정 <small>생산 / 배정</small></h3>
+        <ul class="alloc">
+          <li v-for="r in allocRows" :key="r.id" :class="[{ more: r.added > 0 }, r.st]" :title="r.st === 'down' ? '고장 설비 있음' : r.st === 'stop' ? '라인 정지' : undefined">
+            <!-- 11/21 두 줄 정돈: 윗줄 = 라인 · 생산 / 배정 (+추가) · 달성률, 아랫줄 = 막대 (모든 줄이 같은 자리·같은 길이) -->
+            <b class="id">{{ r.id }}</b>
+            <span class="n"><b>{{ num(r.done) }}</b> / {{ num(r.plan) }}<span v-if="r.added" class="add">+{{ num(r.added) }}</span></span>
+            <span class="pct">{{ r.plan ? `${r.pct}%` : '-' }}</span>
+            <span class="bar"><i :style="{ width: `${r.pct}%` }" /></span>
+          </li>
+        </ul>
+      </section>
+    </aside>
 
     <div v-if="pop" ref="popEl" class="dock left">
       <EquipPanel
@@ -287,6 +321,143 @@ const panel = computed(() => {
   pointer-events: none;
 }
 
+/* 왼쪽 패널 (11/21): 보기 버튼 아래. 설비 팝업이 열리면 그 자리를 팝업이 씀 */
+.side {
+  position: absolute;
+  z-index: 3;
+  top: calc(var(--sp-3) + var(--control-h-sm) + var(--sp-2));
+  left: var(--sp-3);
+  display: grid;
+  gap: var(--sp-2);
+  width: 216px;
+  max-height: calc(100% - var(--control-h-sm) - var(--sp-3) * 4 - var(--fs-sm) * 1.6);
+  overflow-y: auto;
+}
+
+.side section {
+  padding: var(--sp-3);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-2);
+  background: var(--c-surface);
+}
+
+.side h3 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-strong);
+}
+
+.side h3 small {
+  margin-left: var(--sp-1);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+}
+
+.side ul {
+  display: grid;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.alloc li {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 3.2em;
+  grid-template-rows: auto auto;
+  gap: 3px var(--sp-2);
+  align-items: baseline;
+  margin: 0 calc(var(--sp-1) * -1);
+  padding: 2px var(--sp-1) 4px;
+  border-radius: var(--r-1);
+  font-size: var(--fs-md);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--lh-tight);
+}
+
+.alloc .id {
+  grid-row: 1 / 3;
+  align-self: center;
+  font-weight: var(--fw-strong);
+}
+
+.alloc .n b {
+  color: var(--c-ink);
+  font-weight: var(--fw-strong);
+}
+
+.alloc .n {
+  overflow: hidden;
+  color: var(--c-ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.alloc .pct {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+.alloc .bar {
+  grid-column: 2 / 4;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--c-track);
+}
+
+.alloc .bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--c-ink-2);
+}
+
+.alloc .add {
+  margin-left: var(--sp-1);
+  color: var(--c-accent);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-strong);
+}
+
+.alloc li.more .bar i {
+  background: var(--c-accent);
+}
+
+/* 고장 설비가 있는 라인: 빨간 바탕이 깜빡임 (11/21) */
+.alloc li.down {
+  animation: line-down 1.1s ease-in-out infinite;
+}
+
+.alloc li.down .id {
+  color: var(--c-down);
+}
+
+@keyframes line-down {
+  0%, 100% { background: transparent; }
+  50% { background: color-mix(in srgb, var(--c-down) 22%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alloc li.down {
+    animation: none;
+    background: color-mix(in srgb, var(--c-down) 16%, transparent);
+  }
+}
+
+/* 정지한 라인: 회색 */
+.alloc li.stop,
+.alloc li.stop .n,
+.alloc li.stop .n b,
+.alloc li.stop .pct {
+  color: var(--c-ink-3);
+}
+
+.alloc li.stop .bar i {
+  background: var(--c-ink-3);
+}
+
 /* 붙는 자리: 설비 팝업 = 왼쪽 (보기 버튼 아래), 라인 카드 = 오른쪽 위 (내용만큼) */
 .dock {
   position: absolute;
@@ -321,8 +492,16 @@ const panel = computed(() => {
   top: 0;
   left: 0;
   white-space: nowrap;
+  transition: opacity 0.25s ease, visibility 0s;
   font-size: var(--fs-sm);
   line-height: var(--lh-tight);
+}
+
+/* 지금 보기(3D·탑뷰)에 안 쓰는 이름표: 서서히 사라진 뒤 숨김 (눌리지도 않음, 11/21) */
+.stage :deep(.f3d-tag.f3d-off) {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
 }
 
 .stage :deep(.f3d-svg) {
@@ -383,6 +562,24 @@ const panel = computed(() => {
 
 .stage :deep(.f3d-zone.go:hover) { background: var(--c-surface-sunk); }
 
+/* 비전 검사: 누를 수 있지만 모양은 설비 이름표와 같은 까만 칸 (11/21) */
+.stage :deep(.f3d-zone.go.dark) {
+  box-shadow: none;
+  background: var(--c-ink);
+  color: var(--c-inverse-ink);
+}
+
+.stage :deep(.f3d-zone.go.dark:hover) { background: var(--c-ink-2); }
+
+/* 적재 단추 안 출하 수 (11/21) */
+.stage :deep(.f3d-zone.go small) {
+  margin-left: var(--sp-1);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+}
+
 /* 라인 이름: 라인 바닥 왼쪽 끝. 단추가 아니라 이름표 (바닥을 눌러 고른다) */
 .stage :deep(.f3d-line) {
   padding: 3px var(--sp-2);
@@ -403,83 +600,6 @@ const panel = computed(() => {
   box-shadow: none;
   background: var(--c-ink);
   color: var(--c-inverse-ink);
-}
-
-/* 배정 칸 (코일 입고 왼쪽): 라인별 생산 / 배정 + 진행 막대. 추가 배정 받은 라인은 강조색 테두리 */
-.stage :deep(.f3d-alloc-head small) {
-  display: block;
-  font-size: var(--fs-sm);
-  text-align: center;
-}
-
-.stage :deep(.f3d-alloc) {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: calc(var(--sp-8) * 3);
-  padding: 2px var(--sp-2) var(--sp-1);
-  border: var(--line-w) solid var(--c-line-strong);
-  border-radius: var(--r-1);
-  background: var(--c-surface);
-  color: var(--c-ink);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.stage :deep(.f3d-alloc.more) {
-  border: var(--line-w-strong) solid var(--c-accent);
-}
-
-.stage :deep(.f3d-alloc .top) {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--sp-2);
-}
-
-.stage :deep(.f3d-alloc .n) {
-  color: var(--c-ink-3);
-}
-
-.stage :deep(.f3d-alloc .n b) {
-  color: var(--c-ink);
-}
-
-.stage :deep(.f3d-alloc .bar) {
-  display: block;
-  height: var(--sp-1);
-  border-radius: 2px;
-  background: var(--c-track);
-}
-
-.stage :deep(.f3d-alloc .bar i) {
-  display: block;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--c-ink-3);
-}
-
-.stage :deep(.f3d-alloc .add) {
-  color: var(--c-accent);
-  font-weight: var(--fw-strong);
-}
-
-/* 비전 검사 칸: 양품·불량 (11/21) */
-.stage :deep(.f3d-vi) {
-  display: flex;
-  gap: var(--sp-2);
-  align-items: baseline;
-  padding: 2px var(--sp-2);
-  border: var(--line-w) solid var(--c-line-strong);
-  border-radius: var(--r-1);
-  background: var(--c-surface);
-  color: var(--c-ink);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.stage :deep(.f3d-vi .ng) {
-  color: var(--c-ink-2);
 }
 
 /* 재공 수 (상자 아이콘 + 수) · 코일 재고 */
@@ -521,7 +641,7 @@ const panel = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-1);
-  padding: 2px var(--sp-2) 2px 3px;
+  padding: 2px;
   border: var(--indicator-w) solid var(--st);
   border-radius: var(--r-2);
   background: var(--c-surface);

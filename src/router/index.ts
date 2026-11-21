@@ -17,6 +17,8 @@ declare module 'vue-router' {
     public?: boolean
     /** 이 권한이 있어야 들어가는 화면 (없으면 첫 화면으로) */
     perm?: import('@/lib/access').Perm
+    /** 보고서 문서만 (임시 MES 틀 안, 11/21) */
+    docOnly?: boolean
   }
 }
 
@@ -51,7 +53,10 @@ if (import.meta.env.DEV) {
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('@/pages/Scr000LoginPage.vue'), meta: { screen: 'SCR-000', title: '로그인', public: true } },
   // 임시 MES (11/20, 시연용): 상단 메뉴 없이 따로. 캠퍼스장 계정만
-  { path: '/mes', component: () => import('@/pages/MesPage.vue'), meta: { title: '임시 MES', perm: 'mes' } },
+  { path: '/mes', component: () => import('@/pages/MesPage.vue'), meta: { title: 'MES', perm: 'mes' } },
+  // 11/21 보고서 문서만 (우리 시스템 보고서 화면과 같은 부품·같은 레이아웃). 임시 MES가 틀(iframe) 안에 띄워요
+  { path: '/doc/replan/:id', component: () => import('@/pages/Scr007ReplanPage.vue'), meta: { title: '생산계획 수정 보고서', docOnly: true } },
+  { path: '/doc/daily/:date', component: () => import('@/pages/Scr007DailyPage.vue'), meta: { title: '일일 생산 보고서', docOnly: true } },
   { path: '/', component: () => import('@/layouts/AppShell.vue'), children: appRoutes },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]

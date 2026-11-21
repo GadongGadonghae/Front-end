@@ -1,9 +1,52 @@
-<!-- 임시 MES의 보고서 열람: 우리 시스템에서 작성 때 찍어 둔 문서 값(.doc 양식 값)을 그대로 읽기 전용으로 보인다 -->
+<!-- 임시 MES의 보고서 열람: 우리 시스템에서 작성 때 찍어 둔 문서 값(.doc 양식 값)을 그대로 읽기 전용으로 보인다
+     11/21: src가 있으면 우리 시스템 보고서 화면의 "문서만 보기"(/doc/…)를 그대로 띄운다 (같은 부품·같은 레이아웃).
+     src가 없으면 [Google Docs(.doc)]와 같은 양식을 채워 보이고, 그것도 못 하면 아래 요약 화면 -->
 <script setup lang="ts">
-import type { DailyDocData } from '@/lib/dailyDoc'
-import type { ReplanDocData } from '@/lib/replanDoc'
+import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { dailyDocHtml, type DailyDocData } from '@/lib/dailyDoc'
+import { replanDocHtml, type ReplanDocData } from '@/lib/replanDoc'
 
-defineProps<{ daily?: DailyDocData; replan?: ReplanDocData }>()
+const props = defineProps<{ daily?: DailyDocData; replan?: ReplanDocData; src?: string | null }>()
+
+// ── 우리 화면 그대로 (/doc/…): 같은 주소라 로그인이 이어져요. 문서 길이가 바뀌면(불러오기 끝) 틀 높이도 따라가요 ──
+const live = ref<HTMLIFrameElement | null>(null)
+// 틀 안 화면은 불러온 뒤에 그려지고(보고서 값을 받아 옴) body 높이는 100%로 고정이라, 0.5초마다 문서 높이를 재서 맞춰요
+let fitTimer: ReturnType<typeof setInterval> | null = null
+function fitLive() {
+  if (fitTimer) clearInterval(fitTimer)
+  const set = () => {
+    const d = live.value?.contentDocument
+    if (!live.value || !d?.documentElement) return
+    const h = `${d.documentElement.scrollHeight}px`
+    if (live.value.style.height !== h) live.value.style.height = h
+  }
+  set()
+  fitTimer = setInterval(set, 500)
+}
+onBeforeUnmount(() => { if (fitTimer) clearInterval(fitTimer) })
+
+const html = ref<string | null>(null)
+const frame = ref<HTMLIFrameElement | null>(null)
+let seq = 0
+watch(() => [props.daily, props.replan], async () => {
+  const my = ++seq
+  html.value = null
+  try {
+    const h = props.daily ? await dailyDocHtml(props.daily) : props.replan ? await replanDocHtml(props.replan) : null
+    if (my === seq) html.value = h
+  } catch {
+    if (my === seq) html.value = null   // 요약 화면으로
+  }
+}, { immediate: true })
+
+/** 문서 길이만큼 틀 높이를 맞춘다 (안쪽 스크롤 없이 바깥 목록에서 한 번에 내려 읽게) */
+function fit() {
+  const d = frame.value?.contentDocument
+  if (!d) return
+  void nextTick(() => {
+    if (frame.value && d.documentElement) frame.value.style.height = `${d.documentElement.scrollHeight + 8}px`
+  })
+}
 
 const DAILY_TABLES: { key: string; title: string; head: string[] }[] = [
   { key: 'LINES', title: '라인별 실적', head: ['라인', '계획', '실적', '달성률', 'OEE', '불량'] },
@@ -14,7 +57,26 @@ const DAILY_TABLES: { key: string; title: string; head: string[] }[] = [
 </script>
 
 <template>
-  <article v-if="daily" class="rep">
+  <iframe
+    v-if="src"
+    :key="src"
+    ref="live"
+    class="doc live"
+    :src="src"
+    :title="daily ? '일일 생산 보고서' : '생산계획 수정 보고서'"
+    @load="fitLive"
+  />
+  <!-- 스크립트는 막고(sandbox), 높이를 재려고 같은 출처만 허용. 내용은 우리 양식 + 글자 이스케이프한 값 -->
+  <iframe
+    v-else-if="html"
+    ref="frame"
+    class="doc"
+    :srcdoc="html"
+    sandbox="allow-same-origin"
+    :title="daily ? '일일 생산 보고서' : '생산계획 수정 보고서'"
+    @load="fit"
+  />
+  <article v-else-if="daily" class="rep">
     <dl class="meta">
       <dt>문서번호</dt><dd>{{ daily.values.DOC_NO }}</dd>
       <dt>생산일</dt><dd>{{ daily.values.PROD_DATE }}</dd>
@@ -71,6 +133,16 @@ const DAILY_TABLES: { key: string; title: string; head: string[] }[] = [
 </template>
 
 <style scoped>
+/* 양식 문서: 종이(A4)처럼 흰 바탕 */
+.doc {
+  display: block;
+  width: 100%;
+  min-height: 480px;
+  border: var(--line-w) solid var(--c-line);
+  border-radius: var(--r-1);
+  background: var(--c-paper);
+}
+
 .rep {
   display: grid;
   gap: var(--sp-4);

@@ -1,6 +1,6 @@
 <!-- 앱 틀: 상단 메뉴(화면정의서 1장 공통 헤더) + 화면 + 고장 토스트 자리 -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import FaultToast from '@/components/domain/FaultToast.vue'
@@ -16,6 +16,7 @@ import { useDataInfo } from '@/composables/useDataInfo'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDate, formatTime } from '@/lib/format'
 import { settingsTabsFor } from '@/lib/permissions'
+import { useBack } from '@/composables/useBack'
 
 const BASE_MENU = [
   { name: '대시보드', to: '/' },
@@ -35,9 +36,15 @@ const MENU = computed(() => {
   return first ? [...BASE_MENU, { name: '설정', to: first.to }] : BASE_MENU
 })
 const now = useNow()
+// 11/21 도장 경로 맞추기: 결재로 경로가 바뀌어도 배치도·3D가 따라오게 (15초마다, 바뀐 때만 다시 그림)
+let routeTimer: ReturnType<typeof setInterval> | null = null
+onMounted(() => { routeTimer = setInterval(syncRoutes, 15_000) })
+onUnmounted(() => { if (routeTimer) clearInterval(routeTimer) })
+// 전체화면(F11)에서는 브라우저 뒤로 가기가 안 보여서 화면 안에 [‹ 이전] (11/21)
+const { canBack, goBack } = useBack()
 const nowIso = computed(() => new Date(now.value).toISOString())
 const { demo } = useDataInfo()
-const { equipmentName } = useMaster()
+const { equipmentName, syncRoutes } = useMaster()
 const toast = useFaultToast()
 // 목표 생산량 변동 카드: 생산관리팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
 const target = useTargetChange()
@@ -79,6 +86,7 @@ function viewFault() {
 <template>
   <div class="shell print-flow">
     <header class="top no-print">
+      <button v-if="canBack" type="button" class="back" aria-label="이전 화면" title="이전 화면" @click="goBack"><BaseIcon name="chevron-left" :size="20" />이전</button>
       <RouterLink class="brand" to="/"><BaseIcon name="factory" :size="24" />라인가동현황</RouterLink>
       <nav aria-label="메뉴">
         <RouterLink
@@ -93,7 +101,7 @@ function viewFault() {
         <span v-if="demo" class="demo">데모 데이터</span>
         <span class="clock">{{ formatDate(nowIso) }}<b>{{ formatTime(nowIso) }}</b></span>
         <HeaderAlerts />
-        <RouterLink v-if="can('mes')" class="mes" to="/mes">임시 MES</RouterLink>
+        <RouterLink v-if="can('mes')" class="mes" to="/mes">MES</RouterLink>
         <span class="user"><BaseIcon name="user" :size="20" />{{ userName }}<small class="role">{{ roleName }}</small></span>
         <button class="logout" type="button" aria-label="로그아웃" title="로그아웃" @click="onLogout"><BaseIcon name="log-out" :size="20" /></button>
       </div>
@@ -170,6 +178,23 @@ function viewFault() {
   white-space: nowrap;
 }
 
+
+.back {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  gap: var(--sp-1);
+  margin-right: calc(var(--sp-4) * -1);
+  padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-1);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.back:hover { background: var(--c-surface-sunk); }
 
 .brand {
   display: flex;

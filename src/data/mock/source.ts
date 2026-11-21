@@ -450,6 +450,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getMesReports: async () => null,
       getPlannedStopLines: async () => [],
       getPendingTarget: async () => null,
+      getPaintPlan: async () => null,   // 도장 운영 판단은 서버 계산 전용
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),
@@ -502,6 +503,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         tickSummary()
         return { ok: true, value: targetRows(date, date)[0] }
       },
+      applyPaintPlan: async () => ({ ok: false, error: '데모 데이터에서는 도장 운영을 적용할 수 없어요 (실서버 전용)' }),
       async setPaintRoute(lineId, paintId, reason) {
         const line = MASTER.lines.find((l) => l.id === lineId && l.kind === 'production')
         if (!line) return { ok: false, error: `생산 라인이 아닙니다: ${lineId}` }

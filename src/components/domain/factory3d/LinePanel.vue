@@ -60,7 +60,7 @@ const STATES: StateCode[] = ['R', 'I', 'S', 'D', 'DC']
       </ul>
 
       <p class="wip">
-        재공 (데모) ·
+        재공 ·
         <template v-for="(w, i) in wip" :key="w.label">{{ i ? ' · ' : '' }}{{ w.label }} <b class="num">{{ formatNumber(w.qty) }}</b></template>
       </p>
     </div>

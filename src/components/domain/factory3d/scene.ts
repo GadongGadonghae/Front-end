@@ -81,6 +81,12 @@ interface Tag {
   w: number; h: number
   /** 이상 표시처럼 서로 겹치면 위로 비켜 쌓는 이름표 */
   stack?: boolean
+  /** 비켜 가지는 않지만, 뒤에 놓는 stack 이름표가 피해 가는 자리 (재공 수·코일 수, 11/21) */
+  solid?: boolean
+  /** 비켜 쌓은 높이(px). 겹칠 때만 바꿔요 (11/21) */
+  ty?: number
+  /** 나중에 놓아 비켜 주는 이름표 (구역 이름). 알림은 설비 바로 위에 두고 구역 이름이 피해요 (11/21) */
+  yields?: boolean
 }
 interface Eq {
   id: string; line: ProductionLineId | null; kind: 'SL' | 'PR' | 'WD' | 'PT' | 'VI'; no: string
@@ -146,11 +152,41 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   // ── 카메라: 원근 하나로 3D·탑뷰·설비 다가가기를 모두 한다 ──
   const cam = new THREE.PerspectiveCamera(40, W() / H(), 1, 1000)
   cam.position.copy(HOME.pos)
+  // 11/21 처음 3D 자리: 화면 크기에 맞춰, 왼쪽 배정 패널에 코일 입고가 가리지 않고 오른쪽 적재까지 들어오게 (homePose)
+  //   패널 오른쪽 끝(px) = 12 + 216 + 여유 16
+  const PANEL_R = 244
+  const HOME_DIR = HOME.pos.clone().sub(HOME.tgt)
+  const fitPts = [
+    ...[-70, -57].flatMap((x) => [-40, -20, 0, 20, 34].flatMap((z) => [[x, 0, z], [x, 8, z]])), [-64, 7, -42], [-64, 9, -30],
+  ].map((p) => new THREE.Vector3(...p))
+  const rightPts = [-16, 0, 16].flatMap((z) => [[99, 0, z], [99, 6, z]]).map((p) => new THREE.Vector3(...p))
+  const homePose = (): Pose => {
+    const w = W(), h = H()
+    const c = new THREE.PerspectiveCamera(cam.fov, w / h, 1, 1000)
+    const pv2 = new THREE.Vector3()
+    const sx = (p: THREE.Vector3) => ((pv2.copy(p).project(c).x + 1) / 2) * w
+    let best: Pose | null = null
+    for (let k = 1; k <= 1.6 && !best; k += 0.04) {
+      for (let dx = 0; dx >= -40; dx -= 2) {
+        const tgt = new THREE.Vector3(HOME.tgt.x + dx, HOME.tgt.y, HOME.tgt.z)
+        c.position.copy(tgt).addScaledVector(HOME_DIR, k)
+        c.lookAt(tgt)
+        c.updateMatrixWorld()
+        const left = Math.min(...fitPts.map(sx))
+        const right = Math.max(...rightPts.map(sx))
+        if (right > w - 12) break   // 더 왼쪽으로 옮기면 오른쪽이 더 잘려요 → 더 멀리서
+        if (left >= PANEL_R) { best = { pos: c.position.clone(), tgt }; break }
+      }
+    }
+    return best ?? { pos: HOME.pos.clone(), tgt: HOME.tgt.clone() }
+  }
   const ctl = new OrbitControls(cam, renderer.domElement)
   ctl.enableDamping = true
   ctl.screenSpacePanning = false
   ctl.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE }
-  ctl.target.copy(HOME.tgt)
+  const home0 = homePose()
+  cam.position.copy(home0.pos)
+  ctl.target.copy(home0.tgt)
   ctl.maxPolarAngle = Math.PI / 2.15
   ctl.minDistance = 10
   ctl.maxDistance = 260
@@ -272,7 +308,9 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const pileAt = (key: string, x: number, bz: number) => {
     const z = bz + PILE_DZ
     box(SLOT * 3 + 0.3, 0.2, SLOT * 3 + 0.3, pallet, x, 0, z)
-    PILES.set(key, { x, z, bz, lab: tag('', 'f3d-cnt', [x, 5.2, z], '3d'), stack: [], n: 0 })
+    const lab = tag('', 'f3d-cnt', [x, 5.2, z], '3d')
+    lab.solid = true
+    PILES.set(key, { x, z, bz, lab, stack: [], n: 0 })
   }
 
   const lineObjs: Record<string, THREE.Object3D[]> = {}
@@ -349,10 +387,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   // 처음 그릴 때 상자가 0개면 화면 범위(bounding sphere)가 빈 채로 굳어 나중 상자가 안 그려져요 → 범위 판정에서 빼요 (11/21)
   shipMesh.frustumCulled = false
   scene.add(shipMesh)
-  const shipLab = tag('', 'f3d-cnt', [SHIP_X, 6.5, 0])
-  // 11/21 비전 검사 칸: 오늘 검사 양품·불량 (비전 위)
-  const viLab = tag('', 'f3d-vi', [74, 12, 0])
-  let viKey = ''
+  // 11/21 출하 수는 따로 이름표를 두지 않고 "적재" 단추 안에 (비전 검사·적재 이름표와 겹치던 것)
+  let shipBtn: HTMLElement | null = null
   let shipped = -1
 
   // ── 라인 바닥: 마우스 올림 판(보이지 않음) + 외곽선 + 옅은 면 ──
@@ -384,22 +420,27 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const lineTags = LINES.map((L, i) => tag(`${L}라인`, 'f3d-line', [-50.5, 0.6, lineZ(i)], null, 'r'))
   // 구역 이름 (공정 머리글). 코일 입고·비전·적재는 눌러서 상세 화면으로
   const ZONES: [string, number, number, number, ZoneId | null][] = [
-    ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 6, -37, null], ['프레스 ×4', -12, 11, -37, null], ['용접', 18, 8, -37, null],
-    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -6, 'vision'], ['적재', 86, 6, -16, 'outbound'],
+    // 11/21 공정 이름은 A라인 뒤로 더 물리고 높여서, A라인 설비 알림과 떨어지게 (z -37 → -44)
+    ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 10, -44, null], ['프레스 ×4', -12, 14, -44, null], ['용접', 18, 11, -44, null],
+    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -8, 'vision'], ['적재', SHIP_X, 6, -9, 'outbound'],
   ]
+  // 11/21 구역 이름도 겹치면 비켜 쌓아요 (도장·비전·적재 이름이 재공 수·알림과 겹치던 것). 알림(이상 표시)은 이 뒤에 놓여 구역 이름을 피해 가요
   for (const [n, x, y, z, go] of ZONES) {
+    let t: Tag
     if (go) {
-      const t = tag(`<button type="button" class="f3d-zone go">${n}${ICON_GO}</button>`, '', [x, y, z])
+      // 비전 검사는 설비 이름표처럼 까만 칸 (11/21). 코일 입고·적재는 다른 화면으로 가는 흰 표지판
+      t = tag(`<button type="button" class="f3d-zone go${go === 'vision' ? ' dark' : ''}">${n}${ICON_GO}</button>`, '', [x, y, z])
       t.el.firstElementChild!.addEventListener('click', () => on.onZone(go))
-    } else tag(`<span class="f3d-zone">${n}</span>`, '', [x, y, z])
+      if (go === 'outbound') shipBtn = t.el.firstElementChild as HTMLElement
+    } else t = tag(`<span class="f3d-zone">${n}</span>`, '', [x, y, z])
+    t.stack = true
+    t.yields = true
   }
   const coilLab = tag('', 'f3d-cnt', [-64, 9, -30], '3d')
+  coilLab.solid = true
 
-  // ── 배정 칸 (11/20): 물량이 시작되는 코일 입고 왼쪽 바닥에, 라인 줄마다 현재 생산 / 배정(오늘 목표) ──
-  // 승인·적용된 추가 주문 배정이 있으면 "+N 추가 배정"을 붙이고 강조색 테두리
-  tag('배정<small>생산 / 배정</small>', 'f3d-zone f3d-alloc-head', [-94, 7, -42])   // 11/20: 코일 입고·설비를 가리지 않게 왼쪽으로 (-78 → -94)
-  const allocTags = LINES.map((_L, i) => tag('', 'f3d-alloc', [-94, 1, lineZ(i)]))
-  const num = (n: number | null | undefined) => (n == null ? '-' : n.toLocaleString('ko-KR'))
+  // 배정(생산 / 배정)은 장면 위가 아니라 화면 왼쪽 패널 (Factory3D.vue, 11/21)
+
 
   // ── 도장 경로 ──
   let routes: Record<ProductionLineId, number> = { A: 0, B: 0, C: 0, D: 1, E: 1, F: 1 }
@@ -504,7 +545,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (!e) continue
       let b = bangs.get(e.id)
       if (!b) {
-        const t = tag('<button type="button" class="f3d-bang"></button>', '', [e.x, e.h + 3.4, e.z], '3d')
+        const t = tag('<button type="button" class="f3d-bang"></button>', '', [e.x, e.h + 1.6, e.z], '3d')
         t.stack = true
         t.el.firstElementChild!.addEventListener('click', () => on.onPick(e.id))
         b = { t, state: it.state }
@@ -512,7 +553,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       }
       b.state = it.state
       const btn = b.t.el.firstElementChild as HTMLElement
-      const html = `<span class="f3d-key st-${it.state}">${it.state}</span>${STATE_NAME[it.state]}`
+      // 11/21 장면에는 상태 글자 칸만 (이름·상태 이름은 왼쪽 '이상 설비' 목록과 누르면 열리는 설비 창에). 큰 알약이 이름표와 겹쳐 지저분했음
+      const html = `<span class="f3d-key st-${it.state}">${it.state}</span>`
       if (btn.dataset.k !== html) {
         btn.dataset.k = html
         btn.dataset.state = it.state
@@ -774,27 +816,51 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     drawPoly(polyHov, hoverLine !== sel ? hoverLine : null, w, h)
     // 이상 표시끼리 겹치면 위로 비켜 쌓는다 (이웃 설비가 함께 고장·대기일 때)
     const placed: [number, number, number, number][] = []
-    for (const t of tags) {
+    // 11/21 떨림 없애기: 카메라가 움직이는 동안(3D ↔ 탑뷰 등)은 비켜 쌓기를 새로 계산하지 않고 그대로 따라가요
+    //   (매 프레임 겹침이 바뀌며 이름표가 위아래로 튀던 것). 멈추면 다시 계산하고, 높이는 부드럽게 옮겨요.
+    //   움직이는 동안은 소수점 자리 그대로(1px씩 끊기지 않게), 멈추면 정수 자리(글자 또렷하게)
+    const moving = tween !== null || frameNow - camMovedAt < 150
+    const still = !moving && frameNow - camMovedAt > 400
+    // 알림·재공 수를 먼저 놓고, 구역 이름(yields)은 나중에 놓아 겹치면 구역 이름이 비켜요
+    const order = [...tags.filter((t) => !t.yields), ...tags.filter((t) => t.yields)]
+    for (const t of order) {
       if (t.el.hidden) continue
       const shown = !t.only || (t.only === 'top') === topUi
-      t.el.style.display = shown ? '' : 'none'
-      if (!shown) continue
+      // 보기 바꿀 때 탑뷰 카드·3D 이름표가 툭 사라지지 않게 투명도로 (CSS transition)
+      t.el.classList.toggle('f3d-off', !shown)
       const at = toPx(t.pos, w, h)
       if (!at) { t.el.style.transform = 'translate(-9999px,0)'; continue }
       if (t.w < 0 || !t.w) { t.w = t.el.offsetWidth; t.h = t.el.offsetHeight }
       const x = t.anchor === 'r' ? at[0] - t.w : at[0] - t.w / 2
-      let y = t.anchor === 'b' ? at[1] - t.h : at[1] - t.h / 2
+      const y0 = t.anchor === 'b' ? at[1] - t.h : at[1] - t.h / 2
       // 반 넘게 화면 밖이면 숨긴다 (가장자리에 이름표 조각만 걸리지 않게)
-      if (y + t.h / 2 < 0 || y + t.h / 2 > h || x + t.w / 2 < 0 || x + t.w / 2 > w) { t.el.style.transform = 'translate(-9999px,0)'; continue }
-      if (t.stack) {
-        for (let k = 0; k < 6; k++) {
-          const hit = placed.find((r) => x < r[0] + r[2] && x + t.w > r[0] && y < r[1] + r[3] && y + t.h > r[1])
-          if (!hit) break
-          y = hit[1] - t.h - 4
+      if (y0 + t.h / 2 < 0 || y0 + t.h / 2 > h || x + t.w / 2 < 0 || x + t.w / 2 > w) { t.el.style.transform = 'translate(-9999px,0)'; continue }
+      let y = y0
+      if (t.stack && shown) {
+        // 11/21 통통 튀지 않게: 지금 높이(ty)가 안 겹치면 그대로 두고(확대·축소해도 그대로), 겹칠 때만 새로 올려요.
+        //   올렸던 이름표는 카메라가 멈추고 0.4초 지나서 더 낮은 자리가 비면 그때 한 번 내려와요
+        const hitAt = (yy: number) => placed.find((r) => x < r[0] + r[2] + 2 && x + t.w + 2 > r[0] && yy < r[1] + r[3] + 2 && yy + t.h + 2 > r[1])
+        const lowest = () => {
+          let yy = y0
+          for (let k = 0; k < 12; k++) {
+            const hit = hitAt(yy)
+            if (!hit) break
+            yy = hit[1] - t.h - 4
+          }
+          return yy - y0
         }
+        let ty = t.ty ?? 0
+        if (hitAt(y0 + ty)) ty = lowest()
+        else if (ty !== 0 && still) ty = Math.max(ty, lowest())
+        t.ty = ty
+        y = y0 + ty
         placed.push([x, y, t.w, t.h])
-      }
-      t.el.style.transform = `translate(${Math.round(x)}px,${Math.round(y)}px)`
+      } else if (shown && t.solid && t.el.style.visibility !== 'hidden' && t.el.innerHTML) placed.push([x, y, t.w, t.h])
+      const settled = !moving
+      const px = settled ? Math.round(x) : x
+      const py = settled ? Math.round(y) : y
+      // 멈추면 2D 이동(글자를 화면 픽셀에 맞춰 또렷하게), 움직이는 동안만 3D 이동(부드럽게). 늘 3D로 두면 글자가 흐려 보였어요 (11/21)
+      t.el.style.transform = settled ? `translate(${px}px,${py}px)` : `translate3d(${px}px,${py}px,0)`
     }
   }
 
@@ -858,7 +924,6 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   /** 설비 다가가기 전 자리 (닫으면 여기로) */
   let saved: Pose | null = null
   /** 탑뷰로 가기 전 3D 자리 (3D로 돌아올 때 여기로) */
-  let back3d: Pose | null = null
   let onMode: ((m: ViewMode) => void) | null = null
   /** 탑뷰에 도착해 카드가 떠 있는 상태 (설비에 다가가 있거나 날고 있으면 아님) */
   let topUi = false
@@ -884,12 +949,10 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   }
 
   const setView = (m: ViewMode) => {
-    const base = saved ?? pose()
     focusId = null
     saved = null
     setRing(null)
     if (m === 'top') {
-      if (mode === '3d') back3d = base
       mode = 'top'
       onMode?.('top')
       fly(topPose(), 950)
@@ -897,7 +960,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       const wasTop = mode === 'top'
       mode = '3d'
       onMode?.('3d')
-      fly(wasTop && back3d ? back3d : { pos: HOME.pos.clone(), tgt: HOME.tgt.clone() }, wasTop ? 950 : 700)
+      // 11/21 3D로 돌아오면 늘 같은 처음 자리 (전에 돌려 둔 자리로 가지 않음)
+      fly(homePose(), wasTop ? 950 : 700)
     }
   }
   const focus = (id: string) => {
@@ -976,10 +1040,21 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   })
   ro.observe(host)
   let raf = 0
+  // 카메라가 움직였는지 (끌기·굴리기·관성·날기 모두). 멈추고 150ms 지나면 이름표 비켜 쌓기를 다시 계산
+  const lastCamPos = new THREE.Vector3()
+  const lastCamTgt = new THREE.Vector3()
+  let camMovedAt = -1e9
+  let frameNow = 0
   const loop = (now: number) => {
+    frameNow = now
     raf = requestAnimationFrame(loop)
     tween?.(now)
     ctl.update()
+    // 11/21 떨림 원인: 이름표 자리를 계산할 때 카메라 행렬이 아직 지난 프레임 것이었어요 (render 때 갱신)
+    //   → 움직이는 동안 이름표가 장면보다 한 프레임 늦게 따라와 흔들렸어요. 자리 계산 전에 이번 프레임 카메라로 맞춰요
+    cam.updateMatrixWorld()
+    const moved = !lastCamPos.equals(cam.position) || !lastCamTgt.equals(ctl.target)
+    if (moved) { lastCamPos.copy(cam.position); lastCamTgt.copy(ctl.target); camMovedAt = now }
     syncTopUi()
     if (hoverDirty) { hoverDirty = false; doHover() }
     paint(now)
@@ -1001,15 +1076,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (LINES.some((L) => next[L] !== routes[L])) { routes = next; drawRoutes() }
     },
     select(L: ProductionLineId | null) { sel = L; applyDim() },
-    /** 비전 검사 칸: 오늘 검사 양품·불량 수 */
-    setVision(v: { ok: number; ng: number } | null) {
-      const key = v ? `${v.ok}|${v.ng}` : ''
-      if (key === viKey) return
-      viKey = key
-      setHtml(viLab, v ? `<b>비전 검사</b><span class="ok">양품 ${v.ok.toLocaleString('ko-KR')}</span><span class="ng">불량 ${v.ng.toLocaleString('ko-KR')}</span>` : '')
-      viLab.el.style.visibility = v ? '' : 'hidden'
-    },
-    /** 출하 적재: 오늘 출고(양품) 수 → 파렛트 상자 (상자 1개 = 20개) + 수 이름표 */
+    /** 출하 적재: 오늘 출고(양품) 수 → 파렛트 상자 (상자 1개 = 20개) + 적재 단추에 "출하 N개" */
     setShipped(n: number | null) {
       const v = Math.max(0, n ?? 0)
       if (v === shipped) return
@@ -1023,21 +1090,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       }
       shipMesh.count = k
       shipMesh.instanceMatrix.needsUpdate = true
-      setHtml(shipLab, `출하 ${v.toLocaleString('ko-KR')}개`)
-      shipLab.el.style.visibility = v ? '' : 'hidden'
-    },
-    /** 배정 칸: 라인별 현재 생산 · 배정(오늘 목표) · 오늘 추가 배정 */
-    setAllocation(rows: Partial<Record<ProductionLineId, { done: number | null; plan: number | null; added: number }>>) {
-      LINES.forEach((L, i) => {
-        const r = rows[L]
-        const el = allocTags[i].el
-        const pct = r?.done != null && r.plan ? Math.min(100, Math.round((r.done / r.plan) * 100)) : 0
-        el.innerHTML = `<span class="top"><b>${L}</b><span class="n"><b>${num(r?.done)}</b> / ${num(r?.plan)}</span></span>`
-          + `<span class="bar"><i style="width:${pct}%"></i></span>`
-          + (r?.added ? `<span class="add">+${num(r.added)} 추가 배정</span>` : '')
-        el.classList.toggle('more', !!r?.added)
-        el.setAttribute('aria-label', `${L}라인 현재 생산 ${num(r?.done)}, 배정 ${num(r?.plan)}${r?.added ? `, 오늘 추가 배정 ${num(r.added)}` : ''}`)
-      })
+      if (shipBtn) shipBtn.innerHTML = `적재<small>출하 ${v.toLocaleString('ko-KR')}개</small>${ICON_GO}`
     },
     setView,
     onModeChange(cb: (m: ViewMode) => void) { onMode = cb },

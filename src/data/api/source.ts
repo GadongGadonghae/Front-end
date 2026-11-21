@@ -640,6 +640,7 @@ export function createApiSource(): DataSource {
       getMesReports: async () => (await api.MES01()).items.map(flowRecordOf).filter((x): x is ReportFlowRecord => !!x),
       getPlannedStopLines: plannedStopLines,
       getPendingTarget: async (date) => (await api.G05(date)) ?? null,
+      getPaintPlan: async () => (await api.PT01()) ?? null,
       async getOrderAdditions(date) {
         const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
         const out: Partial<Record<LineId, number>> = {}
@@ -821,6 +822,9 @@ export function createApiSource(): DataSource {
           const r = await api.G04(date, quantity)
           return { ok: true, value: { date, quantity, done: null, updatedBy: null, pending: r.pending, before: r.before } }
         } catch (e) { return fail(e) }
+      },
+      async applyPaintPlan() {
+        try { return { ok: true, value: await api.PT02() } } catch (e) { return fail(e) }
       },
       async setPaintRoute(lineId, paintId, reason) {
         try { return { ok: true, value: await api.M09(lineId, { paintId, reason }) } } catch (e) { return fail(e) }

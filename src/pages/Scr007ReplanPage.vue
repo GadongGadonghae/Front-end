@@ -21,6 +21,8 @@ import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 
 const route = useRoute()
 const router = useRouter()
+/** 문서만 보기 (/doc/replan/:id, 임시 MES 틀 안, 11/21) */
+const docOnly = computed(() => route.meta.docOnly === true)
 const selectedId = computed(() => (typeof route.params.id === 'string' && route.params.id ? route.params.id : null))
 const rp = useReplanReports(selectedId)
 // 계정 권한 (11/20): 작성 = 생산관리팀장, 결재·전송 = 공장장 (결재 줄 ReportApproval · useReportFlow, 결재하면 서버가 계획에 적용)
@@ -236,7 +238,7 @@ const doc = computed(() => {
     documentNo: r.documentNo ?? r.id,
     created,
     targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : r.kind === 'target' ? '전체 라인' : '출고'),
-    model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '데모 계산',
+    model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '규칙 계산',
     author: r.createdBy,
     // 결재 줄 상태 (작성 중 → 결재 요청 → 결재 완료 → 전송 완료). 추가 주문은 결재와 함께 적용
     status: flowLine(flow.flowOf(`replan:${r.id}`)).label,
@@ -359,7 +361,7 @@ async function downloadPdf() {
 </script>
 
 <template>
-  <PageLayout>
+  <PageLayout :class="{ 'doc-only': docOnly }">
     <template #head>
       <h1 class="title">AI 리포트</h1>
       <BaseTabs :items="TABS" active="replan" label="리포트 종류" />
@@ -1539,6 +1541,31 @@ async function downloadPdf() {
 .note2 {
   margin: 5px 0 0;
   font-size: 10px;
+}
+
+/* 11/21 문서만 보기 (/doc/…, 임시 MES 틀 안): 목록·버튼·요청 칸·결재 단추를 빼고 A4 문서만. 인쇄 모양과 같음 */
+.doc-only {
+  display: block;
+  height: auto;
+  padding: var(--sp-4);
+  background: var(--c-paper);
+}
+
+.doc-only :deep(.no-print),
+.doc-only .side,
+.doc-only .doc-head,
+.doc-only .report-tools {
+  display: none !important;
+}
+
+.doc-only .body,
+.doc-only .doc,
+.doc-only .daily-doc {
+  display: block;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: var(--c-paper);
 }
 
 @media print {

@@ -7,6 +7,7 @@ import type {
   ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, SlackSendDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, FlowReportDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
 } from '@/data/api/dto'
+import type { PaintPlan } from '@/types/paint'
 
 type Unit = 'day' | 'week' | 'month'
 interface Range { from: string; to: string }
@@ -131,6 +132,9 @@ export const api = {
     http.get<{ stopId: number; lineId: string; equipmentIds: string[]; reasonCode: string; startAt: string; endAt: string | null; inProgress: boolean }[]>('/planned-stops', q),
   /** N-01 계획수정 보고서를 슬랙으로 보내기 (고장 장비 + 보고서 + LLM 요약). 웹훅 없음 503, 슬랙 실패 502 */
   N01: (reportId: number) => http.post<SlackSendDto>(`/reassignments/${reportId}/slack`),
+  // 11/21 도장 운영 판단 (화면 계약과 같은 모양이라 DTO를 따로 두지 않음)
+  PT01: () => http.get<PaintPlan>('/paint/plan'),
+  PT02: () => http.post<{ done: string[]; plan: PaintPlan }>('/paint/plan/apply', {}),
 
   // ── 관리·공통 (C) ──
   /** C-01 로그인 */

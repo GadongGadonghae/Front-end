@@ -11,7 +11,8 @@ export interface DailyDocData {
 const TEMPLATE = '/templates/daily-report-template.doc'
 const esc = (v: unknown) => String(v ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 
-export async function downloadDailyDoc(d: DailyDocData) {
+/** 양식을 채운 문서 HTML (Word 내려받기와 임시 MES 화면이 같은 문서를 쓰게, 11/21) */
+export async function dailyDocHtml(d: DailyDocData): Promise<string> {
   const res = await fetch(TEMPLATE)
   if (!res.ok) throw new Error(`보고서 양식을 불러오지 못했습니다 (${res.status})`)
   let doc = new TextDecoder('utf-16le').decode(await res.arrayBuffer())
@@ -22,7 +23,11 @@ export async function downloadDailyDoc(d: DailyDocData) {
   }
   for (const [key, value] of Object.entries(d.values)) doc = doc.split(`{{${key}}}`).join(esc(value))
   if (/\{\{[#/]?\w+\}\}/.test(doc)) throw new Error('보고서 양식 값을 다 채우지 못했습니다')
+  return doc
+}
 
+export async function downloadDailyDoc(d: DailyDocData) {
+  const doc = await dailyDocHtml(d)
   const bytes = new Uint8Array(2 + doc.length * 2)
   bytes[0] = 0xff
   bytes[1] = 0xfe

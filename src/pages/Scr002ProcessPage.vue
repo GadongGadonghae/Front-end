@@ -32,8 +32,10 @@ import { PROCESS_NAME, lineName as lineNameOf } from '@/lib/status'
 import { formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
-import { metricLabel } from '@/lib/metrics'
+import { metricHelp, metricLabel, NOT_MEASURED } from '@/lib/metrics'
 import { usePaintRoute } from '@/composables/usePaintRoute'
+import PaintPlanPanel from '@/components/domain/PaintPlanPanel.vue'
+import { usePaintPlan } from '@/composables/usePaintPlan'
 
 const route = useRoute()
 const router = useRouter()
@@ -61,7 +63,16 @@ const range = ref<TelemetryRange>('1h')
 const series = useTelemetry(selectedId, range)
 const SPEED_ITEMS = ['commandHz', 'outputHz']
 // 설비 상태 센서(더미)는 예지보전 화면에서만 본다
-const items = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor').map((i) => i.item).filter((n) => !SPEED_ITEMS.includes(n)))
+// 11/21 이 공정에서 재지 않는 항목(슬리팅 토크)은 고르기에서 빼고 "측정 안 함"으로 따로 알려요
+const notMeasured = NOT_MEASURED[process] ?? {}
+const items = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor').map((i) => i.item)
+  .filter((n) => !SPEED_ITEMS.includes(n) && !(n in notMeasured)))
+/** 그래프 제목 옆 설명: 무엇을 재는 값인지 + 기준 */
+const itemMeta = computed(() => {
+  const s = series.value?.items.find((i) => i.item === item.value)
+  const limit = !s ? '' : s.lower == null && s.upper == null ? '기준 미정' : `기준 ${formatNumber(s.lower, 1)} ~ ${formatNumber(s.upper, 1)}${s.unit ? ` ${s.unit.trim()}` : ''}`
+  return [metricHelp(item.value), limit].filter(Boolean).join(' · ')
+})
 const item = ref('')
 watch(items, (list) => { if (!list.includes(item.value)) item.value = list[0] ?? '' }, { immediate: true })
 const chart = computed(() => telemetryChart(series.value, item.value, range.value, now.value))
@@ -84,7 +95,7 @@ const inspections = useInspections(process, paint ? undefined : lineId)
 const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
 // 관리값 지금 (슬리팅 시뮬레이터·용접): 항목별 마지막 값과 기준
-const latest = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor' && !SPEED_ITEMS.includes(i.item)).map((i) => {
+const latest = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor' && !SPEED_ITEMS.includes(i.item) && !(i.item in notMeasured)).map((i) => {
   const v = i.points.at(-1)?.value ?? null
   const out = v != null && ((i.upper != null && v > i.upper) || (i.lower != null && v < i.lower))
   return { item: i.item, unit: i.unit, value: v, limit: i.lower == null && i.upper == null ? '기준 미정' : `${formatNumber(i.lower, 1)} ~ ${formatNumber(i.upper, 1)}`, out }
@@ -95,7 +106,9 @@ const received = computed<BarRow[]>(() => (today.value?.receivedByLine ?? []).ma
 const receivedOf = (lineId: string) => received.value.find((r) => r.key === lineId)?.value ?? 0
 const receivedMax = computed(() => Math.max(0, ...received.value.map((r) => r.value ?? 0)))
 const paintRoute = usePaintRoute()
-/** 도장 상세: 고른 도장 설비로 오는 라인만 (도장 경로는 모니터링만, 바꾸지 않음) */
+// 11/21 도장 운영 판단 (도장 상세에서만 10초마다)
+const paintPlan = usePaintPlan(paint)
+/** 도장 상세: 고른 도장 설비로 오는 라인만 (경로 바꾸기는 도장 운영 패널, 11/21) */
 const routeRows = computed(() => paintRoute.rows.value.filter((r) => r.current === selectedId.value))
 const routeTotal = computed(() => routeRows.value.reduce((a, r) => a + receivedOf(r.lineId), 0))
 const painterName = (id: string) => paintRoute.painters.value.find((p) => p.value === id)?.label ?? id
@@ -158,10 +171,11 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
               </tbody>
             </table>
             <BaseEmpty v-else />
+            <p v-for="(why, k) in notMeasured" :key="k" class="nm">{{ metricLabel(k) }}: 측정 안 함 · {{ why }}</p>
           </BasePanel>
         </div>
 
-        <BasePanel class="chartp" :title="`관리값 · ${selected?.name ?? '-'}`">
+        <BasePanel class="chartp" :title="`관리값 · ${selected?.name ?? '-'} · ${item ? metricLabel(item) : '-'}`" :meta="itemMeta">
           <template #tools>
             <BaseSegmented v-if="items.length > 1" v-model="item" label="관리값 항목" size="sm" :options="items.map((i) => ({ value: i, label: metricLabel(i) }))" />
             <ChartLegend :items="[{ label: `측정값${chart.unit ? ` (${chart.unit.trim()})` : ''}`, kind: 'main' }, { label: chart.hasLimits ? '상·하한' : '기준 미정', kind: 'ref' }]" />
@@ -181,6 +195,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
             :now="now"
           />
           <BaseEmpty v-else :text="series ? '데이터 없음 (설비가 멈춘 동안은 값이 없습니다)' : '불러오는 중'" />
+          <p v-for="(why, k) in notMeasured" :key="k" class="nm">{{ metricLabel(k) }}: 측정 안 함 · {{ why }}</p>
         </BasePanel>
 
         <BasePanel v-if="speed" class="chartp" title="속도" meta="출력이 지령보다 낮은 구간 = 미세정지 후보 · 오늘 생산은 운전시간 × 속도로 환산한 값">
@@ -201,8 +216,23 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <BaseEmpty v-else />
         </BasePanel>
 
-        <!-- 라인별 입고 · 도장 경로: 고른 도장 설비로 오는 라인만. 모니터링 화면이라 경로는 보기만 (11/20, 바꾸기 뺌) -->
-        <BasePanel v-if="process === 'PAINTING'" title="라인별 입고 · 도장 경로" :meta="`${selected?.name ?? '-'}로 오는 라인 · 오늘 입고 ${formatNumber(routeTotal)}`">
+        <!-- 11/21 도장 아래 줄: 도장 운영(판단·적용·경로 직접 바꾸기) | 라인별 입고. 그래프 아래에 나란히 -->
+        <div v-if="process === 'PAINTING'" class="ops">
+        <BasePanel title="도장 운영" meta="가동 라인 기준 · 10초마다 다시 계산">
+          <PaintPlanPanel
+            :plan="paintPlan.plan.value"
+            :can-apply="can('paint')"
+            :busy="paintPlan.busy.value"
+            :message="paintPlan.message.value"
+            :error="paintPlan.error.value"
+            :rows="paintRoute.rows.value"
+            :painters="paintRoute.painters.value"
+            @apply="paintPlan.apply"
+            @route="paintPlan.route"
+          />
+        </BasePanel>
+        <!-- 라인별 입고 · 도장 경로: 고른 도장 설비로 오는 라인만 (바꾸기는 위 도장 운영에서) -->
+        <BasePanel title="라인별 입고 · 도장 경로" :meta="`${selected?.name ?? '-'}로 오는 라인 · 오늘 입고 ${formatNumber(routeTotal)}`">
           <ul v-if="routeRows.length" class="route">
             <li v-for="r in routeRows" :key="r.lineId">
               <span class="rname">{{ r.name }}</span>
@@ -214,6 +244,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           </ul>
           <BaseEmpty v-else text="이 도장 설비로 오는 라인이 없습니다" />
         </BasePanel>
+        </div>
       </div>
 
       <div :class="['right', { paint }]">
@@ -243,6 +274,13 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 </template>
 
 <style scoped>
+/* 11/21 재지 않는 항목 안내 (슬리팅 토크) */
+.nm {
+  margin-top: var(--sp-2);
+  color: var(--c-ink-3);
+  font-size: var(--fs-sm);
+}
+
 .hfig .hl {
   margin-bottom: var(--sp-1);
   color: var(--c-ink-2);
@@ -266,44 +304,44 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
   min-height: 0;
 }
 
-.left.p-B {
+.left.p-SLITTING {
   grid-template-rows: auto minmax(0, 1fr) minmax(0, 1fr);
 }
 
-.left.p-E {
-  grid-template-rows: auto minmax(0, 1fr) auto;
+.left.p-PAINTING {
+  grid-template-rows: auto minmax(240px, 1fr) auto;
+  overflow-y: auto;   /* 낮은 창에서는 겹치지 않고 스크롤 */
+}
+
+/* 11/21 도장 아래 줄: 도장 운영 | 라인별 입고 */
+.ops {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sp-4);
 }
 
 /* 낮은 창: 슬리팅 그래프 둘을 위아래로 쌓으면 납작해지므로 나란히 놓는다 */
 @media (height <= 860px) {
-  .left.p-B {
+  .left.p-SLITTING {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
   }
 
-  .left.p-B > .cards {
+  .left.p-SLITTING > .cards {
     grid-column: 1 / -1;
   }
 
   /* 반 폭 그래프 칸: 항목·구간 버튼이 잘리지 않게 제목 줄을 두 줄로 */
-  .left.p-B > .chartp :deep(.ph) {
+  .left.p-SLITTING > .chartp :deep(.ph) {
     flex-wrap: wrap;
   }
 
-  .left.p-B > .chartp :deep(.tools) {
+  .left.p-SLITTING > .chartp :deep(.tools) {
     flex-wrap: wrap;
     margin-left: 0;
   }
 
-  /* 도장: 라인별 입고를 그래프 아래가 아니라 옆에 */
-  .left.p-E {
-    grid-template-columns: minmax(0, 1fr) var(--col-summary);
-    grid-template-rows: auto minmax(0, 1fr);
-  }
-
-  .left.p-E > .cards {
-    grid-column: 1 / -1;
-  }
 }
 
 .right {

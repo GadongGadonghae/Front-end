@@ -3,7 +3,7 @@
 // ⑤ 사용자 관리 = 공장장 · ⑥ AI 리포트 작성 = 팀장, 결재·전송 = 공장장 · 캠퍼스장 = 보기 + 임시 MES 열람
 import type { AppRole } from '@/types/user'
 
-export type Perm = 'action' | 'target' | 'limits' | 'users' | 'reportWrite' | 'reportApprove' | 'mes'
+export type Perm = 'action' | 'target' | 'limits' | 'users' | 'reportWrite' | 'reportApprove' | 'mes' | 'paint'
 
 export const ROLE_NAME: Record<AppRole, string> = {
   PLANT_HEAD: '공장장',
@@ -13,8 +13,8 @@ export const ROLE_NAME: Record<AppRole, string> = {
 }
 
 const GRANTS: Record<AppRole, Perm[]> = {
-  PLANT_HEAD: ['target', 'users', 'reportApprove'],
-  PROD_LEAD: ['action', 'limits', 'reportWrite'],
+  PLANT_HEAD: ['target', 'users', 'reportApprove', 'paint'],
+  PROD_LEAD: ['action', 'limits', 'reportWrite', 'paint'],
   LINE_WORKER: ['action'],
   CAMPUS: ['mes'],
 }
@@ -28,6 +28,7 @@ export const PERM_OWNER: Record<Perm, string> = {
   reportWrite: '생산 관리 팀장',
   reportApprove: '공장장',
   mes: '캠퍼스장',
+  paint: '공장장·생산 관리 팀장',
 }
 
 /** 설비 ID → 라인 ("A-PR1" → "A"). 도장·비전·출하 같은 공용 설비는 null */

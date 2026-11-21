@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import { now as clockNow } from '@/clock'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import { useMaster } from '@/composables/useMaster'
@@ -30,6 +31,7 @@ const DAY = 86_400_000
 const SHIFT = '일 단위 (00:00~24:00)'
 const SHIFT_SHORT = '일 단위'
 const AUTHOR = source.demo ? '김현수' : ''
+const route = useRoute()
 const { can } = useAuth()
 const flow = useReportFlow()
 
@@ -38,7 +40,9 @@ const today = toDateStr(clockNow())
 const pastDays = Array.from({ length: PAST_DAYS }, (_, i) => toDateStr(Date.parse(today) - (i + 1) * DAY))
 
 /** 고른 날짜. 오늘은 [AI 일일 리포트 생성]을 눌러야 보고서가 보임 */
-const date = ref(today)
+/** 문서만 보기 (/doc/daily/:date, 임시 MES 틀 안, 11/21): 그날 보고서를 바로 */
+const docOnly = computed(() => route.meta.docOnly === true)
+const date = ref(docOnly.value && typeof route.params.date === 'string' ? route.params.date : today)
 const isToday = computed(() => date.value === today)
 const generatedAt = ref<string | null>(null)
 /** 오늘 보고서를 팀장이 이미 작성(결재 요청)했으면 다른 계정에서도 보이게 */
@@ -211,7 +215,7 @@ function writeFlow() {
 </script>
 
 <template>
-  <PageLayout>
+  <PageLayout :class="{ 'doc-only': docOnly }">
     <template #head>
       <h1 class="title">AI 리포트</h1>
       <BaseTabs :items="TABS" active="daily" label="리포트 종류" />
@@ -1035,6 +1039,31 @@ function writeFlow() {
   margin: 5px 0 0;
   padding: 0;
   font-size: 10px;
+}
+
+/* 11/21 문서만 보기 (/doc/…, 임시 MES 틀 안): 목록·버튼·요청 칸·결재 단추를 빼고 A4 문서만. 인쇄 모양과 같음 */
+.doc-only {
+  display: block;
+  height: auto;
+  padding: var(--sp-4);
+  background: var(--c-paper);
+}
+
+.doc-only :deep(.no-print),
+.doc-only .side,
+.doc-only .doc-head,
+.doc-only .report-tools {
+  display: none !important;
+}
+
+.doc-only .body,
+.doc-only .doc,
+.doc-only .daily-doc {
+  display: block;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: var(--c-paper);
 }
 
 @media print {

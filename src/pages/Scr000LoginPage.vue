@@ -68,13 +68,13 @@ async function submit() {
       <p v-else-if="roleError" class="error" role="alert">{{ roleError }}</p>
       <BaseButton variant="primary" type="submit" :disabled="busy">로그인</BaseButton>
       <div v-if="demo" class="demo">
-        <p class="note">시연용 데모 계정 (비밀번호 1234) · 누르면 채워집니다</p>
+        <p class="note">계정 (비밀번호 1234) · 누르면 채워집니다</p>
         <ul>
           <li v-for="a in DEMO_LOGINS" :key="a.loginId">
             <button type="button" @click="fill(a.loginId, a.password)"><b>{{ a.roleName }}</b><span>{{ a.loginId }} · {{ a.name }}{{ a.lines.length ? ` · ${a.lines.join('·')}라인` : '' }}</span></button>
           </li>
         </ul>
-        <button type="button" class="reset" @click="resetDemo">{{ cleared ? '초기화했습니다' : '시연 기록 초기화 (결재·전송 기록 지우기)' }}</button>
+        <button type="button" class="reset" @click="resetDemo">{{ cleared ? '초기화했습니다' : '기록 초기화 (결재·전송 기록 지우기)' }}</button>
       </div>
     </form>
   </main>
