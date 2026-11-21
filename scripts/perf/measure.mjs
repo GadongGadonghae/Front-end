@@ -7,19 +7,21 @@
 //   --only idle,enter                           일부 시나리오만
 //   --gpu                                       그래픽 카드로 그린다 (사무실 PC에서 fps를 볼 때). 기본은 소프트웨어(SwiftShader): 어느 PC에서나 같은 조건
 //   --skip-build                                이미 만든 빌드(node_modules/.perf)를 다시 쓴다
+//   --root <폴더>                               다른 체크아웃(예: 옛 커밋의 git worktree)을 잰다. 결과는 이 저장소 docs/perf에
+//   --merge                                     같은 이름의 결과 파일이 있으면 이번에 잰 시나리오만 바꿔 넣는다
 //
 // 조건: 실제 배포와 같은 빌드(vite build + vite preview), 창 1920×940, 시나리오마다 새 브라우저 창, 숫자는 가운데 값(중앙값)
 // 데이터: 데모(mock). "다시 들어간 화면"은 데모 조회를 600ms 늦춘 빌드, "요청 수"는 실서버 모드 빌드에 빈 응답을 주고 요청 수만 센다 (서버 없이)
 // 브라우저: 설치된 Chrome (playwright-core). 다른 곳에 있으면 CHROME_PATH 환경 변수로
 import { execSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build, preview } from 'vite'
 import { chromium } from 'playwright-core'
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const OUT = join(ROOT, 'docs/perf')
+const HERE = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const OUT = join(HERE, 'docs/perf')
 const W = 1920
 const H = 940
 const MOCK_DELAY = 600
@@ -28,13 +30,14 @@ const MOCK_DELAY = 600
 const argv = process.argv.slice(2)
 const arg = (k, d) => { const i = argv.indexOf(k); return i < 0 ? d : argv[i + 1] }
 const has = (k) => argv.includes(k)
+const ROOT = resolve(arg('--root', HERE))
 
 /** 결과 이름표 (표에 쓰는 순서) */
 const LABELS = {
   idle: ['대시보드를 띄워 둔 5초', { jsMs: '자바스크립트 시간(ms)', taskMs: '브라우저 작업 시간(ms)', longCount: '긴 작업(50ms+) 수' }],
   enter: ['가동률 → 대시보드', { readyMs: '3D 이름표가 뜨기까지(ms)', longCount: '긴 작업 수 (2초 안)', longMax: '가장 긴 작업(ms)', longSum: '긴 작업 합(ms)' }],
   revisit: [`가동률 다시 들어가기 (데모 조회 ${MOCK_DELAY}ms 지연)`, { firstMs: '처음 들어갈 때 값이 뜨기까지(ms)', secondMs: '다시 들어갈 때 값이 뜨기까지(ms)' }],
-  requests: ['실서버 모드 요청 수 (가짜 응답)', { idle10s: '대시보드 10초 동안', toUtil: '대시보드 → 가동률 이동 2초 안', toUtilLive: '  그중 실시간 구독 요청', toDash: '가동률 → 대시보드 이동 2초 안', toDashLive: '  그중 실시간 구독 요청' }],
+  requests: ['실서버 모드 요청 수 (가짜 응답)', { idle10s: '대시보드 10초 동안', toUtil: '대시보드 → 가동률 이동 2초 안', toUtilLive: '  그중 실시간 구독 요청', utilAway10s: '가동률에 35초 머문 뒤 10초 동안', utilAwayLive: '  그중 실시간 구독 요청', toDash: '가동률 → 대시보드 이동 2초 안', toDashLive: '  그중 실시간 구독 요청' }],
   memory: ['대시보드 ↔ 가동률 18번 오간 뒤', { heapStartMb: '처음 힙(MB)', heapEndMb: '18번 뒤 힙(MB)', domEnd: '18번 뒤 DOM 노드', listenersEnd: '18번 뒤 이벤트 리스너' }],
 }
 /** 실시간 구독(1초 상태 · 10초 요약 · 3D 물류)이 부르는 API */
@@ -116,7 +119,13 @@ async function measure() {
   const results = Object.fromEntries(Object.entries(raw).map(([k, rs]) => [k, Object.fromEntries(Object.keys(rs[0]).map((m) => [m, median(rs.map((r) => r[m]))]))]))
   mkdirSync(OUT, { recursive: true })
   const file = join(OUT, `${label}.json`)
-  writeFileSync(file, `${JSON.stringify({ label, date: new Date().toISOString(), commit: dirty ? `${commit}+수정` : commit, gpu, runs, viewport: `${W}x${H}`, results, raw }, null, 2)}\n`)
+  let doc = { label, date: new Date().toISOString(), commit: dirty ? `${commit}+수정` : commit, gpu, runs, viewport: `${W}x${H}`, results, raw }
+  if (has('--merge') && existsSync(file)) {
+    const old = JSON.parse(readFileSync(file, 'utf8'))
+    if (old.commit !== doc.commit) throw new Error(`--merge: 커밋이 다름 (${old.commit} ≠ ${doc.commit})`)
+    doc = { ...old, date: doc.date, results: { ...old.results, ...results }, raw: { ...old.raw, ...raw } }
+  }
+  writeFileSync(file, `${JSON.stringify(doc, null, 2)}\n`)
   console.log(`\n저장: ${file}`)
   console.table(Object.fromEntries(Object.entries(results).map(([k, v]) => [LABELS[k][0], v])))
 }
@@ -215,13 +224,19 @@ async function requests(browser, base) {
   await page.waitForTimeout(2000)
   const toUtil = hits.length
   const toUtilLive = live(hits)
+  // 다른 화면에 오래 있을 때 대시보드 몫 구독이 계속 도는지 (구독 유지 30초가 지난 뒤)
+  await page.waitForTimeout(33_000)
+  hits = []
+  await page.waitForTimeout(10_000)
+  const utilAway10s = hits.length
+  const utilAwayLive = live(hits)
   hits = []
   await nav(page, '대시보드')
   await page.waitForTimeout(2000)
   const toDash = hits.length
   const toDashLive = live(hits)
   await ctx.close()
-  return { idle10s, toUtil, toUtilLive, toDash, toDashLive }
+  return { idle10s, toUtil, toUtilLive, utilAway10s, utilAwayLive, toDash, toDashLive }
 }
 
 /** 대시보드 ↔ 가동률을 18번 오간 뒤 메모리 (메모리 정리 후) */
