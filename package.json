@@ -11,7 +11,8 @@
     "lint": "eslint src",
     "lint:style": "stylelint \"src/**/*.{css,vue}\"",
     "check": "npm run typecheck && npm run lint && npm run lint:style",
-    "drift": "bash scripts/drift-check.sh"
+    "drift": "bash scripts/drift-check.sh",
+    "perf": "node scripts/perf/measure.mjs"
   },
   "dependencies": {
     "three": "^0.170.0",
@@ -27,6 +28,7 @@
     "eslint": "^10.15.0",
     "eslint-plugin-vue": "^10.12.1",
     "globals": "^17.14.0",
+    "playwright-core": "^1.65.1",
     "postcss-html": "^2.0.1",
     "stylelint": "^18.0.0",
     "stylelint-config-recommended-vue": "^2.0.0",
