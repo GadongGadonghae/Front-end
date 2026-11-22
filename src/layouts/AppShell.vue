@@ -2,6 +2,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted } from 'vue'
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
+import flowMark from '@/assets/flow-mark.png'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import FaultToast from '@/components/domain/FaultToast.vue'
 import HeaderAlerts from '@/layouts/HeaderAlerts.vue'
@@ -12,7 +13,6 @@ import { useTargetChange } from '@/composables/useTargetChange'
 import { usePendingApprovals } from '@/composables/usePendingApprovals'
 import { formatNumber } from '@/lib/format'
 import { useMaster } from '@/composables/useMaster'
-import { useDataInfo } from '@/composables/useDataInfo'
 import { DOWNTIME_NAME } from '@/lib/status'
 import { formatDate, formatTime } from '@/lib/format'
 import { settingsTabsFor } from '@/lib/permissions'
@@ -43,7 +43,6 @@ onUnmounted(() => { if (routeTimer) clearInterval(routeTimer) })
 // 전체화면(F11)에서는 브라우저 뒤로 가기가 안 보여서 화면 안에 [‹ 이전] (11/21)
 const { canBack, goBack } = useBack()
 const nowIso = computed(() => new Date(now.value).toISOString())
-const { demo } = useDataInfo()
 const { equipmentName, syncRoutes } = useMaster()
 const toast = useFaultToast()
 // 목표 생산량 변동 카드: 생산관리팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
@@ -87,7 +86,7 @@ function viewFault() {
   <div class="shell print-flow">
     <header class="top no-print">
       <button v-if="canBack" type="button" class="back" aria-label="이전 화면" title="이전 화면" @click="goBack"><BaseIcon name="chevron-left" :size="20" />이전</button>
-      <RouterLink class="brand" to="/"><BaseIcon name="factory" :size="24" />라인가동현황</RouterLink>
+      <RouterLink class="brand" to="/"><img class="mark" :src="flowMark" alt="" />FLOW</RouterLink>
       <nav aria-label="메뉴">
         <RouterLink
           v-for="m in MENU"
@@ -98,7 +97,6 @@ function viewFault() {
         >{{ m.name }}</RouterLink>
       </nav>
       <div class="right">
-        <span v-if="demo" class="demo">데모 데이터</span>
         <span class="clock">{{ formatDate(nowIso) }}<b>{{ formatTime(nowIso) }}</b></span>
         <HeaderAlerts />
         <RouterLink v-if="can('mes')" class="mes" to="/mes">MES</RouterLink>
@@ -205,6 +203,13 @@ function viewFault() {
   text-decoration: none;
 }
 
+/* FLOW 로고 심볼 (docs/참고자료/FLOW_로고.png에서 잘라 냄, 11/22) */
+.mark {
+  display: block;
+  width: auto;
+  height: 22px;
+}
+
 nav {
   display: flex;
   gap: var(--sp-1);
@@ -237,14 +242,6 @@ nav a.on {
   gap: var(--sp-5);
   margin-left: auto;
   color: var(--c-ink-2);
-}
-
-.demo {
-  padding: 0 var(--sp-2);
-  border: var(--line-w) solid var(--c-line-strong);
-  border-radius: var(--r-1);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
 }
 
 .clock b {

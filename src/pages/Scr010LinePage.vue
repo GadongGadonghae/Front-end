@@ -1,5 +1,5 @@
 <!-- SCR-010 라인 상세 (화면정의서 3장 SCR-010, DESIGN.md Layout "라인 상세")
-     위: 고장 알림 띠 + 요약 카드 3장(실적 도넛 · OEE · 불량 도넛). 아래 왼쪽: 라인 흐름(주인공), 아래 오른쪽: 오늘 알람 이력 · 비가동 누적 -->
+     위: 고장 알림 띠 + 요약 카드 3장(실적 도넛 · OEE · 불량 도넛). 아래 왼쪽: 라인 흐름(주인공), 아래 오른쪽: 알람 이력 · 비가동 누적 -->
 <script setup lang="ts">
 import { PROCESS_NAME, lineName } from '@/lib/status'
 import { computed } from 'vue'
@@ -97,7 +97,7 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
     <div class="layout">
       <div class="cards">
         <!-- 11/21 대시보드 "오늘 생산"·"종합 가동률" 카드와 같은 모양 (실적 / 계획 + 달성률 막대, OEE 게이지 + 3요소 곱셈) -->
-        <BasePanel title="오늘 라인 실적 / 계획">
+        <BasePanel title="라인 실적 / 계획">
           <div class="row">
             <p class="kpi"><BaseNumber :value="now.done" /><small v-if="now.plan != null" class="of">/ {{ formatNumber(now.plan) }}</small></p>
             <p v-if="now.plan != null" class="side-fig">
@@ -125,9 +125,12 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
           </div>
         </BasePanel>
 
-        <BasePanel :title="`오늘 불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
+        <BasePanel :title="`불량 ${formatNumber(now.ngTotal)}개 · 공정별`">
           <div class="donutrow">
-            <ChartDonutValue :parts="ngParts" :center="ngRate != null ? `${formatNumber(ngRate, 1)}%` : '-'" sub="불량률" :label="`불량률 ${formatNumber(ngRate, 1)}%`" />
+            <ChartDonutValue :parts="ngParts" :label="`불량률 ${formatNumber(ngRate, 1)}%`">
+              <span class="kpi"><BaseNumber :value="ngRate" :digits="1" unit="%" /></span>
+              <span class="g-lab">불량률</span>
+            </ChartDonutValue>
             <ul class="ng" aria-label="공정별 불량 제외">
               <li v-for="r in ngParts" :key="r.name"><i :style="{ background: r.color }"></i><span>{{ r.name }}</span><b>{{ r.value }}</b></li>
             </ul>
@@ -135,19 +138,19 @@ const openReport = (r: AlertRowView) => router.push(r.reportId ? `/reports/repla
         </BasePanel>
       </div>
 
-      <BasePanel class="flowp vt-line-stage" title="라인 흐름" meta="공정 이름이나 설비 칸을 누르면 공정 상세">
+      <BasePanel class="flowp" title="라인 흐름" meta="공정 이름이나 설비 칸을 누르면 공정 상세">
         <template #tools><StateLegend pdm /></template>
         <LineFlow v-if="flow" :view="flow" :line-name="name" @open-cell="openEquipment" @open-group="openGroup" />
         <BaseEmpty v-else />
       </BasePanel>
 
       <div class="side">
-        <BasePanel class="alerts" title="오늘 알람 이력" :meta="`고장·통신 끊김 ${alarms.length}건 · 진행 중 ${alarmOngoing}`" flush>
+        <BasePanel class="alerts" title="알람 이력" :meta="`고장·통신 끊김 ${alarms.length}건 · 진행 중 ${alarmOngoing}`" flush>
           <template #tools><button class="to-alarms" type="button" @click="openAlarms">알람 이력 ›</button></template>
           <AlertList :rows="alarms" @open="openAlert" @report="openReport" />
         </BasePanel>
         <BasePanel class="down" title="비가동 사유별 누적">
-          <p class="total">오늘 비가동 합계 <b>{{ minutes(downtime.total) }}</b></p>
+          <p class="total">비가동 합계 <b>{{ minutes(downtime.total) }}</b></p>
           <ul class="bars">
             <li v-for="r in downtime.rows" :key="r.key">
               <span>{{ r.label }}</span>

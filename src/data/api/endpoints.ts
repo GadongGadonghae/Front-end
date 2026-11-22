@@ -2,7 +2,7 @@
 // 명세가 바뀌면 여기만 고친다. 화면 계약으로 바꾸는 일은 source.ts
 import { http } from '@/data/api/http'
 import type {
-  AlarmDto, CoilTodayDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
+  AlarmDto, CoilTodayDto, CoilTrendDto, FlowPositionsDto, CycleDto, HourlySummaryDto, DowntimeEventDto, DowntimeSummaryDto, EquipmentDto, EquipmentStatusDto, InspectionDto,
   LineDto, LineStatusSummaryDto, LoginDto, UserDto, MetricsDto, Page, PaintRouteDto, ProcessCode, ProductionCountsDto, ProductionPlanDto,
   ProductionSummaryDto, ProductDto, ProductDetailDto, ProcessNgDto, ReasonCode, ReassignmentDetailDto, ApplyResponseDto, ReassignmentSummaryDto, SlackSendDto, StatusHistoryDto, ThresholdDto, ThresholdUpdatedDto,
   UtilizationByEquipmentDto, FlowReportDto, UtilizationByLineDto, UtilizationByProcessDto, UtilizationSummaryDto, UtilizationTrendDto, WipDto, YieldTrendDto,
@@ -44,6 +44,8 @@ export const api = {
   M15: (process: ProcessCode, q: { lineId?: string; date?: string } = {}) => http.get<CycleDto[]>(`/monitoring/processes/${process}/cycles`, q),
   /** M-16 코일 입고 현황: 오늘 입고 롤·개수, 재고(롤·개수), 슬리팅 투입, 입고 목록 (date 생략 시 오늘) */
   M16: (q: { date?: string } = {}) => http.get<CoilTodayDto>('/coil/today', q),
+  /** M-18 슬리팅 앞 코일 재고 추이 (5분마다 + 입고 때) */
+  M18: (q: { date?: string } = {}) => http.get<CoilTrendDto[]>('/coil/trend', q),
   /** M-17 공장 안 제품 위치 (3D 물류): 설비 안이면 equipmentId, 공정 사이면 pile */
   M17: () => http.get<FlowPositionsDto>('/production/flow/positions'),
 

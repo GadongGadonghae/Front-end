@@ -85,6 +85,6 @@ export interface InboundToday {
   stock: number
   input: number
   receipts: { t: string; coils: number }[]
-  /** 슬리팅 앞 재고 추이: 6개 라인 합과 라인별 */
-  stockTrend: { t: string; total: number; byLine: Record<string, number> }[]
+  /** 슬리팅 앞 재고 추이 (롤, 6개 라인 합). 코일은 라인 구분이 없다 */
+  stockTrend: { t: string; total: number }[]
 }

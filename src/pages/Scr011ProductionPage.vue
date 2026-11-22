@@ -5,6 +5,7 @@
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
+import BaseFold from '@/components/base/BaseFold.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseToggle from '@/components/base/BaseToggle.vue'
@@ -66,7 +67,7 @@ const columns = computed<TableColumn[]>(() => [
       <BasePanel class="main">
         <template #head>
           <h2>{{ tab === 'live' ? '현재 상황 · 공정 중인 제품' : '제품 이력' }}</h2>
-          <span class="meta">{{ tab === 'live' ? '줄을 누르면 오른쪽에 공정별 기록' : '기간 · 결과 · 제품 ID로 찾기 · 빗금 줄 = 불량 제외' }}</span>
+          <BaseFold label="설명" :text="tab === 'live' ? '줄을 누르면 오른쪽에 공정별 기록' : '기간 · 결과 · 제품 ID로 찾기 · 빗금 줄 = 불량 제외'" />
         </template>
         <template #tools>
           <BaseToggle v-model="live" label="현재 상황" />

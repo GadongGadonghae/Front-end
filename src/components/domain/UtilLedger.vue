@@ -1,11 +1,13 @@
-<!-- 가동률 상태 줄 (SCR-003, D-108 시안 G, D-113 다듬기): 줄 = 이름 · OEE와 기준 대비(한 열) · 손실 시간 · 24시간 띠(일) 또는 날짜 칸(주·월).
+<!-- 가동률 상태 줄 (SCR-003, D-108 시안 G, D-113 다듬기): 줄 = 이름 · OEE와 기준 대비(한 열) · 손실 시간 · 근무 시간 띠(일) 또는 날짜 칸(주·월).
      지금 고장·대기·통신 끊김인 줄만 바탕에 그 상태 색을 은은하게 (계획정지는 정상 계획이라 글자만). 누를 수 있는 줄은 아래 단계(설비별)로.
-     줄이 4개 이상이면 패널 높이를 채우고, 3개 이하(도장·출고)면 한 줄이 너무 커지지 않게 높이를 묶는다 -->
+     줄이 4개 이상이면 패널 높이를 채우고, 3개 이하(도장·비전 검사)면 한 줄이 너무 커지지 않게 높이를 묶는다 -->
 <script setup lang="ts">
+import { computed } from 'vue'
 import ChartDiverge from '@/components/charts/ChartDiverge.vue'
 import StateBand from '@/components/domain/StateBand.vue'
 import { compareColor, OEE_SPAN } from '@/lib/compare'
 import { formatNumber, formatSpan } from '@/lib/format'
+import { SHIFT_END, SHIFT_START } from '@/lib/shift'
 import type { LedgerRowView } from '@/types/view'
 
 const props = defineProps<{
@@ -26,23 +28,26 @@ const emit = defineEmits<{ pick: [key: string] }>()
 
 const NOW_NAME = { S: '계획정지 중', I: '대기 중', D: '고장 중', DC: '통신 끊김' } as const
 const DAY = 86_400
-/** 띠 왼쪽 끝 = 00:00 */
-const start = 0
-/** 지금 표시와 겹치는 눈금(앞뒤 1.2시간)은 뺀다 (시안 G) */
-const NEAR = 4_320
+/** 띠 왼쪽 끝 = 근무 시작 09:00, 오른쪽 끝 = 18:00. 오늘 18시를 넘겨 돌고 있으면(잔업) 지금 시각까지 늘린다 (11/22, 예전 00~24시) */
+const start = SHIFT_START
+const end = computed(() => (props.until < DAY ? Math.max(SHIFT_END, Math.ceil(props.until / 3600) * 3600) : SHIFT_END))
+const span = computed(() => end.value - start)
+/** 눈금 간격: 근무 시간만이면 1시간, 길면 3시간 */
+const step = computed(() => (span.value <= 12 * 3600 ? 3600 : 10_800))
+const showNow = computed(() => props.until > start && props.until < end.value)
 const hm = (sec: number) => `${String(Math.floor(sec / 3600)).padStart(2, '0')}:${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`
-/** 3시간 눈금 (띠 범위 안). StateBand의 눈금선과 같은 자리 */
+/** 시간 눈금 (띠 범위 안). StateBand의 눈금선과 같은 자리 */
 const ticks = () => {
   const out: { at: number; label: string; end: boolean; begin: boolean }[] = []
-  const showNow = props.until < start + DAY
-  for (let t = Math.ceil(start / 10_800) * 10_800; t <= start + DAY; t += 10_800) {
-    if (showNow && Math.abs(t - props.until) < NEAR) continue
+  for (let t = start; t <= end.value; t += step.value) {
+    // 지금 표시와 겹치는 눈금은 뺀다
+    if (showNow.value && Math.abs(t - props.until) < span.value / 18) continue
     const h = t / 3600
-    out.push({ at: t, label: `${String(h).padStart(2, '0')}시`, end: t === start + DAY, begin: t === start })
+    out.push({ at: t, label: `${String(h).padStart(2, '0')}시`, end: t === end.value, begin: t === start })
   }
   return out
 }
-const at = (sec: number) => `${((sec - start) / DAY) * 100}%`
+const at = (sec: number) => `${((sec - start) / span.value) * 100}%`
 const diffText = (d: number) => `${d > 0 ? '+' : ''}${formatNumber(d, 1)}`
 const cell = (c: LedgerRowView['days'][number]) => {
   if (c.future || c.oee == null) return null
@@ -89,7 +94,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
           />
         </span>
         <span class="loss">{{ r.lossSec ? formatSpan(r.lossSec) : '-' }}</span>
-        <StateBand v-if="mode === 'day'" :spans="r.spans" :until="until" />
+        <StateBand v-if="mode === 'day'" :spans="r.spans" :until="until" :from="start" :to="end" :step="step" />
         <span v-else class="days" :style="{ gridTemplateColumns: `repeat(${r.days.length}, minmax(0, 1fr))` }">
           <template v-for="c in r.days" :key="c.date">
             <span v-if="cell(c)" class="c" :class="{ today: c.today }" :style="{ background: cell(c)!.bg }" :title="cell(c)!.title">{{ r.days.length <= 7 ? formatNumber(c.oee, 1) : '' }}</span>
@@ -98,7 +103,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
         </span>
       </component>
       <!-- 지금 선: 줄마다 끊기지 않게 상태 줄 전체를 지나는 회색 점선 하나 (파랑은 "앞섬" 뜻이라 쓰지 않음, D-113) -->
-      <div v-if="mode === 'day' && until < start + DAY" class="cols nowlayer" aria-hidden="true">
+      <div v-if="mode === 'day' && showNow" class="cols nowlayer" aria-hidden="true">
         <span></span><span></span><span></span>
         <span class="nowcell"><i :style="{ left: at(until) }"></i></span>
       </div>
@@ -108,7 +113,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
       <span></span><span></span><span></span>
       <span v-if="mode === 'day'" class="axis">
         <b v-for="t in ticks()" :key="t.at" :class="{ end: t.end, begin: t.begin }" :style="{ left: at(t.at) }">{{ t.label }}</b>
-        <b v-if="until < start + DAY" class="now" :style="{ left: at(until) }">지금 {{ hm(until) }}</b>
+        <b v-if="showNow" class="now" :style="{ left: at(until) }">지금 {{ hm(until) }}</b>
       </span>
       <span v-else class="note"><i class="sw up"></i>{{ baseName }}보다 높음 <i class="sw down"></i>낮음 · 테두리 = 오늘</span>
     </div>

@@ -32,7 +32,7 @@ const tabs = lineTabs(lineName)
 
         <!-- 11/21 대시보드·라인 상세 카드와 같은 모양: 실적 / 계획 + 달성률 막대, OEE 게이지 -->
         <div class="fig">
-          <h3>오늘 라인 실적 / 계획</h3>
+          <h3>라인 실적 / 계획</h3>
           <p class="big num">{{ formatNumber(c.done) }}<small v-if="c.plan != null"> / {{ formatNumber(c.plan) }}</small></p>
           <p class="sub">달성률 <b class="num"><BaseNumber :value="c.rate" :digits="1" unit="%" /></b></p>
           <ChartProgress v-if="c.plan != null" :percent="c.rate" :label="`${c.name} 달성률 ${formatNumber(c.rate, 1)}%`" />
@@ -53,7 +53,7 @@ const tabs = lineTabs(lineName)
         </div>
 
         <div class="fig">
-          <h3>오늘 알람 이력</h3>
+          <h3>알람 이력</h3>
           <p class="big num">{{ formatNumber(c.alarms.total) }}<small>건</small></p>
           <p class="sub" :class="{ on: c.alarms.ongoing > 0 }">진행 중 <b class="num">{{ formatNumber(c.alarms.ongoing) }}</b></p>
         </div>
@@ -119,10 +119,11 @@ const tabs = lineTabs(lineName)
   font-weight: var(--fw-regular);
 }
 
+/* 11/22 네 칸의 큰 숫자(실적 · OEE · 불량 · 알람)는 모두 같은 크기, 나머지 글은 모두 같은 크기 */
 .big {
   margin: 0;
   color: var(--c-ink);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
   white-space: nowrap;
@@ -138,20 +139,20 @@ const tabs = lineTabs(lineName)
 }
 
 .g-num {
-  font-size: var(--fs-lg);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
 }
 
 .g-lab {
   color: var(--c-ink-2);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
 }
 
 .big small {
   margin-left: 2px;
   color: var(--c-ink-3);
-  font-size: var(--fs-figure);
+  font-size: var(--fs-md);
   font-weight: var(--fw-regular);
 }
 

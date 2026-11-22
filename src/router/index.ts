@@ -3,7 +3,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { hasPerm, homePath, isLoggedIn, currentRole } from '@/composables/useAuth'
 import { settingsTabsFor } from '@/lib/permissions'
-import { installViewTransition } from '@/router/viewTransition'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -64,7 +63,6 @@ const routes: RouteRecordRaw[] = [
 ]
 
 export const router = createRouter({ history: createWebHistory(), routes })
-installViewTransition(router)
 
 router.beforeEach((to) => {
   const loggedIn = isLoggedIn()
@@ -75,5 +73,5 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · 라인가동현황` : '라인가동현황'
+  document.title = to.meta.title ? `${to.meta.title} · FLOW` : 'FLOW'
 })

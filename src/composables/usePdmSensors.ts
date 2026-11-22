@@ -12,7 +12,7 @@ import { metricLabel } from '@/lib/metrics'
 const WINDOW_MS = 600_000
 /** 이보다 길게 점이 비면 멈춘 구간으로 본다 */
 const GAP_MS = 5 * 60_000
-const SOURCE_LABEL = { process: '공정값', inverter: '인버터', sensor: '센서 더미' } as const
+const SOURCE_LABEL = { process: '공정값', inverter: '인버터', sensor: '센서' } as const
 
 export type LaneGrade = 'normal' | 'warn' | 'danger' | 'down' | 'none'
 

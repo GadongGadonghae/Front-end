@@ -448,11 +448,11 @@ async function downloadPdf() {
 
       <section class="panel doc">
         <div class="doc-head">
-          <div><h2>{{ title }}</h2><p>현재 공정·설비 조건을 기준으로 작성된 의사결정 지원 보고서</p></div>
+          <div><h2>{{ title }}</h2></div>
           <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!canGenerate" @click="generate">{{ generating ? 'AI 보고서 작성 중…' : orderSide ? 'AI 배정 검토 생성' : 'AI 보고서 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
           <button class="btn" type="button" :disabled="!doc" @click="downloadPdf">PDF 다운로드</button>
-          <button class="btn" type="button" :disabled="!doc || !selectedId || slackBusy || generating" @click="sendSlack">{{ slackBusy ? '슬랙 전송 중…' : '슬랙 전송' }}</button>
+          <button v-if="can('slack')" class="btn" type="button" :disabled="!doc || !selectedId || slackBusy || generating" @click="sendSlack">{{ slackBusy ? '슬랙 전송 중…' : '슬랙 전송' }}</button>
         </div>
         <ReportApproval
           v-if="selectedId"

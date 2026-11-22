@@ -16,6 +16,7 @@ import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useNow } from '@/composables/useNow'
 import { DOWNTIME_NAME, PROCESS_NAME, lineName } from '@/lib/status'
 import { josa } from '@/lib/josa'
+import { shiftBasis } from '@/lib/shift'
 import { formatHm, formatSpan, formatTime, toDateStr } from '@/lib/format'
 
 const LIVE_MS = 10_000
@@ -132,7 +133,7 @@ export function useProduction(initialQ = '') {
   const rangeText = computed(() => {
     const s = summary.value
     if (!s) return ''
-    if (!multiDay.value) return date.value === today ? `00:00 ~ ${formatHm(s.to)} 기준` : `${date.value} 하루`
+    if (!multiDay.value) return date.value === today ? shiftBasis(clockNow()) : `${date.value} 하루`
     return `${toDateStr(Date.parse(s.from))} ~ ${toDateStr(Date.parse(s.to) - 1).slice(5)}`
   })
   const timeText = (iso: string | null) => (iso ? (multiDay.value ? `${iso.slice(5, 10)} ${formatHm(iso)}` : formatTime(iso)) : '-')

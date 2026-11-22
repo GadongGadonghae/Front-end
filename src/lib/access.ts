@@ -1,9 +1,9 @@
 // 계정별 권한 (11/20 확정, 프로젝트_현황.md "계정별 권한")
 // ① 보기 = 모두 · ② 알람이력 조치 쓰기 = 팀장, 라인 담당자(본인 라인만) · ③ 생산 목표 = 공장장 · ④ 관리값 기준 = 팀장
-// ⑤ 사용자 관리 = 공장장 · ⑥ AI 리포트 작성 = 팀장, 결재·전송 = 공장장 · 캠퍼스장 = 보기 + 임시 MES 열람
+// ⑤ 사용자 관리 = 공장장 · ⑥ AI 리포트 작성 = 팀장, 결재·전송 = 공장장, 슬랙 전송 = 공장장·팀장 · 캠퍼스장 = 보기 + 임시 MES 열람
 import type { AppRole } from '@/types/user'
 
-export type Perm = 'action' | 'target' | 'limits' | 'users' | 'reportWrite' | 'reportApprove' | 'mes' | 'paint'
+export type Perm = 'action' | 'target' | 'limits' | 'users' | 'reportWrite' | 'reportApprove' | 'slack' | 'mes' | 'paint'
 
 export const ROLE_NAME: Record<AppRole, string> = {
   PLANT_HEAD: '공장장',
@@ -13,8 +13,8 @@ export const ROLE_NAME: Record<AppRole, string> = {
 }
 
 const GRANTS: Record<AppRole, Perm[]> = {
-  PLANT_HEAD: ['target', 'users', 'reportApprove', 'paint'],
-  PROD_LEAD: ['action', 'limits', 'reportWrite', 'paint'],
+  PLANT_HEAD: ['target', 'users', 'reportApprove', 'slack', 'paint'],
+  PROD_LEAD: ['action', 'limits', 'reportWrite', 'slack', 'paint'],
   LINE_WORKER: ['action'],
   CAMPUS: ['mes'],
 }
@@ -27,6 +27,7 @@ export const PERM_OWNER: Record<Perm, string> = {
   users: '공장장',
   reportWrite: '생산 관리 팀장',
   reportApprove: '공장장',
+  slack: '공장장·생산 관리 팀장',
   mes: '캠퍼스장',
   paint: '공장장·생산 관리 팀장',
 }

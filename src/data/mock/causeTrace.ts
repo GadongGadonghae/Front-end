@@ -26,7 +26,7 @@ const MEMOS: Record<string, string[]> = {
   slitter: ['나이프 간격 재조정', '모터 드라이브 리셋'],
   vision: ['카메라 렌즈 청소 후 재가동', '조명 케이블 재체결'],
 }
-const SOURCE = '데모 데이터'
+const SOURCE = '공정 기록'
 const codeName = (code: string | null) => MASTER.downtimeCodes.find((d) => d.code === code)?.name ?? code ?? '고장'
 
 const hms = (ms: number) => new Date(ms).toTimeString().slice(0, 8)

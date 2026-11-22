@@ -1,10 +1,10 @@
 <!-- SCR-000 로그인 (화면정의서 3장 SCR-000, FN-016): 아이디·비밀번호, 실패 메시지만, 회원가입 없음 -->
 <script setup lang="ts">
+import flowMark from '@/assets/flow-mark.png'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
 import { useAuth, homePath as DEFAULT_PATH } from '@/composables/useAuth'
 import { useDataInfo } from '@/composables/useDataInfo'
 import { DEMO_LOGINS } from '@/composables/useAuth'
@@ -60,7 +60,7 @@ async function submit() {
 <template>
   <main class="login">
     <form class="card" @submit.prevent="submit">
-      <h1><BaseIcon name="factory" :size="24" />라인가동현황</h1>
+      <h1><img class="mark" :src="flowMark" alt="" />FLOW</h1>
       <BaseInput v-model="userId" label="아이디" autocomplete="username" :invalid="failed" />
       <BaseInput v-model="password" label="비밀번호" type="password" autocomplete="current-password" :invalid="failed" />
       <p v-if="failed" class="error" role="alert">아이디 또는 비밀번호가 맞지 않습니다</p>
@@ -152,5 +152,11 @@ h1 {
 
 .demo button span {
   color: var(--c-ink-3);
+}
+
+.mark {
+  display: block;
+  width: auto;
+  height: 26px;
 }
 </style>

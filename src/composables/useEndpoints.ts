@@ -11,11 +11,12 @@ import { useInspections } from '@/composables/useInspections'
 import { niceTicks } from '@/lib/chart'
 import { formatNumber, formatTime } from '@/lib/format'
 import { PER_BOX } from '@/lib/loading'
+import { SHIFT_END, SHIFT_START } from '@/lib/shift'
 
-/** 코일입고: 1분마다 기록·재고 추이, 오늘 입고·재고 숫자는 1초 snapshot (API 명세 6장) */
+/** 코일입고: 10초마다 기록·재고 추이 (시연 배속에서도 선이 따라오게), 오늘 입고·재고 숫자는 1초 snapshot (API 명세 6장) */
 export function useInbound() {
   const snapshot = useLiveSnapshot()
-  const { data } = usePoll(() => source.q.getInboundToday(), 60_000)
+  const { data } = usePoll(() => source.q.getInboundToday(), 10_000)
   const figures = computed(() => ({
     today: snapshot.value?.inbound.today ?? data.value?.today ?? null,
     stock: snapshot.value?.inbound.stock ?? data.value?.stock ?? null,
@@ -50,8 +51,8 @@ export function useVision() {
 }
 
 const LINE_KEYS = ['A', 'B', 'C', 'D', 'E', 'F']
-/** 시간대별 막대의 기본 범위: 근무 09~18시 */
-const SHIFT = [9, 17]
+/** 시간대별 막대의 기본 범위: 근무 09~18시 (마지막 막대 = 17시대) */
+const SHIFT = [SHIFT_START / 3600, SHIFT_END / 3600 - 1]
 
 /** 적재: 라인별 완성품 · 시간대별 · 최근 적재 제품. 비전 검사에 합격하면 바로 적재로 센다 (11/22) */
 export function useLoading() {

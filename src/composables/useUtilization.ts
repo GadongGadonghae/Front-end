@@ -10,7 +10,8 @@ import type { DowntimeSliceView, LedgerRowView, StateSpanView } from '@/types/vi
 import { useMaster } from '@/composables/useMaster'
 import { usePoll } from '@/composables/usePoll'
 import { DOWNTIME_NAME, STATE_NAME, byProcess, lineName, longShortName } from '@/lib/status'
-import { formatDate, formatHm, formatNumber, toDateStr } from '@/lib/format'
+import { formatDate, formatNumber, toDateStr } from '@/lib/format'
+import { shiftBasis } from '@/lib/shift'
 
 const POLL_MS = 60_000
 const LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -71,7 +72,7 @@ export function useUtilization(init: { tab?: string; line?: string } = {}) {
   const rangeText = computed(() => {
     const r = summary.value
     if (!r) return ''
-    if (period.value === 'day') return isToday.value ? `00:00 ~ ${formatHm(r.to)} 기준` : `${formatDate(r.from)} 하루`
+    if (period.value === 'day') return isToday.value ? shiftBasis(clockNow()) : `${formatDate(r.from)} 하루`
     return `${toDateStr(Date.parse(r.from))} ~ ${toDateStr(Date.parse(r.to) - 1).slice(5)}`
   })
 

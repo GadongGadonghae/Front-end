@@ -79,9 +79,9 @@ interface Tag {
   anchor: 'b' | 'c' | 'r'
   /** 잰 크기. 글이 바뀌면 -1 (다시 잰다) */
   w: number; h: number
-  /** 이상 표시처럼 서로 겹치면 위로 비켜 쌓는 이름표 */
+  /** 겹치면 위로 비켜 쌓는 이름표 (구역 이름) */
   stack?: boolean
-  /** 비켜 가지는 않지만, 뒤에 놓는 stack 이름표가 피해 가는 자리 (재공 수·코일 수, 11/21) */
+  /** 비켜 가지는 않지만, 뒤에 놓는 stack 이름표가 피해 가는 자리 (재공 수·코일 수 · 이상 표시) */
   solid?: boolean
   /** 비켜 쌓은 높이(px). 겹칠 때만 바꿔요 (11/21) */
   ty?: number
@@ -308,7 +308,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const pileAt = (key: string, x: number, bz: number) => {
     const z = bz + PILE_DZ
     box(SLOT * 3 + 0.3, 0.2, SLOT * 3 + 0.3, pallet, x, 0, z)
-    const lab = tag('', 'f3d-cnt', [x, 5.2, z], '3d')
+    const lab = tag('', 'f3d-cnt f3d-wip', [x, 5.2, z], '3d')
     lab.solid = true
     PILES.set(key, { x, z, bz, lab, stack: [], n: 0 })
   }
@@ -416,27 +416,34 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     return { L, z, out, fill }
   })
 
-  // 라인 이름: 라인 바닥 왼쪽 끝. 누르는 단추가 아니다 (라인은 바닥을 눌러 고른다, D-118)
+  // 11/22 이름표 규칙: 눌러서 들어갈 수 있으면 흰 칸, 아니면 글씨만
+  // 라인 이름: 라인 바닥 왼쪽 끝. 바닥과 같이 누르면 라인 카드
   const lineTags = LINES.map((L, i) => tag(`${L}라인`, 'f3d-line', [-50.5, 0.6, lineZ(i)], null, 'r'))
+  lineTags.forEach((t, i) => {
+    t.el.setAttribute('role', 'button')
+    t.el.tabIndex = 0
+    t.el.addEventListener('click', () => on.onLine(LINES[i]))
+    t.el.addEventListener('keydown', (e) => { if (e.key === 'Enter') on.onLine(LINES[i]) })
+  })
   // 구역 이름 (공정 머리글). 코일 입고·비전·적재는 눌러서 상세 화면으로
   const ZONES: [string, number, number, number, ZoneId | null][] = [
     // 11/21 공정 이름은 A라인 뒤로 더 물리고 높여서, A라인 설비 알림과 떨어지게 (z -37 → -44)
-    ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 10, -44, null], ['프레스 ×4', -12, 14, -44, null], ['용접', 18, 11, -44, null],
-    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -8, 'vision'], ['적재', SHIP_X, 6, -9, 'loading'],
+    ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 10, -44, null], ['프레스', -12, 14, -44, null], ['용접', 18, 11, -44, null],
+    ['도장', 48, 9, -24, null], ['비전 검사', 74, 8, -8, 'vision'], ['적재', SHIP_X, 6, -9, 'loading'],
   ]
-  // 11/21 구역 이름도 겹치면 비켜 쌓아요 (도장·비전·적재 이름이 재공 수·알림과 겹치던 것). 알림(이상 표시)은 이 뒤에 놓여 구역 이름을 피해 가요
+  // 11/21 구역 이름도 겹치면 비켜 쌓아요 (비전·적재 이름이 재공 수·알림과 겹치던 것). 알림(이상 표시)은 이 뒤에 놓여 구역 이름을 피해 가요
   for (const [n, x, y, z, go] of ZONES) {
     let t: Tag
     if (go) {
-      // 비전 검사는 설비 이름표처럼 까만 칸 (11/21). 코일 입고·적재는 다른 화면으로 가는 흰 표지판
-      t = tag(`<button type="button" class="f3d-zone go${go === 'vision' ? ' dark' : ''}">${n}${ICON_GO}</button>`, '', [x, y, z])
+      t = tag(`<button type="button" class="f3d-zone go">${n}${ICON_GO}</button>`, '', [x, y, z])
       t.el.firstElementChild!.addEventListener('click', () => on.onZone(go))
       if (go === 'loading') shipBtn = t.el.firstElementChild as HTMLElement
     } else t = tag(`<span class="f3d-zone">${n}</span>`, '', [x, y, z])
     t.stack = true
     t.yields = true
   }
-  const coilLab = tag('', 'f3d-cnt', [-64, 9, -30], '3d')
+  // 코일 재고: 코일 적재장 앞쪽(아래) 바닥 (11/22, 예전엔 코일 입고 단추 바로 밑)
+  const coilLab = tag('', 'f3d-cnt', [-62, 0.3, 38.5], '3d', 'c')
   coilLab.solid = true
 
   // 배정(생산 / 배정)은 장면 위가 아니라 화면 왼쪽 패널 (Factory3D.vue, 11/21)
@@ -546,12 +553,14 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       let b = bangs.get(e.id)
       if (!b) {
         const t = tag('<button type="button" class="f3d-bang"></button>', '', [e.x, e.h + 1.6, e.z], '3d')
-        t.stack = true
+        // 11/22 서로 겹쳐도 그 설비 바로 위에 그대로 둔다 (위로 비켜 쌓던 것 뺌). 겹치면 고장이 앞
+        t.solid = true
         t.el.firstElementChild!.addEventListener('click', () => on.onPick(e.id))
         b = { t, state: it.state }
         bangs.set(e.id, b)
       }
       b.state = it.state
+      b.t.el.style.zIndex = it.state === 'D' ? '2' : '1'
       const btn = b.t.el.firstElementChild as HTMLElement
       // 11/21 장면에는 상태 글자 칸만 (이름·상태 이름은 왼쪽 '이상 설비' 목록과 누르면 열리는 설비 창에). 큰 알약이 이름표와 겹쳐 지저분했음
       const html = `<span class="f3d-key st-${it.state}">${it.state}</span>`
@@ -815,7 +824,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     const h = H()
     drawPoly(polySel, sel, w, h)
     drawPoly(polyHov, hoverLine !== sel ? hoverLine : null, w, h)
-    // 이상 표시끼리 겹치면 위로 비켜 쌓는다 (이웃 설비가 함께 고장·대기일 때)
+    // 구역 이름(stack)만 겹치면 위로 비켜 쌓는다. 이상 표시는 설비 바로 위에 고정 (11/22)
     const placed: [number, number, number, number][] = []
     // 11/21 떨림 없애기: 카메라가 움직이는 동안(3D ↔ 탑뷰 등)은 비켜 쌓기를 새로 계산하지 않고 그대로 따라가요
     //   (매 프레임 겹침이 바뀌며 이름표가 위아래로 튀던 것). 멈추면 다시 계산하고, 높이는 부드럽게 옮겨요.
@@ -872,7 +881,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const sph1 = new THREE.Spherical()
   const sph = new THREE.Spherical()
   const pose = (): Pose => dest ? { pos: dest.pos.clone(), tgt: dest.tgt.clone() } : { pos: cam.position.clone(), tgt: ctl.target.clone() }
-  const fly = (to: Pose, ms: number, done?: () => void) => {
+  const fly = (to: Pose, ms: number) => {
     const t0 = ctl.target.clone()
     sph0.setFromVector3(tmpV.copy(cam.position).sub(t0))
     sph1.setFromVector3(tmpV.copy(to.pos).sub(to.tgt))
@@ -896,7 +905,6 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
         ctl.target.copy(to.tgt)
         tween = null
         dest = null
-        done?.()
       }
     }
   }
@@ -966,17 +974,6 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       // 11/21 3D로 돌아오면 늘 같은 처음 자리 (전에 돌려 둔 자리로 가지 않음)
       fly(homePose(), wasTop ? 950 : 700)
     }
-  }
-  /** 라인 상세로 가기 전: 그 라인을 내려다보며 다가간다 (다음 화면 '라인 흐름'으로 이어지게, D-119) */
-  const dive = (L: ProductionLineId, done: () => void) => {
-    const i = LINES.indexOf(L)
-    if (i < 0) { done(); return }
-    mark(null)
-    sel = L
-    applyDim()
-    const tgt = new THREE.Vector3(-12, 0, lineZ(i))
-    const pos = new THREE.Vector3().setFromSpherical(new THREE.Spherical(58, THREE.MathUtils.degToRad(48), THREE.MathUtils.degToRad(-8))).add(tgt)
-    fly({ pos, tgt }, 600, done)
   }
 
   // ── 마우스 ──
@@ -1080,7 +1077,6 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     setView,
     onModeChange(cb: (m: ViewMode) => void) { onMode = cb },
     mark,
-    dive,
     dispose() {
       cancelAnimationFrame(raf)
       ro.disconnect()

@@ -1,7 +1,7 @@
 <!-- 구간 버튼: 주소를 바꾸지 않는 한 가지 선택 (일/주/월, 1시간/8시간/오늘, 관리값 항목, 2D/3D)
      variant soft = 패널 안 탭·정렬: 회색 바탕에 고른 것만 흰 면 (먹색으로 채우는 기본형은 화면 위 기간 같은 큰 선택에만) -->
 <script setup lang="ts" generic="T extends string">
-withDefaults(defineProps<{ options: { value: T; label: string }[]; label: string; size?: 'md' | 'sm'; variant?: 'solid' | 'soft' }>(), { size: 'md', variant: 'solid' })
+withDefaults(defineProps<{ options: { value: T; label: string; /** 고장 설비 칸은 빨갛게 (11/22) */ tone?: 'down'; /** 화면 낭독기 이름 (색으로만 알리는 칸) */ aria?: string }[]; label: string; size?: 'md' | 'sm'; variant?: 'solid' | 'soft' }>(), { size: 'md', variant: 'solid' })
 const model = defineModel<T>({ required: true })
 </script>
 
@@ -11,7 +11,9 @@ const model = defineModel<T>({ required: true })
       v-for="o in options"
       :key="o.value"
       type="button"
-      :class="{ on: o.value === model }"
+      :class="[{ on: o.value === model }, o.tone]"
+      :aria-label="o.aria"
+      :title="o.aria"
       :aria-pressed="o.value === model"
       @click="model = o.value"
     >{{ o.label }}</button>
@@ -50,6 +52,16 @@ button.on {
   background: var(--c-inverse);
   color: var(--c-inverse-ink);
 }
+
+/* 고장 설비: 빨간 칸. 고른 칸은 먹색 안쪽 테두리로 구분 */
+button.down {
+  background: var(--c-down);
+  color: var(--c-down-ink);
+  font-weight: var(--fw-strong);
+}
+
+button.down:hover { filter: brightness(1.08); }
+button.down.on { box-shadow: inset 0 0 0 3px var(--c-inverse); }
 
 .sm button {
   height: var(--control-h-sm);

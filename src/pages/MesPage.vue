@@ -1,7 +1,7 @@
 <!-- 임시 MES (11/20, 시연용): 캠퍼스장이 우리 시스템에서 "보고서 전송"된 AI 보고서를 받아 열람한다
      화면 틀은 일반적인 MES 메인(왼쪽 메뉴 + 상단 + 현황 대시보드). 메뉴 중 "수신 보고서"만 열리고 나머지는 잠김(시연 범위 밖)
      수신 보고서는 같은 앱·같은 브라우저 저장(localStorage)을 읽으므로 같은 주소·같은 브라우저에서만 보인다
-     보고서 외 모든 숫자·목록은 더미 데이터 — 화면에 더미라고 밝힌다. 실제 MES 연동은 향후 과제 -->
+     보고서 외 모든 숫자·목록은 더미 데이터 (화면에는 적지 않음, 11/22). 실제 MES 연동은 향후 과제 -->
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
@@ -121,7 +121,7 @@ async function onLogout() {
       <button v-if="canBack" type="button" class="out" aria-label="이전 화면" @click="goBack">‹ 이전</button>
       <b class="brand">차체 캠퍼스 MES</b>
       <span class="sp" />
-      <RouterLink class="link" to="/">라인 가동 시스템 보기 ›</RouterLink>
+      <RouterLink class="link" to="/">FLOW 보기 ›</RouterLink>
       <span class="user">{{ userName }} · {{ roleName }}</span>
       <button class="out" type="button" @click="onLogout">로그아웃</button>
     </header>
@@ -145,8 +145,6 @@ async function onLogout() {
       <main :class="['body', { home: view === 'home' }]">
         <!-- 현황 대시보드 (전부 더미) -->
         <template v-if="view === 'home'">
-          <p class="dummy-note">이 화면의 숫자와 목록은 모두 <b>더미 데이터</b>입니다. 열리는 메뉴는 [수신 보고서] 하나뿐입니다.</p>
-
           <section class="kpis">
             <!-- 오늘 생산량: 계획 대비 진행 → 진행 막대 -->
             <div class="kpi">
@@ -390,11 +388,6 @@ async function onLogout() {
   align-content: start;
   gap: var(--sp-4);
   padding: var(--sp-4) var(--page-gutter);
-}
-
-.dummy-note {
-  color: var(--c-ink-3);
-  font-size: var(--fs-row);
 }
 
 /* 현황 대시보드: 화면 한 장에 딱 맞춘다 (F11 전체 화면 포함). 남는·모자란 높이는 가운데 두 패널이 받는다 */

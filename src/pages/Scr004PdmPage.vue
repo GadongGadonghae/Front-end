@@ -9,6 +9,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
+import BaseFold from '@/components/base/BaseFold.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
@@ -53,7 +54,9 @@ const pickArea = computed({
 const pickEquip = computed({ get: () => selectedId.value ?? '', set: (id: string) => { selectedId.value = id } })
 const equipOptions = computed(() => equipOf(area.value).map((e) => {
   const r = p.rows.value.find((x) => x.id === e.id)
-  const mark = r?.state === 'D' ? ' · 고장' : r?.grade === 'danger' ? ' · 위험' : r?.grade === 'warn' ? ' · 주의' : ''
+  // 고장은 글자 대신 빨간 칸 (11/22)
+  if (r?.state === 'D') return { value: e.id, label: e.shortName, tone: 'down' as const, aria: `${e.shortName} 고장` }
+  const mark = r?.grade === 'danger' ? ' · 위험' : r?.grade === 'warn' ? ' · 주의' : ''
   return { value: e.id, label: `${e.shortName}${mark}` }
 }))
 const pct = (v: number | null) => (v == null ? '-' : `${v}%`)
@@ -77,7 +80,7 @@ const topGroups = computed(() => [
   <PageLayout>
     <template #head>
       <h1 class="title">예지보전</h1>
-      <span class="note">설비 38대 · 설비 상태 센서(온도·진동·전류)로 판단, 공정 관리값은 라인 화면에서 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · {{ WARN }}% 주의 · {{ DANGER }}% 위험</span>
+      <BaseFold label="설명" :text="`설비 38대 · 설비 상태 센서(온도·진동·전류)로 판단, 공정 관리값은 라인 화면에서 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · ${WARN}% 주의 · ${DANGER}% 위험`" />
     </template>
 
     <div class="layout">
@@ -143,7 +146,7 @@ const topGroups = computed(() => [
               <StatusKey :state="sel.state" size="sm" />
               <span :class="['tag', sel.grade]">{{ GRADE_WORD[sel.grade] }}</span>
               <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
-              <span class="meta">상태 센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 센서 값은 더미</span>
+              <span class="meta">상태 센서 {{ sn.tiles.value.length }}개 · 최근 1시간</span>
             </div>
             <h2 v-else>설비를 고르세요</h2>
           </template>
@@ -209,14 +212,6 @@ const topGroups = computed(() => [
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
-  white-space: nowrap;
-}
-
-.note {
-  overflow: hidden;
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

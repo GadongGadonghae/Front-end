@@ -51,7 +51,7 @@ export function useLineDetail(lineId: LineId) {
     const row = todayOf(e.process)?.equipment.find((x) => x.id === e.id)
     const info: FlowCellView['info'] = []
     if (row) {
-      info.push({ label: e.process === 'PRESS' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
+      info.push({ label: e.process === 'PRESS' ? '사이클' : '생산', value: formatNumber(row.cycles) })
       // 그 설비에서 공정 판정 NG(폐기)된 수 (11/20). 있으면 빨간 글씨
       info.push({ label: '불량', value: formatNumber(row.ng ?? 0), alert: (row.ng ?? 0) > 0 })
       if (row.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초` })

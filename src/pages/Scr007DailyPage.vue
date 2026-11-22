@@ -28,9 +28,8 @@ const TABS = [
 /** 이전 보고서 목록: 지난 30일 (그날 마감 값) */
 const PAST_DAYS = 30
 const DAY = 86_400_000
-const SHIFT = '일 단위 (00:00~24:00)'
-const SHIFT_SHORT = '일 단위'
-const AUTHOR = source.demo ? '김현수' : ''
+const SHIFT = '주간 (09:00~18:00)'
+const AUTHOR = source.demo ? '윤은빈' : ''
 const route = useRoute()
 const { can } = useAuth()
 const flow = useReportFlow()
@@ -115,7 +114,7 @@ const doc = computed(() => {
   const rate = plan ? (r.done / plan) * 100 : null
   const at = isToday.value && madeAt.value
     ? `${toDateStr(Date.parse(madeAt.value))} ${formatTime(madeAt.value)}`
-    : `${r.date} 24:00`
+    : `${r.date} 18:00`
   const processes = r.processes.map((p) => ({
     name: PROCESS_NAME[p.process],
     output: p.output, ng: p.ng, rate: p.output ? (p.ng / p.output) * 100 : null,
@@ -234,8 +233,7 @@ function writeFlow() {
             @keydown.enter.prevent="date = today"
             @keydown.space.prevent="date = today"
           >
-            <div><b>{{ today }} {{ SHIFT_SHORT }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
-            <p>오늘 생산 마감 · {{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</p>
+            <div><b>{{ today }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
             <span :class="['draft-badge', { created: madeAt }]">{{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</span>
           </div>
 
@@ -257,7 +255,7 @@ function writeFlow() {
             <template v-for="d in listed" :key="d">
               <div class="date-label">{{ dateWithDay(d) }}</div>
               <a href="#" :class="{ on: d === date }" :aria-current="d === date ? 'page' : undefined" @click.prevent="date = d">
-                <b>일일 생산 마감</b><time>24:00</time><span>{{ SHIFT_SHORT }} · 마감</span>
+                <b>일일 생산 마감</b><time>18:00</time>
               </a>
             </template>
             <p v-if="!periodInvalid && !listed.length" class="period-empty">선택한 기간에 작성한 보고서가 없습니다.</p>
@@ -268,8 +266,7 @@ function writeFlow() {
       <section class="panel daily-doc">
         <div class="doc-head">
           <div>
-            <h2>{{ doc ? `일일 생산 보고서 · ${date} ${SHIFT_SHORT}` : '일일 생산 보고서' }}</h2>
-            <p>{{ doc ? `${doc.at} 작성 · 생산 마감 기록` : '하루 생산실적을 마감하고 기록하는 보고서' }}</p>
+            <h2>{{ doc ? `일일 생산 보고서 · ${date}` : '일일 생산 보고서' }}</h2>
           </div>
           <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!isToday || loading || flowView.status === 'SENT'" @click="generate">{{ isToday && madeAt ? '다시 생성' : 'AI 일일 리포트 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>

@@ -117,7 +117,7 @@ const ng = computed(() => {
       </BasePanel>
     </div>
 
-    <BasePanel class="vt-line-stage" title="공장 배치도" meta="설비 39대">
+    <BasePanel title="공장 배치도" meta="설비 39대">
       <template #tools>
         <StateLegend :counts="counts" />
       </template>

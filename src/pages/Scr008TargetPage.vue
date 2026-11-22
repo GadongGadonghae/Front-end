@@ -60,11 +60,6 @@ const { can } = useAuth()
             <p v-if="t.error.value" class="msg err" role="alert">{{ t.error.value }}</p>
             <p v-else-if="t.saved.value" class="msg ok" role="status">{{ t.saved.value }}</p>
           </div>
-          <ul class="rules">
-            <li>오늘과 앞으로의 날짜만 입력할 수 있음. 지난 날짜는 잠김</li>
-            <li>같은 날짜에 다시 저장하면 덮어씀</li>
-            <li>저장하면 대시보드 달성률에 바로 반영</li>
-          </ul>
         </form>
       </BasePanel>
 
@@ -184,15 +179,6 @@ const { can } = useAuth()
 
 .msg.ok {
   color: var(--c-ink-2);
-}
-
-.rules {
-  margin: 0;
-  padding: var(--sp-3) 0 0 var(--sp-4);
-  border-top: var(--line-w) solid var(--c-line);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  line-height: 1.7;
 }
 
 .n {

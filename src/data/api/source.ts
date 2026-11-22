@@ -501,13 +501,12 @@ export function createApiSource(): DataSource {
       getLoadedToday: async () => (await api.M08({ ...todayRange(), result: 'OK', page: 1, size: 50 })).items.map((i) => ({ t: i.inspectedAt, productId: i.productId, lineId: i.lineId })),
       getMicrostopsToday: async (equipmentId) => ({ equipmentId, count: 0, lossSec: 0, bands: [] }),
       async getInboundToday() {
-        const coil = await api.M16()
+        const [coil, trend] = await Promise.all([api.M16(), api.M18().catch(() => [])])
         // 같은 시각에 들어온 롤은 한 줄로 묶어요 (예: 0초에 4롤 → 한 줄 "4"), 최근순
         const byTime = new Map<string, number>()
         for (const r of coil.receipts) byTime.set(r.receivedAt, (byTime.get(r.receivedAt) ?? 0) + 1)
         const receipts = [...byTime].map(([t, coils]) => ({ t, coils })).reverse()
-        // 재고 추이(stockTrend)는 API가 없어서 비워 둬요
-        return { today: coil.receivedRolls, stock: coil.stockRolls, input: coil.inputQty, receipts, stockTrend: [] }
+        return { today: coil.receivedRolls, stock: coil.stockRolls, input: coil.inputQty, receipts, stockTrend: trend.map((p) => ({ t: p.at, total: p.rolls })) }
       },
       async getOee(q) {
         const { first, last } = periodRange(q.period, q.date)

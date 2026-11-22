@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
-import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseFold from '@/components/base/BaseFold.vue'
 import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
 import LinePanel from '@/components/domain/factory3d/LinePanel.vue'
 import { formatDuration } from '@/lib/format'
@@ -43,8 +43,6 @@ const selLine = ref<ProductionLineId | null>(null)
 const popId = ref<string | null>(null)
 /** 확인한 이상: 설비 ID@시작 시각. 같은 상태가 이어지는 동안 이상 표시를 숨긴다 */
 const acked = ref(new Set<string>())
-/** 조작 방법 펼침 (왼쪽 아래, 처음엔 접힘) */
-const helpOpen = ref(false)
 
 const liveById = computed(() => new Map(props.live.map((e) => [e.id, e])))
 const eqById = computed(() => new Map(props.equipment.map((e) => [e.id, e])))
@@ -178,12 +176,10 @@ function ack() {
   if (l) acked.value = new Set(acked.value).add(ackKey(l))
   closePop()
 }
-/** 생산 라인은 3D에서 그 라인으로 다가간 뒤 라인 상세로 (D-119). 도장·비전 검사는 바로 */
+/** 라인 상세로 바로 (11/22 다가가는 줌인 뺌) */
 function openLine(id: LineId) {
-  const s = scene.value
-  if (!s || id === 'PT' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { emit('open-line', id); return }
   closePop()
-  s.dive(id as ProductionLineId, () => emit('open-line', id))
+  emit('open-line', id)
 }
 function goLine() {
   const a = pop.value?.e.area
@@ -219,13 +215,8 @@ const panel = computed(() => {
       <button type="button" :aria-pressed="view === 'top'" @click="setView('top')">탑뷰</button>
     </div>
     <!-- 11/22 조작 방법: 접혀 있다가 누르면 오른쪽으로 펼쳐진다 -->
-    <div class="help" :class="{ open: helpOpen }" data-keep-pop>
-      <button type="button" class="help-btn" :aria-expanded="helpOpen" aria-controls="f3d-help" @click="helpOpen = !helpOpen">
-        조작 방법<BaseIcon :name="helpOpen ? 'chevron-left' : 'chevron-right'" :size="16" />
-      </button>
-      <div id="f3d-help" class="help-body" :aria-hidden="!helpOpen">
-        <p>라인 바닥을 누르면 라인 상세 · 고장·대기 설비를 누르면 상태 창 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전</p>
-      </div>
+    <div class="help" data-keep-pop>
+      <BaseFold label="조작 방법" text="라인 바닥을 누르면 라인 상세 · 고장·대기 설비를 누르면 상태 창 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전" />
     </div>
 
     <aside v-if="!pop" class="side" aria-label="라인별 생산 / 배정" data-keep-pop>
@@ -317,59 +308,15 @@ const panel = computed(() => {
   color: var(--c-inverse-ink);
 }
 
-/* 조작 방법 (11/22): 단추만 보이다가 누르면 옆으로 펼쳐짐 */
+
 .help {
   position: absolute;
   z-index: 4;
   bottom: var(--sp-3);
   left: var(--sp-3);
-  display: grid;
-  grid-template-columns: auto 0fr;
-  max-width: calc(100% - var(--sp-6));
-  overflow: hidden;
-  border: var(--line-w) solid var(--c-line-strong);
-  border-radius: var(--r-2);
-  background: var(--c-surface);
-  font-size: var(--fs-sm);
-  transition: grid-template-columns var(--dur-enter) var(--ease-out);
-}
-
-.help.open { grid-template-columns: auto 1fr; }
-
-.help-btn {
   display: flex;
-  align-items: center;
-  gap: 2px;
-  height: var(--control-h-sm);
-  padding: 0 var(--sp-1) 0 var(--sp-3);
-  border: 0;
-  background: none;
-  color: var(--c-ink-2);
-  font: inherit;
-  font-weight: var(--fw-strong);
-  white-space: nowrap;
-  cursor: pointer;
+  max-width: calc(100% - var(--sp-6));
 }
-
-.help-btn:hover { background: var(--c-surface-sunk); }
-
-.help-body {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--c-ink-2);
-  line-height: var(--control-h-sm);
-}
-
-.help-body p {
-  margin: 0;
-  padding: 0 var(--sp-3) 0 var(--sp-1);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 접혀 있을 때는 글이 읽히지 않게 (화면 낭독기·선택) */
-.help:not(.open) .help-body { visibility: hidden; }
 
 /* 왼쪽 패널 (11/21): 보기 버튼 아래. 설비 팝업이 열리면 그 자리를 팝업이 씀 */
 .side {
@@ -586,7 +533,7 @@ const panel = computed(() => {
   stroke-linejoin: round;
 }
 
-/* 공정 머리글: 먹색 표지판 (장면 위에서 가장 잘 읽히게) */
+/* 11/22 이름표 규칙: 눌러서 들어갈 수 있으면 흰 칸, 아니면 글씨만 (장면 위에서 읽히게 바탕색 테두리 그림자) */
 .stage :deep(.f3d-zone) {
   display: inline-flex;
   align-items: center;
@@ -594,10 +541,16 @@ const panel = computed(() => {
   padding: 3px var(--sp-2);
   border: 0;
   border-radius: var(--r-1);
-  background: var(--c-ink);
-  color: var(--c-inverse-ink);
+  background: none;
+  color: var(--c-ink);
   font: inherit;
+  font-size: var(--fs-md);
   font-weight: var(--fw-strong);
+}
+
+.stage :deep(.f3d-zone:not(.go)),
+.stage :deep(.f3d-cnt) {
+  text-shadow: 0 0 3px var(--c-surface), 0 0 3px var(--c-surface), 0 0 6px var(--c-surface), 0 0 6px var(--c-surface);
 }
 
 /* 눌러서 상세 화면으로 가는 구역: 흰 표지판 + 파랑 글자 + 화살표 */
@@ -606,20 +559,12 @@ const panel = computed(() => {
   box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
   background: var(--c-surface);
   color: var(--c-accent);
+  font-size: var(--fs-sm);
   pointer-events: auto;
   cursor: pointer;
 }
 
 .stage :deep(.f3d-zone.go:hover) { background: var(--c-surface-sunk); }
-
-/* 비전 검사: 누를 수 있지만 모양은 설비 이름표와 같은 까만 칸 (11/21) */
-.stage :deep(.f3d-zone.go.dark) {
-  box-shadow: none;
-  background: var(--c-ink);
-  color: var(--c-inverse-ink);
-}
-
-.stage :deep(.f3d-zone.go.dark:hover) { background: var(--c-ink-2); }
 
 /* 적재 단추 안 적재 수 (11/21) */
 .stage :deep(.f3d-zone.go small) {
@@ -630,7 +575,7 @@ const panel = computed(() => {
   font-variant-numeric: tabular-nums;
 }
 
-/* 라인 이름: 라인 바닥 왼쪽 끝. 단추가 아니라 이름표 (바닥을 눌러 고른다) */
+/* 라인 이름: 라인 바닥 왼쪽 끝. 누르면 바닥과 같이 라인 카드 (11/22) */
 .stage :deep(.f3d-line) {
   padding: 3px var(--sp-2);
   border-radius: var(--r-1);
@@ -639,8 +584,11 @@ const panel = computed(() => {
   color: var(--c-ink);
   font-size: var(--fs-md);
   font-weight: var(--fw-strong);
+  pointer-events: auto;
+  cursor: pointer;
 }
 
+.stage :deep(.f3d-line:hover),
 .stage :deep(.f3d-line.hov) {
   box-shadow: inset 0 0 0 var(--line-w-strong) var(--c-accent);
   color: var(--c-accent);
@@ -658,11 +606,29 @@ const panel = computed(() => {
   align-items: center;
   gap: 3px;
   padding: 2px 6px;
-  border-radius: var(--r-1);
-  box-shadow: inset 0 0 0 var(--line-w) var(--c-line-strong);
-  background: var(--c-surface);
   color: var(--c-ink);
   font-weight: var(--fw-strong);
+}
+
+/* 재공 수: 바탕 없이 상자 + 숫자만. 흰 테두리를 둘러 장면 위에서 또렷하게 (11/22) */
+.stage :deep(.f3d-wip) {
+  padding: 0;
+  font-size: var(--fs-row);
+  font-weight: var(--fw-code);
+  line-height: 1;
+  text-shadow: none;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 4px var(--c-surface);
+}
+
+.stage :deep(.f3d-wip .f3d-ico) {
+  width: 16px;
+  height: 16px;
+  overflow: visible;
+  fill: var(--c-surface);
+  stroke: var(--c-ink);
+  stroke-width: 1.4;
+  filter: drop-shadow(0 0 1px var(--c-surface)) drop-shadow(0 0 1px var(--c-surface)) drop-shadow(0 0 1px var(--c-surface));
 }
 
 .stage :deep(.f3d-pid) {
@@ -686,23 +652,31 @@ const panel = computed(() => {
   line-height: 1;
 }
 
-/* 3D 보기의 이상 표시: 흰 알약 + 상태 테두리 + 상태 글자 칸 + 명칭 */
+/* 3D 보기의 이상 표시: 상태 색 동그라미 + 상태 글자 (11/22, 네모 알약에서) */
 .stage :deep(.f3d-bang) {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  padding: 2px;
-  border: var(--indicator-w) solid var(--st);
-  border-radius: var(--r-2);
-  background: var(--c-surface);
-  color: var(--c-ink);
+  display: block;
+  padding: 0;
+  border: 2px solid var(--c-surface);
+  border-radius: 50%;
+  background: none;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--c-ink) 35%, transparent);
   font: inherit;
-  font-weight: var(--fw-strong);
   pointer-events: auto;
   cursor: pointer;
 }
 
-.stage :deep(.f3d-bang:hover) { background: var(--c-surface-sunk); }
+.stage :deep(.f3d-bang .f3d-key) {
+  display: grid;
+  width: 20px;
+  min-width: 0;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+}
+
+.stage :deep(.f3d-bang[data-state="DC"] .f3d-key) { font-size: 11px; }
+.stage :deep(.f3d-bang:hover) { filter: brightness(1.08); }
 
 /* 탑뷰 설비 칩: 상태 색 면(.st-*) + 설비 번호, 이상 상태는 상태 글자를 붙인다 (11/20 사용자: 예전 탑뷰 모양으로) */
 .stage :deep(.f3d-chip) {

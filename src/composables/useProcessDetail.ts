@@ -53,9 +53,8 @@ export function useProcessDetail(area: AreaId, process: ProcessId) {
       if (row?.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초`, mark: row.slowest ? '가장 느림' : undefined })
       if (row?.wip) info.push({ label: '재공 앞 / 뒤', value: `${formatNumber(row.wip.before)} / ${formatNumber(row.wip.after)}` })
     }
-    // 슬리팅은 실설비(A, iG5A)와 시뮬레이터를 구분해 표시 (D-43)
-    const tag = process === 'SLITTING' ? (e.real ? '실설비 · LS iG5A' : '시뮬레이터') : null
-    return toEquipCard(e, liveById.value.get(e.id), now.value, info, tag)
+    // 11/22 실설비·시뮬레이터 표시(D-43)는 뺌
+    return toEquipCard(e, liveById.value.get(e.id), now.value, info)
   }))
 
   const head = computed(() => ({

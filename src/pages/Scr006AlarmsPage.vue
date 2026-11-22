@@ -44,14 +44,15 @@ watch(() => route.query.line, (line) => { if (typeof line === 'string') h.lineId
 
 const multi = computed(() => from.value !== to.value)
 const timeW = computed(() => (multi.value ? '9.5em' : '6.5em'))
+// 남는 폭은 상태·코드·상세 열이 쓴다 (11/22, 예전엔 조치 메모 열)
 const ALARM_COLS = computed<TableColumn[]>(() => [
   { key: 'start', label: '발생', width: timeW.value },
   { key: 'end', label: '해제', width: timeW.value },
-  { key: 'equipment', label: '설비', width: '8em' },
-  { key: 'code', label: '상태 · 코드 · 상세', width: '17em' },
-  { key: 'duration', label: '지속', align: 'right', width: '5em' },
-  { key: 'notify', label: '메일', width: '7.5em' },
-  { key: 'memo', label: '조치 메모 · 담당자' },
+  { key: 'equipment', label: '설비', width: '7.5em' },
+  { key: 'code', label: '상태 · 코드 · 상세' },
+  { key: 'duration', label: '지속', align: 'right', width: '7.5em' },
+  { key: 'notify', label: '메일', width: '7em' },
+  { key: 'memo', label: '조치 메모 · 담당자', width: '13em' },
   { key: 'report', label: '보고서', width: '6.5em' },
 ])
 
@@ -342,10 +343,11 @@ const openReport = (r: AlarmRow) => router.push(r.reportId ? `/reports/replan/${
   min-width: 0;
 }
 
-/* 메모 열이 넓어 전문이 보인다 → 줄바꿈 (D-109) */
+/* 메모 열은 좁게 (11/22, 지속 시간이 잘리던 것) → 긴 글은 줄바꿈 */
 .memo-text {
   min-width: 0;
   white-space: normal;
+  overflow-wrap: anywhere;
   word-break: keep-all;
 }
 

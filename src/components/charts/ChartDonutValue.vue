@@ -1,10 +1,10 @@
-<!-- 값 도넛 (라인 상세 달성률·불량률): 조각 + 가운데 큰 값·작은 이름. 비가동·생산 결과 도넛(슬롯)은 ChartDonut.
-     전체 중 몫을 보여준다 (달성률 · 공정별 불량 비중). 가운데에 큰 값과 작은 이름 -->
+<!-- 값 도넛 (라인 상세 불량률): 조각 + 가운데 큰 값(슬롯). 비가동·생산 결과 도넛(슬롯)은 ChartDonut.
+     전체 중 몫을 보여준다 (공정별 불량 비중). 가운데 숫자는 옆 게이지(OEE)와 같은 글자 크기로 쓰려고 슬롯 (11/22) -->
 <script setup lang="ts">
 import { computed } from 'vue'
 
-const props = withDefaults(defineProps<{ parts: { value: number; color: string }[]; center: string; sub?: string; label: string; size?: number }>(), { size: 112 })
-const R = 42
+const props = withDefaults(defineProps<{ parts: { value: number; color: string }[]; label: string; size?: number }>(), { size: 128 })
+const R = 53
 const C = 2 * Math.PI * R
 const arcs = computed(() => {
   const total = props.parts.reduce((a, p) => a + p.value, 0) || 1
@@ -19,26 +19,36 @@ const arcs = computed(() => {
 </script>
 
 <template>
-  <svg class="donut" :width="size" :height="size" viewBox="0 0 120 120" role="img" :aria-label="label">
-    <circle v-for="(a, i) in arcs" :key="i" cx="60" cy="60" :r="R" fill="none" :stroke="a.color" stroke-width="16" :stroke-dasharray="a.dash" :stroke-dashoffset="a.off" transform="rotate(-90 60 60)" />
-    <text x="60" y="62" text-anchor="middle" class="c">{{ center }}</text>
-    <text v-if="sub" x="60" y="80" text-anchor="middle" class="s">{{ sub }}</text>
-  </svg>
+  <div class="donut" :style="{ width: `${size}px`, height: `${size}px` }">
+    <svg :width="size" :height="size" viewBox="0 0 120 120" role="img" :aria-label="label">
+      <circle class="track" cx="60" cy="60" :r="R" />
+      <circle v-for="(a, i) in arcs" :key="i" cx="60" cy="60" :r="R" fill="none" :stroke="a.color" stroke-width="12" :stroke-dasharray="a.dash" :stroke-dashoffset="a.off" transform="rotate(-90 60 60)" />
+    </svg>
+    <div class="c"><slot /></div>
+  </div>
 </template>
 
 <style scoped>
 .donut {
+  position: relative;
   flex: none;
 }
 
-.c {
-  fill: var(--c-ink);
-  font-size: 20px;
-  font-weight: var(--fw-strong);
+svg {
+  display: block;
 }
 
-.s {
-  fill: var(--c-ink-3);
-  font-size: 11px;
+.track {
+  fill: none;
+  stroke: var(--c-track);
+  stroke-width: 12;
+}
+
+.c {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
 }
 </style>
