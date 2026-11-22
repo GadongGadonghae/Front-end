@@ -3,7 +3,7 @@
      설비를 누르면 왼쪽에 설비 팝업 (카메라는 그대로, 11/22 줌인 뺌). 닫기: × · Esc · 팝업 밖
      라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽 위에 간단한 라인 카드. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
 import BaseFold from '@/components/base/BaseFold.vue'
 import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
@@ -113,13 +113,13 @@ function setView(m: ViewMode) {
 // 팝업 밖을 누르면 닫는다. 3D 장면 안은 scene이 알려 준다 (설비 = 바꿔 열기, 빈 곳·라인 = 닫기)
 function onDocClick(ev: MouseEvent) {
   const t = ev.target as Node | null
-  if (!popId.value || !t) return
+  if (!active || !popId.value || !t) return
   if (popEl.value?.contains(t) || host.value?.contains(t)) return
   if ((t as Element).closest?.('[data-keep-pop]')) return
   closePop()
 }
 function onKey(ev: KeyboardEvent) {
-  if (ev.key !== 'Escape') return
+  if (ev.key !== 'Escape' || !active) return
   if (popId.value) closePop()
   else if (selLine.value) selectLine(null)
 }
@@ -144,6 +144,18 @@ onMounted(() => {
   push()
   document.addEventListener('click', onDocClick, true)
   document.addEventListener('keydown', onKey)
+})
+// 대시보드가 보관(KeepAlive)되는 동안: 3D 그리기를 멈추고, 열려 있던 설비 팝업·라인 카드는 닫는다 (D-120, 다시 오면 처음 모습)
+let active = true
+onDeactivated(() => {
+  active = false
+  closePop()
+  selectLine(null)
+  scene.value?.pause()
+})
+onActivated(() => {
+  active = true
+  scene.value?.resume()
 })
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocClick, true)
@@ -424,8 +436,22 @@ const panel = computed(() => {
   background: var(--c-accent);
 }
 
-/* 고장 설비가 있는 라인: 빨간 바탕이 깜빡임 (11/21) */
+/* 고장 설비가 있는 라인: 빨간 바탕이 깜빡임 (11/21)
+   11/22 성능(D-120): 배경색을 바꾸면 매 프레임 스타일 계산·그리기가 돌아(5초에 스타일 계산 8 → 581번) 빨간 면을 한 장 깔고 투명도만 바꾼다 (합성만, 보이는 모양은 같음) */
 .alloc li.down {
+  position: relative;
+  isolation: isolate;
+}
+
+.alloc li.down::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--c-down) 22%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
   animation: line-down 1.1s ease-in-out infinite;
 }
 
@@ -434,14 +460,14 @@ const panel = computed(() => {
 }
 
 @keyframes line-down {
-  0%, 100% { background: transparent; }
-  50% { background: color-mix(in srgb, var(--c-down) 22%, transparent); }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alloc li.down {
+  .alloc li.down::before {
     animation: none;
-    background: color-mix(in srgb, var(--c-down) 16%, transparent);
+    opacity: 0.73; /* 예전 16% 면과 같은 진하기 (22% × 0.73) */
   }
 }
 

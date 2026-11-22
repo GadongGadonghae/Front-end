@@ -16,7 +16,7 @@ import { SHIFT_END, SHIFT_START } from '@/lib/shift'
 /** 코일입고: 10초마다 기록·재고 추이 (시연 배속에서도 선이 따라오게), 오늘 입고·재고 숫자는 1초 snapshot (API 명세 6장) */
 export function useInbound() {
   const snapshot = useLiveSnapshot()
-  const { data } = usePoll(() => source.q.getInboundToday(), 10_000)
+  const { data } = usePoll(() => source.q.getInboundToday(), 10_000, undefined, 'inbound-today')
   const figures = computed(() => ({
     today: snapshot.value?.inbound.today ?? data.value?.today ?? null,
     stock: snapshot.value?.inbound.stock ?? data.value?.stock ?? null,
@@ -58,8 +58,8 @@ const SHIFT = [SHIFT_START / 3600, SHIFT_END / 3600 - 1]
 export function useLoading() {
   const snapshot = useLiveSnapshot()
   const summary = useLiveSummary()
-  const { data: hourly } = usePoll(() => source.q.getTodayHourly(), 60_000)
-  const { data: loaded } = usePoll(() => source.q.getLoadedToday(), 10_000)
+  const { data: hourly } = usePoll(() => source.q.getTodayHourly(), 60_000, undefined, 'hourly-plant')
+  const { data: loaded } = usePoll(() => source.q.getLoadedToday(), 10_000, undefined, 'loaded-today')
 
   const figures = computed(() => {
     const done = snapshot.value?.plant.done ?? summary.value?.plant.done ?? null

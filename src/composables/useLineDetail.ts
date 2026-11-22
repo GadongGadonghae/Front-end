@@ -25,9 +25,9 @@ export function useLineDetail(lineId: LineId) {
   const now = useNow()
 
   const processes: ProcessId[] = lineId === 'PT' ? ['PAINTING'] : ['SLITTING', 'PRESS', 'WELDING']
-  const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS)
+  const { data: today } = usePoll(() => Promise.all(processes.map((p) => source.q.getProcessToday(lineId, p))), PROCESS_POLL_MS, undefined, `line-today:${lineId}`)
   // 라인 OEE 3요소 (가동률 화면과 같은 API-050, 오늘·이 라인)
-  const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(clockNow()), lineId }), PROCESS_POLL_MS)
+  const { data: oeeReport } = usePoll(() => source.q.getOee({ period: 'day', date: toDateStr(clockNow()), lineId }), PROCESS_POLL_MS, undefined, `line-oee:${lineId}:${toDateStr(clockNow())}`)
   // 오늘 알람 이력 (11/20): 알람 이력 탭과 같은 기준 = 이 라인 설비의 고장(D) + 통신 끊김(DC)
   const { rows: alarms } = useTodayAlarms(lineId)
 

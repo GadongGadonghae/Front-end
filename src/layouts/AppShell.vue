@@ -80,6 +80,14 @@ function viewFault() {
   toast.dismiss()
   if (e) router.push({ path: '/alarms' })
 }
+
+/** 보관할 화면 (KeepAlive). 3D가 있는 대시보드만 */
+const KEEP_ALIVE = ['Scr001DashboardPage']
+// 3D 코드(three.js, 약 550KB)는 처음 화면이 그려진 뒤 한가할 때 미리 받아 둔다 (대시보드에 처음 들어갈 때 기다리지 않게)
+onMounted(() => {
+  const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500))
+  idle(() => { void import('@/components/domain/Factory3D.vue') })
+})
 </script>
 
 <template>
@@ -106,7 +114,12 @@ function viewFault() {
     </header>
 
     <!-- 주소(경로)가 바뀌면 화면을 새로 만든다: 라인·공정 탭 전환. ?eq= 같은 쿼리만 바뀌면 그대로 -->
-    <main class="main print-flow"><RouterView :key="route.path" /></main>
+    <!-- 대시보드는 떠나도 버리지 않고 보관한다 (3D 장면을 다시 만들지 않게, D-120 · docs/10_성능검토.md). 나머지 화면은 그대로 -->
+    <main class="main print-flow">
+      <RouterView v-slot="{ Component, route: r }">
+        <KeepAlive :include="KEEP_ALIVE"><component :is="Component" :key="r.path" /></KeepAlive>
+      </RouterView>
+    </main>
 
     <aside v-if="target.change.value" class="target-card no-print" role="status" aria-live="polite">
       <div class="tc-body">

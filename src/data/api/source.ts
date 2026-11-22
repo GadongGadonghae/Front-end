@@ -9,10 +9,11 @@ import type { AlarmEvent, HistoryEvent, HistoryQuery, StateEvent } from '@/types
 import type { TelemetryTick } from '@/types/process'
 import type { DowntimeCode, StateCode, StopState } from '@/types/state'
 import type { OeeReport } from '@/types/analysis'
-import type { DowntimeEventDto, EquipmentStatusDto, FlowPositionsDto, FlowReportDto, ProductDetailDto, ProductDto, ReassignmentDetailDto, ThresholdDto } from '@/data/api/dto'
+import type { DowntimeEventDto, EquipmentStatusDto, FlowEventDto, FlowPositionsDto, FlowReportDto, MetricsDto, MetricsEventDto, ProductDetailDto, ProductDto, ProductionEventDto, ReassignmentDetailDto, ThresholdDto } from '@/data/api/dto'
 import type { Product, ProductDetail } from '@/types/production'
 import type { ReplanReport, ReportFlowRecord } from '@/types/report'
-import { api } from '@/data/api/endpoints'
+import { api, topics } from '@/data/api/endpoints'
+import * as ws from '@/data/api/ws'
 import { ApiError, token } from '@/data/api/http'
 import { isTodo, summarize } from '@/data/historyTodo'
 import { sensorRisks, sensorTickValues, withSensors } from '@/data/dummy/sensors'
@@ -24,6 +25,17 @@ const ALARM_MS = 2000
 const TELEMETRY_MS = 2000
 /** 예지보전 위험도 5초 (API 명세 3.1 risk) */
 const RISK_MS = 5000
+// 웹소켓이 붙어 있는 동안 (11/22): 바뀐 것은 W-01 · W-03 · W-04 · W-05로 바로 받고, 채널에 없는 값과 놓친 메시지만 아래 주기로 다시 맞춘다.
+// 끊기면 위의 원래 주기 조회로 돌아간다 (hybrid)
+const WS_SNAPSHOT_RESYNC_MS = 10_000
+/** W-03(오늘 누적)이 바뀌면 라인별 수량(M-07)·코일(M-16)을 다시 받는다. 이 간격 안에서는 한 번만 (주기 조회 때와 같은 1초) */
+const WS_COUNTS_MIN_MS = 1000
+const WS_ALARM_RESYNC_MS = 30_000
+/** 설비 상태(W-01)가 바뀐 뒤 진행 중 비가동(U-08)을 다시 볼 때까지 (같은 순간 여러 설비가 바뀌면 한 번만 조회) */
+const ALARM_CHECK_DELAY_MS = 300
+const WS_TELEMETRY_RESYNC_MS = 10_000
+/** 웹소켓은 붙었는데 W-05가 이만큼 안 오면(예전 백엔드 등) 3D 물류가 멈추지 않게 직접 조회한다 */
+const WS_FLOW_STALE_MS = 3000
 const LINES = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 
 // ── 기준정보 중 API에 없는 것 (명세 공통 규칙에서 옮김) ──
@@ -304,6 +316,45 @@ function poll(ms: number, run: () => Promise<void>): Unsubscribe {
   return () => { alive = false; clearInterval(t) }
 }
 
+/** 웹소켓이 붙어 있으면 live(), 끊겨 있으면 fallback()(원래 주기 조회). 다시 붙을 때마다 live()를 새로 시작한다
+ *  = REST로 다시 채우고 재구독 (API 명세 WebSocket 절). 백엔드가 꺼져 있거나 허용 주소가 아니어도 화면은 주기 조회로 돈다 */
+function hybrid(live: () => Unsubscribe, fallback: () => Unsubscribe): Unsubscribe {
+  let mode: boolean | null = null
+  let stop: Unsubscribe | null = null
+  const off = ws.onConnection((up) => {
+    if (up === mode) return
+    stop?.()
+    mode = up
+    stop = up ? live() : fallback()
+  })
+  return () => { off(); stop?.(); stop = null }
+}
+
+/** 한 번에 하나만 돈다. 도는 중에 다시 불리면 끝난 뒤 한 번 더 돈다 (늦은 옛 응답이 새 값을 덮지 않게) */
+function serial(run: () => Promise<void>): () => void {
+  let busy = false
+  let again = false
+  const go = () => {
+    if (busy) { again = true; return }
+    busy = true
+    run().catch(() => { /* 다음에 다시 */ }).finally(() => {
+      busy = false
+      if (again) { again = false; go() }
+    })
+  }
+  return go
+}
+
+/** M-17 · W-05 제품 위치 → 3D 물류. pile은 라인 안이면 라인 접두어가 없어서 3D 키(`A:SL-PR`)로 맞춘다. 도장 뒤(`PT1:PT-VI`)는 그대로 */
+function flowOf(pos: { at: string; products: FlowPositionsDto['products'] }, coilWip: number): FlowPositions {
+  const products: FlowPositions['products'] = pos.products.map((p) => ({
+    productId: p.productId,
+    lineId: p.lineId as ProductionLineId,
+    location: p.equipmentId ? { eq: p.equipmentId } : { pile: p.pile!.includes(':') ? p.pile! : `${p.lineId}:${p.pile}` },
+  }))
+  return { at: pos.at, products, coilWip }
+}
+
 export function createApiSource(): DataSource {
   const typeById = new Map<string, EquipmentTypeCode>()
 
@@ -322,15 +373,69 @@ export function createApiSource(): DataSource {
   let masterCache: Promise<MasterData> | null = null
   const masterOnce = () => (masterCache ??= master().catch((e) => { masterCache = null; throw e }))
 
-  async function snapshot(): Promise<PlantSnapshot> {
-    const [status, counts, coil] = await Promise.all([api.M01(), api.M07({ groupBy: 'line' }), api.M16()])
+  /** 스냅샷 중 수량 부분: 라인별 실적(M-07)과 코일(M-16) */
+  async function snapshotCounts(): Promise<Pick<PlantSnapshot, 'plant' | 'lines' | 'inbound'>> {
+    const [counts, coil] = await Promise.all([api.M07({ groupBy: 'line' }), api.M16()])
     return {
-      at: isoLocal(clockNow()),
-      equipment: status.map(liveOf),
       plant: { done: counts.ok },
       lines: counts.byGroup.map((g) => ({ lineId: g.key as LineId, done: g.good })),
       // M-16: 오늘 입고 롤 수, 재고는 롤(소수 1자리, 1롤 = 20개 → 74개면 3.7)
       inbound: { today: coil.receivedRolls, stock: coil.stockRolls },
+    }
+  }
+
+  async function snapshot(): Promise<PlantSnapshot> {
+    const [status, counts] = await Promise.all([api.M01(), snapshotCounts()])
+    return { at: isoLocal(clockNow()), equipment: status.map(liveOf), ...counts }
+  }
+
+  /** 웹소켓 스냅샷: 처음 M-01로 39대를 채우고, W-01이 오면 그 설비만 바꿔 끼운다.
+   *  수량은 W-03(오늘 누적)이 바뀔 때 다시 받고, 전체는 10초마다 다시 맞춘다 (놓친 메시지 대비) */
+  function liveSnapshot(cb: (snapshot: PlantSnapshot) => void): Unsubscribe {
+    let snap: PlantSnapshot | null = null
+    let alive = true
+    const emit = () => { if (alive && snap) cb({ ...snap, at: isoLocal(clockNow()) }) }
+    // 전체 조회가 오가는 사이에 온 W-01은 조회 결과보다 새 값이다 → 늦게 온 옛 값이 덮지 않게 그 설비는 그대로 둔다
+    const pushed = new Map<string, EquipmentLive>()
+    const full = serial(async () => {
+      pushed.clear()
+      const s = await snapshot()
+      if (!alive) return
+      snap = { ...s, equipment: s.equipment.map((e) => pushed.get(e.id) ?? e) }
+      emit()
+    })
+    const counts = serial(async () => { const c = await snapshotCounts(); if (alive && snap) { snap = { ...snap, ...c }; emit() } })
+    let lastCounts = 0
+    let countsTimer: ReturnType<typeof setTimeout> | null = null
+    const countsSoon = () => {
+      if (countsTimer) return
+      countsTimer = setTimeout(() => { countsTimer = null; lastCounts = Date.now(); counts() }, Math.max(0, lastCounts + WS_COUNTS_MIN_MS - Date.now()))
+    }
+    full()
+    const resync = setInterval(full, WS_SNAPSHOT_RESYNC_MS)
+    const offStatus = ws.subscribe<EquipmentStatusDto>(topics.W01, (s) => {
+      const next = liveOf(s)
+      pushed.set(next.id, next)
+      if (!snap) return
+      const i = snap.equipment.findIndex((e) => e.id === next.id)
+      snap = { ...snap, equipment: i < 0 ? [...snap.equipment, next] : snap.equipment.map((e, k) => (k === i ? next : e)) }
+      emit()
+    })
+    // W-03은 판정마다 같은 오늘 누적이 다시 올 수 있다 → 누적이 바뀔 때만.
+    // 합계(W-03)만 먼저 바꾸면 라인별 수량(M-07)의 합과 잠깐 어긋나므로, 한 번에 같이 다시 받는다 (코일 재고도 이때)
+    let lastToday = ''
+    const offProduction = ws.subscribe<ProductionEventDto>(topics.W03, (p) => {
+      const t = JSON.stringify(p.today)
+      if (t === lastToday) return
+      lastToday = t
+      countsSoon()
+    })
+    return () => {
+      alive = false
+      clearInterval(resync)
+      if (countsTimer) clearTimeout(countsTimer)
+      offStatus()
+      offProduction()
     }
   }
 
@@ -376,13 +481,15 @@ export function createApiSource(): DataSource {
     return p.items.map(stateEventOf)
   }
 
-  // 알람 발생·해제: 진행 중인 건만 (1분 미만도) 5초마다 받아 지난번과 비교한다. 구독이 여럿이어도 조회는 하나 (W-01·W-02로 바꿀 자리)
+  // 알람 발생·해제: 진행 중인 비가동(U-08, 1분 미만도)을 받아 지난번과 비교한다. 구독이 여럿이어도 조회는 하나.
+  // 웹소켓이 붙어 있으면 설비 상태(W-01)가 바뀔 때만 다시 보고(놓친 것은 30초마다), 끊기면 2초마다 본다 (11/22).
+  // W-02(관리값 알람)는 화면의 알람(비가동)과 다른 데이터이고 백엔드가 아직 보내지 않아 쓰지 않는다
   const alarmListeners = new Set<(a: AlarmEvent) => void>()
   let stopAlarmPoll: Unsubscribe | null = null
   function startAlarmPoll(): Unsubscribe {
     let prev = new Map<string, StateEvent>()
     let first = true
-    return poll(ALARM_MS, async () => {
+    const check = serial(async () => {
       const p = await api.U08({ ...todayRange(), inProgress: true, minMinutes: 0, page: 1, size: 100 })
       const now = new Map(p.items.map(stateEventOf).map((e) => [e.id, e]))
       const emit = (a: AlarmEvent) => alarmListeners.forEach((cb) => cb(a))
@@ -393,25 +500,45 @@ export function createApiSource(): DataSource {
       prev = now
       first = false
     })
+    let soon: ReturnType<typeof setTimeout> | null = null
+    const checkSoon = () => { soon ??= setTimeout(() => { soon = null; check() }, ALARM_CHECK_DELAY_MS) }
+    const off = hybrid(
+      () => {
+        check()
+        const t = setInterval(check, WS_ALARM_RESYNC_MS)
+        const offStatus = ws.subscribe(topics.W01, checkSoon)
+        return () => { clearInterval(t); offStatus() }
+      },
+      () => { check(); const t = setInterval(check, ALARM_MS); return () => clearInterval(t) },
+    )
+    return () => { off(); if (soon) clearTimeout(soon) }
   }
 
   return {
     demo: false,
     live: {
-      onSnapshot: (cb) => poll(SNAPSHOT_MS, async () => cb(await snapshot())),
+      onSnapshot: (cb) => hybrid(() => liveSnapshot(cb), () => poll(SNAPSHOT_MS, async () => cb(await snapshot()))),
       onSummary: (cb) => poll(SUMMARY_MS, async () => cb(await summary())),
       onProductMove: () => () => {},
-      // 3D 물류: 제품 위치 M-17 + 코일 재공 M-16(stockQty, 제품 수) 1초마다 (11/19)
-      // M-17 pile은 라인 안이면 라인 접두어가 없어서 3D 키(`A:SL-PR`)로 맞춘다. 도장 뒤(`PT1:PT-VI`)는 그대로
-      onFlowPositions: (cb) => poll(SNAPSHOT_MS, async () => {
-        const [pos, coil] = await Promise.all([api.M17(), api.M16()])
-        const products: FlowPositions['products'] = pos.products.map((p) => ({
-          productId: p.productId,
-          lineId: p.lineId as ProductionLineId,
-          location: p.equipmentId ? { eq: p.equipmentId } : { pile: p.pile!.includes(':') ? p.pile! : `${p.lineId}:${p.pile}` },
-        }))
-        cb({ at: pos.at, products, coilWip: coil.stockQty })
-      }),
+      // 3D 물류: 제품 위치 M-17 + 코일 재공 M-16(stockQty, 제품 수). 웹소켓이면 W-05로 1초마다 받고, 끊기면 1초 조회 (11/19 · 11/22)
+      onFlowPositions: (cb) => {
+        const fetchOnce = async () => { const [pos, coil] = await Promise.all([api.M17(), api.M16()]); return flowOf(pos, coil.stockQty) }
+        return hybrid(
+          () => {
+            // 구독하자마자 한 번 (계약): REST로 채우고, W-05가 먼저 오면 그 값을 쓴다
+            let alive = true
+            let lastAt = 0
+            const started = Date.now()
+            const stale = () => Date.now() - lastAt > WS_FLOW_STALE_MS
+            const fetchFlow = serial(async () => { const f = await fetchOnce(); if (alive && stale()) cb(f) })
+            fetchFlow()
+            const watch = setInterval(() => { if (stale() && Date.now() - started > WS_FLOW_STALE_MS) fetchFlow() }, SNAPSHOT_MS)
+            const off = ws.subscribe<FlowEventDto>(topics.W05, (f) => { lastAt = Date.now(); if (alive) cb(flowOf(f, f.coilStockQty)) })
+            return () => { alive = false; clearInterval(watch); off() }
+          },
+          () => poll(SNAPSHOT_MS, async () => cb(await fetchOnce())),
+        )
+      },
       onAlarm(cb) {
         alarmListeners.add(cb)
         stopAlarmPoll ??= startAlarmPoll()
@@ -430,14 +557,33 @@ export function createApiSource(): DataSource {
       },
       onTelemetry(equipmentId, cb: (t: TelemetryTick) => void) {
         // after: 그 시각보다 뒤의 점만 (M-03, 11/19 백엔드 추가). 처음은 구독한 시각부터 (그 앞은 getTelemetry가 받음)
+        // 웹소켓이면 새 점은 W-04로 받고 놓친 점은 10초마다 M-03으로 채운다. 끊기면 2초 조회. 둘이 겹쳐도 lastTs 뒤 점만 쓴다 (11/22)
         let lastTs = isoLocal(clockNow())
-        return poll(TELEMETRY_MS, async () => {
-          const today = dateOf(clockNow())
-          const m = await api.M03(equipmentId, { from: today, to: today, after: lastTs })
-          const values = m.metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
+        const take = (metrics: MetricsDto['metrics']) => {
+          const from = Date.parse(lastTs)
+          const values = metrics.flatMap((x) => x.points.map((p) => ({ t: p.ts, item: x.metric, value: p.value, result: p.result })))
+            .filter((v) => Date.parse(v.t) > from)
           for (const v of values) if (Date.parse(v.t) > Date.parse(lastTs)) lastTs = v.t
           if (values.length) cb({ equipmentId, values: [...values, ...sensorTickValues(equipmentId, values.map((v) => v.t), clockNow() / 1000)] })
+        }
+        const fetchNew = serial(async () => {
+          const today = dateOf(clockNow())
+          take((await api.M03(equipmentId, { from: today, to: today, after: lastTs })).metrics)
         })
+        return hybrid(
+          () => {
+            fetchNew()
+            const t = setInterval(fetchNew, WS_TELEMETRY_RESYNC_MS)
+            // 첫 W-04가 오면 그 앞(구독 ~ 서버가 보내기 시작한 때)까지 M-03으로 한 번에 받아 빠진 점이 없게 한다
+            let first = true
+            const off = ws.subscribe<MetricsEventDto>(topics.W04(equipmentId), (m) => {
+              if (first) { first = false; fetchNew(); return }
+              take(m.metrics)
+            })
+            return () => { clearInterval(t); off() }
+          },
+          () => { fetchNew(); const t = setInterval(fetchNew, TELEMETRY_MS); return () => clearInterval(t) },
+        )
       },
     },
     q: {

@@ -151,10 +151,12 @@ export const api = {
   C05: (q: { lineId?: string; process?: ProcessCode } = {}) => http.get<EquipmentDto[]>('/equipments', q),
 }
 
-/** WebSocket(STOMP) 구독 주소 (W-01~04) */
+/** WebSocket(STOMP) 구독 주소 (W-01~05). 연결은 data/api/ws.ts */
 export const topics = {
   W01: '/topic/status',
   W02: '/topic/alarms',
   W03: '/topic/production',
   W04: (equipmentId: string) => `/topic/metrics/${equipmentId}`,
+  /** 3D 물류: M-17 제품 위치 + M-16 코일 재고 (11/22) */
+  W05: '/topic/flow',
 }

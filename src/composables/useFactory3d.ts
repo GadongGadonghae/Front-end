@@ -22,7 +22,7 @@ export function useFactory3d() {
   const now = useNow()
   // 오늘 승인·적용된 추가 주문 배정 (R-06) → 배정 칸 "+N 추가 배정"
   const { data: additions } = usePoll(
-    () => source.q.getOrderAdditions(toDateStr(clockNow())).catch((): Partial<Record<LineId, number>> => ({})), ADDITIONS_MS)
+    () => source.q.getOrderAdditions(toDateStr(clockNow())).catch((): Partial<Record<LineId, number>> => ({})), ADDITIONS_MS, undefined, 'order-additions')
   const view = computed(() => {
     const m = master.value
     const s = snapshot.value

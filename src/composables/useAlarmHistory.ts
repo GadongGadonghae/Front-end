@@ -151,15 +151,15 @@ export function useAlarmHistory() {
 
   const alarms = usePoll(
     () => (tab.value === 'alarm' ? source.q.getHistory(alarmQuery.value) : Promise.resolve(null)),
-    null, () => [tab.value, alarmQuery.value],
+    null, () => [tab.value, alarmQuery.value], 'alarm-list',
   )
   const risks = usePoll(
     () => (tab.value === 'risk' ? source.q.getRiskHistory(riskQuery.value) : Promise.resolve(null)),
-    null, () => [tab.value, riskQuery.value],
+    null, () => [tab.value, riskQuery.value], 'risk-list',
   )
   const summary = usePoll(
     () => (tab.value === 'alarm' ? source.q.getHistorySummary(summaryQuery.value) : Promise.resolve(null)),
-    null, () => [tab.value, summaryQuery.value],
+    null, () => [tab.value, summaryQuery.value], 'alarm-summary',
   )
   // 새 알람·해제, 위험 진입·해제가 오면 지금 보는 표를 다시 부른다
   const offAlarm = source.live.onAlarm(() => { if (tab.value === 'alarm') { alarms.reload(); summary.reload() } })

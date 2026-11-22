@@ -510,6 +510,21 @@ export interface ProductionEventDto {
   today: { total: number; processNg: number; inspected: number; ngVision: number; ok: number; yieldRate: number }
 }
 
+/** W-04 /topic/metrics/{equipmentId}: 지난번 뒤 새로 생긴 점만, M-03 metrics 모양 그대로 (11/22) */
+export interface MetricsEventDto {
+  equipmentId: string
+  /** 이번에 보낸 점 중 가장 늦은 시각 */
+  ts: string
+  metrics: MetricsDto['metrics']
+}
+
+/** W-05 /topic/flow: M-17 at · products 그대로 + M-16 코일 재고(제품 수) (11/22) */
+export interface FlowEventDto {
+  at: string
+  products: FlowPositionsDto['products']
+  coilStockQty: number
+}
+
 /** R-10 ~ R-14 보고서 결재·전송 (11/20). 목록에서는 content = null */
 export interface FlowReportDto {
   reportId: number

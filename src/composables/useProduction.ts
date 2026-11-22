@@ -66,12 +66,12 @@ export function useProduction(initialQ = '') {
     const list = await source.q.getProducts({ period: 'day', date: today, lineId: lineId.value || undefined, result: 'wip', page: 1 })
     const details = await Promise.all(list.items.map((p) => source.q.getProduct(p.id)))
     return { total: list.total, items: details.filter((d): d is ProductDetail => d != null) }
-  }, LIVE_MS, liveKey)
+  }, LIVE_MS, liveKey, 'prod-wip')
   const histKey = computed(() => `${tab.value}|${JSON.stringify(listQuery.value)}`)
-  const { data: summary } = usePoll(() => source.q.getProductionSummary(base.value), HIST_MS, base)
+  const { data: summary } = usePoll(() => source.q.getProductionSummary(base.value), HIST_MS, base, 'prod-summary')
   const { data: list } = usePoll(
     () => (tab.value === 'hist' ? source.q.getProducts(listQuery.value) : Promise.resolve(null)),
-    HIST_MS, histKey,
+    HIST_MS, histKey, 'prod-list',
   )
   // 고른 제품이 진행 중 목록에 없으면 따로 부른다
   const { data: picked } = usePoll(

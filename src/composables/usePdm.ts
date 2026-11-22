@@ -131,7 +131,7 @@ export function usePdm(selectedId: Ref<string | null>) {
   })
 
   // 위험 진입 시각: 오늘 위험 이력에서 진행 중인 건
-  const { data: riskEvents } = usePoll(() => source.q.getTodayRiskEvents(), ETA_POLL_MS)
+  const { data: riskEvents } = usePoll(() => source.q.getTodayRiskEvents(), ETA_POLL_MS, undefined, 'risk-events-today')
   const dangerSince = computed(() => {
     const ev = riskEvents.value?.find((r) => r.equipmentId === selectedId.value && !r.end)
     return ev ? `${formatTime(ev.start)} 위험 진입 · ${formatDuration((now.value - Date.parse(ev.start)) / 1000)} 지남` : null
