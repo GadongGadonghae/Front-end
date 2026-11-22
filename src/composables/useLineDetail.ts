@@ -17,7 +17,6 @@ import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
 /** 프레스는 4단 뒤 1회 검사 (A-09) */
-const INSPECTION_NOTE: Partial<Record<ProcessId, string>> = { PRESS: '4단 뒤 검사' }
 
 export function useLineDetail(lineId: LineId) {
   const { master } = useMaster()
@@ -76,7 +75,7 @@ export function useLineDetail(lineId: LineId) {
       cells: equipment.value.filter((e) => e.process === p).sort((a, b) => a.order - b.order).map(cell),
       output: todayOf(p)?.output ?? null,
       ng: lineSummary.value?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? null,
-      note: INSPECTION_NOTE[p] ?? null,
+      note: null,
     }))
     if (lineId === 'PT') {
       // 도장 #1·#2는 병렬: 세로로 쌓고, A~F 라인이 지금 어느 도장으로 보내는지 선으로 보인다
@@ -94,7 +93,7 @@ export function useLineDetail(lineId: LineId) {
     const plan = ls?.plan ?? null
     const ngRows = processes.map((p) => ({
       process: p,
-      label: INSPECTION_NOTE[p] ? `${PROCESS_NAME[p]} (${INSPECTION_NOTE[p]})` : PROCESS_NAME[p],
+      label: PROCESS_NAME[p],
       value: ls?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? 0,
     }))
     return {

@@ -60,7 +60,7 @@ const columns = computed<TableColumn[]>(() => [
       <BaseSelect v-model="lineId" label="라인" :options="LINES" />
     </template>
     <template #head-right>
-      <span class="basis">{{ tab === 'live' ? '지금 공정 안에 있는 제품 · 10초마다 갱신' : p.rangeText.value }}</span>
+      <span class="basis">{{ tab === 'live' ? '' : p.rangeText.value }}</span>
     </template>
 
     <div class="layout">

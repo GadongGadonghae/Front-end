@@ -43,7 +43,7 @@ const { can } = useAuth()
     </template>
 
     <div class="layout">
-      <BasePanel title="하루 목표 입력" meta="공장 전체 · 하루 1건">
+      <BasePanel title="하루 목표 입력">
         <p v-if="!can('target')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.target }}만 바꿀 수 있습니다</p>
         <form class="form" :inert="!can('target')" @submit.prevent="can('target') && t.save()">
           <BaseDateField v-model="date" label="날짜" :min="t.today" />
@@ -63,7 +63,7 @@ const { can } = useAuth()
         </form>
       </BasePanel>
 
-      <BasePanel title="최근 목표" meta="지난 14일 · 앞으로 정해 둔 날">
+      <BasePanel title="최근 목표">
         <BaseTable label="최근 목표" :columns="COLS" :rows="t.tableRows.value" :row-key="(r) => r.key">
           <template #cell-date="{ row }">
             <span :class="{ strong: row.today }">{{ dateWithDay(row.date) }}<template v-if="row.today"> · 오늘</template></span>

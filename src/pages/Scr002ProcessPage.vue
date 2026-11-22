@@ -32,7 +32,7 @@ import { PROCESS_NAME, lineName as lineNameOf } from '@/lib/status'
 import { formatNumber } from '@/lib/format'
 import type { LineId } from '@/types/plant'
 import type { TelemetryRange } from '@/types/process'
-import { metricHelp, metricLabel, NOT_MEASURED } from '@/lib/metrics'
+import { metricLabel, NOT_MEASURED } from '@/lib/metrics'
 import { usePaintRoute } from '@/composables/usePaintRoute'
 import PaintPlanPanel from '@/components/domain/PaintPlanPanel.vue'
 import { usePaintPlan } from '@/composables/usePaintPlan'
@@ -63,15 +63,14 @@ const range = ref<TelemetryRange>('1h')
 const series = useTelemetry(selectedId, range)
 const SPEED_ITEMS = ['commandHz', 'outputHz']
 // 설비 상태 센서(더미)는 예지보전 화면에서만 본다
-// 11/21 이 공정에서 재지 않는 항목(슬리팅 토크)은 고르기에서 빼고 "측정 안 함"으로 따로 알려요
+// 11/21 이 공정에서 재지 않는 항목(슬리팅 토크)은 고르기에서 빼요
 const notMeasured = NOT_MEASURED[process] ?? {}
 const items = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor').map((i) => i.item)
   .filter((n) => !SPEED_ITEMS.includes(n) && !(n in notMeasured)))
-/** 그래프 제목 옆 설명: 무엇을 재는 값인지 + 기준 */
+/** 그래프 제목 옆: 기준 범위 */
 const itemMeta = computed(() => {
   const s = series.value?.items.find((i) => i.item === item.value)
-  const limit = !s ? '' : s.lower == null && s.upper == null ? '기준 미정' : `기준 ${formatNumber(s.lower, 1)} ~ ${formatNumber(s.upper, 1)}${s.unit ? ` ${s.unit.trim()}` : ''}`
-  return [metricHelp(item.value), limit].filter(Boolean).join(' · ')
+  return !s ? '' : s.lower == null && s.upper == null ? '기준 미정' : `기준 ${formatNumber(s.lower, 1)} ~ ${formatNumber(s.upper, 1)}${s.unit ? ` ${s.unit.trim()}` : ''}`
 })
 const item = ref('')
 watch(items, (list) => { if (!list.includes(item.value)) item.value = list[0] ?? '' }, { immediate: true })
@@ -92,7 +91,6 @@ const speed = computed(() => {
 const history = useEquipmentHistory(selectedId)
 const { can } = useAuth()
 const inspections = useInspections(process, paint ? undefined : lineId)
-const INSPECT_META: Record<string, string> = { SLITTING: '슬리팅 끝', PRESS: '4단 뒤 1회', WELDING: '용접 끝', PAINTING: '도장 끝' }
 
 // 관리값 지금 (슬리팅 시뮬레이터·용접): 항목별 마지막 값과 기준
 const latest = computed(() => (series.value?.items ?? []).filter((i) => i.source !== 'sensor' && !SPEED_ITEMS.includes(i.item) && !(i.item in notMeasured)).map((i) => {
@@ -135,7 +133,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <StatusCounts :counts="head.counts" layout="row" :label="`설비 ${head.total}대 상태`" />
         </div>
         <template v-if="!paint">
-          <BaseFigure :label="process === 'SLITTING' ? '오늘 생산 · 양품 (환산)' : '오늘 생산 · 양품'" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
+          <BaseFigure label="오늘 생산 · 양품" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
           <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
           <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
         </template>
@@ -156,10 +154,10 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         </div>
         <div v-else class="cards one">
           <EquipCard v-for="c in cards" :key="c.id" :card="c" selected @select="select" />
-          <BasePanel v-if="today?.inverter" title="인버터 상태" meta="실설비만 · 1초마다">
+          <BasePanel v-if="today?.inverter" title="인버터 상태">
             <InverterStatus :status="today.inverter" />
           </BasePanel>
-          <BasePanel v-else title="관리값 지금" meta="마지막 수집 값">
+          <BasePanel v-else title="관리값 지금">
             <table v-if="latest.length" class="now-tbl">
               <thead><tr><th>항목</th><th class="r">값</th><th class="r">하한 ~ 상한</th></tr></thead>
               <tbody>
@@ -171,7 +169,6 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
               </tbody>
             </table>
             <BaseEmpty v-else />
-            <p v-for="(why, k) in notMeasured" :key="k" class="nm">{{ metricLabel(k) }}: 측정 안 함 · {{ why }}</p>
           </BasePanel>
         </div>
 
@@ -194,11 +191,10 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
             :marks="chart.ngPoints"
             :now="now"
           />
-          <BaseEmpty v-else :text="series ? '데이터 없음 (설비가 멈춘 동안은 값이 없습니다)' : '불러오는 중'" />
-          <p v-for="(why, k) in notMeasured" :key="k" class="nm">{{ metricLabel(k) }}: 측정 안 함 · {{ why }}</p>
+          <BaseEmpty v-else :text="series ? '데이터 없음' : '불러오는 중'" />
         </BasePanel>
 
-        <BasePanel v-if="speed" class="chartp" title="속도" meta="출력이 지령보다 낮은 구간 = 미세정지 후보 · 오늘 생산은 운전시간 × 속도로 환산한 값">
+        <BasePanel v-if="speed" class="chartp" title="속도">
           <template #tools>
             <ChartLegend :items="[{ label: '지령 주파수', kind: 'ref' }, { label: '출력 주파수', kind: 'main' }, { label: '미세정지 후보', kind: 'band' }]" />
           </template>
@@ -218,7 +214,7 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 
         <!-- 11/21 도장 아래 줄: 도장 운영(판단·적용·경로 직접 바꾸기) | 라인별 입고. 그래프 아래에 나란히 -->
         <div v-if="process === 'PAINTING'" class="ops">
-        <BasePanel title="도장 운영" meta="가동 라인 기준 · 10초마다 다시 계산">
+        <BasePanel title="도장 운영">
           <PaintPlanPanel
             :plan="paintPlan.plan.value"
             :can-apply="can('paint')"
@@ -251,14 +247,14 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         <BasePanel title="비가동 이력" :meta="`${selected?.name ?? '-'} · 오늘`">
           <DowntimeHistory :rows="history.rows.value" :save="history.saveMemo" :readonly="!can('action', selectedId ?? undefined)" />
         </BasePanel>
-        <BasePanel v-if="paint" title="오늘 요약" meta="도장 공정">
+        <BasePanel v-if="paint" title="오늘 요약">
           <div class="sum-figs">
             <BaseFigure label="오늘 생산 · 양품" :value="head.output" :suffix="`/ ${formatNumber(head.good)}`" size="sm" />
             <BaseFigure label="공정 OEE" :value="head.oee" :digits="1" unit="%" size="sm" />
             <BaseFigure label="재공 · 앞 / 뒤" :value="head.wip.before" :suffix="`/ ${formatNumber(head.wip.after)}`" size="sm" />
           </div>
         </BasePanel>
-        <BasePanel v-else title="불량률" :meta="`${INSPECT_META[process]} · 오늘`">
+        <BasePanel v-else title="불량률" meta="오늘">
           <InspectionPanel
             :inspected="inspections.data.value?.inspected ?? null"
             :ng="inspections.data.value?.ng ?? null"

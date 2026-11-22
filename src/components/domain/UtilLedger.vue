@@ -148,6 +148,7 @@ const cell = (c: LedgerRowView['days'][number]) => {
   border-bottom: var(--line-w) solid var(--c-line-strong);
   color: var(--c-ink-3);
   font-size: var(--fs-sm);
+  white-space: nowrap;
 }
 
 .r {

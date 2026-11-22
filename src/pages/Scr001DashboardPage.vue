@@ -63,7 +63,7 @@ const ng = computed(() => {
   <div class="dash">
     <h1 class="sr-only">대시보드</h1>
     <div class="cards">
-      <BasePanel class="go" title="오늘 생산" meta="실적 = 적재 수량" @click="router.push('/production')">
+      <BasePanel class="go" title="오늘 생산" @click="router.push('/production')">
         <div class="row">
           <p class="kpi"><BaseNumber :value="plant?.done" /><small v-if="plant?.target != null" class="of">/ {{ formatNumber(plant.target) }}</small></p>
           <p v-if="plant?.target != null" class="side-fig">

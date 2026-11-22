@@ -43,11 +43,9 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
           <EquipCard v-if="card" :card="card" selected />
           <BasePanel title="라인별 불량" meta="오늘">
             <ChartBarList label="라인별 비전 불량 수" :rows="byLine" />
-            <!-- D-90 -->
-            <p class="note">비전은 1대라 고장 나면 대신할 설비가 없음</p>
           </BasePanel>
         </div>
-        <BasePanel title="불량 목록" meta="오늘 비전 불량 · 최근순">
+        <BasePanel title="불량 목록" meta="오늘">
           <InspectionPanel :inspected="null" :ng="null" :rate="null" :rows="inspections.rows.value" detail="where" compact @open-product="openProduct" />
         </BasePanel>
       </div>
@@ -81,9 +79,4 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
   gap: var(--sp-4);
 }
 
-.note {
-  margin-top: var(--sp-3);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-}
 </style>

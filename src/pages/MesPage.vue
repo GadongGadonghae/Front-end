@@ -260,7 +260,7 @@ async function onLogout() {
                     </button>
                   </li>
                 </ul>
-                <p v-else-if="isOurs(c.name, fa.name)" class="empty">아직 전송된 보고서가 없습니다. 우리 시스템에서 공장장이 결재 후 [보고서 전송]을 누르면 여기에 들어옵니다.</p>
+                <p v-else-if="isOurs(c.name, fa.name)" class="empty">아직 전송된 보고서가 없습니다.</p>
                 <p v-else class="empty">받은 보고서 없음</p>
               </section>
             </template>

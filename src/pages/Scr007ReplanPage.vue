@@ -17,6 +17,7 @@ import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } f
 import { downloadReplanDoc, type ReplanDocData } from '@/lib/replanDoc'
 import CauseTraceSection from '@/components/domain/CauseTraceSection.vue'
 import ReportApproval from '@/components/domain/ReportApproval.vue'
+import ReportFold from '@/components/domain/ReportFold.vue'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 
 const route = useRoute()
@@ -119,8 +120,15 @@ watch([rp.list, rp.troubles], ([l, t]) => {
 
 // 보고서를 열면 (결재 알림 카드 등) 왼쪽에서 그 칸이 보이게: 추가 주문 → 추가 주문 칸, 고장 → 현재 트러블 슈팅 칸 (11/20)
 const listEl = ref<HTMLElement | null>(null)
+/** 왼쪽 묶음 펼침 (11/22): 처음엔 계획수정 보고서만. 지난 보고서를 열면 이전 보고서 묶음도 펼친다 */
+const nowOpen = ref(true)
+const prevOpen = ref(false)
+/** 처리할 건: 배정 대기 + 보고서를 안 만든 진행 중 고장 */
+const todoCount = computed(() => (pending.value && !pending.value.reportId ? 1 : 0) + troubleRows.value.filter((t) => !t.made).length)
 watch(report, async (r) => {
   if (!r) return
+  if (isOrder.value || troubleRows.value.some((t) => t.id === eventId.value)) nowOpen.value = true
+  else prevOpen.value = true
   await nextTick()
   const on = listEl.value?.querySelector<HTMLElement>(isOrder.value ? '.order-card' : '.trouble-card.on') ?? listEl.value?.querySelector<HTMLElement>('a.on')
   on?.scrollIntoView({ block: 'nearest' })
@@ -369,8 +377,8 @@ async function downloadPdf() {
 
     <div class="body">
       <section class="panel side">
-        <div class="ph"><h2>계획수정 보고서</h2><span class="meta">현재·이력</span></div>
         <div ref="listEl" class="list">
+          <ReportFold v-model:open="nowOpen" title="계획수정 보고서" :count="todoCount" alert>
           <h3 class="list-section">추가 주문</h3>
           <div
             :class="['trouble-card', 'order-card', { on: orderMode || isOrder, alert: !!pending && !pending.reportId }]"
@@ -385,15 +393,13 @@ async function downloadPdf() {
               <b>{{ pending ? (pending.pending > 0 ? `추가 주문 ${formatNumber(pending.pending)}개` : `목표 감소 ${formatNumber(-pending.pending)}개`) : '추가 주문 배정 검토' }}</b>
               <time v-if="pending">{{ formatTime(pending.changedAt) }}</time>
             </div>
-            <p v-if="pending">공장 목표 {{ formatNumber(pending.before) }} → {{ formatNumber(pending.after) }}개{{ pending.changedBy ? ` (${pending.changedBy})` : '' }} · {{ pending.pending > 0 ? '늘어난 수량을 라인에 나눠야 합니다.' : '줄어든 만큼 라인 계획을 줄이거나 정지해야 합니다.' }}</p>
-            <p v-else>추가 주문이 들어왔을 때 지금 가동 라인과 새로 켤 라인에 나누는 안을 AI가 만듭니다.</p>
+            <p v-if="pending">공장 목표 {{ formatNumber(pending.before) }} → {{ formatNumber(pending.after) }}개{{ pending.changedBy ? ` (${pending.changedBy})` : '' }}</p>
             <span v-if="pending" :class="['trouble-badge', { created: !!pending.reportId }]">{{ pending.reportId ? '검토 작성 · 결재 대기' : pending.pending > 0 ? `배정 대기 ${formatNumber(pending.pending)}개` : `감소 대기 ${formatNumber(-pending.pending)}개` }}</span>
             <div v-if="pending && can('reportWrite')" class="quick" @click.stop @keydown.stop>
               <button v-if="!pending.reportId" class="btn primary" type="button" :disabled="generating" @click="quickGenerate">
                 {{ generating ? 'AI 검토 만드는 중…' : pending.pending > 0 ? 'AI 추가 배정 바로 생성' : 'AI 감소 배정 바로 생성' }}
               </button>
               <button v-else class="btn" type="button" @click="openPendingReport">만든 검토 보기</button>
-              <span class="quick-note">카드를 누르면 새 추가 주문을 쓸 수 있어요</span>
             </div>
           </div>
 
@@ -413,9 +419,9 @@ async function downloadPdf() {
             <span :class="['trouble-badge', { created: t.made }]">{{ t.made ? `보고서 작성 완료${t.made > 1 ? ` · ${t.made}건` : ''}` : '보고서 미작성' }}</span>
           </div>
           <p v-if="rp.troubles.value && !troubleRows.length" class="period-empty">지금 진행 중인 고장이 없습니다.</p>
+          </ReportFold>
 
-          <div class="previous-reports">
-            <h3 class="list-section">이전에 작성한 보고서</h3>
+          <ReportFold v-model:open="prevOpen" title="이전에 작성한 보고서" :count="shownCount">
             <form class="period-filter" role="search" aria-label="이전 보고서 기간 검색" @submit.prevent>
               <label><span>시작일</span><input v-model="from" type="date" @input="preset = null"></label>
               <span class="sep" aria-hidden="true">~</span>
@@ -442,7 +448,7 @@ async function downloadPdf() {
               </RouterLink>
             </template>
             <p v-if="rp.list.value && !periodInvalid && !shownCount" class="period-empty">선택한 기간에 작성한 보고서가 없습니다.</p>
-          </div>
+          </ReportFold>
         </div>
       </section>
 
@@ -598,7 +604,7 @@ async function downloadPdf() {
           <section>
             <h3>2. 원인 추적</h3>
             <CauseTraceSection v-if="report?.causeTrace" :trace="report.causeTrace" />
-            <p v-else>이 보고서에는 원인 추적 기록이 없습니다 (원인 추적 기능 전에 만든 보고서). ‘AI 보고서 생성’을 다시 누르면 함께 만듭니다.</p>
+            <p v-else>원인 추적 기록이 없습니다.</p>
           </section>
           </template>
 
@@ -618,7 +624,7 @@ async function downloadPdf() {
             <div>
               <p>{{ v.allocText }}</p>
               <div v-if="canEdit" class="edit-bar no-print">
-                <template v-if="!editing"><button class="btn" type="button" @click="startEdit">배정 값 수정</button><span>결재 요청 전에만 고칠 수 있어요</span></template>
+                <template v-if="!editing"><button class="btn" type="button" @click="startEdit">배정 값 수정</button></template>
                 <template v-else>
                   <button class="btn primary" type="button" :disabled="editSaving" @click="saveEdit">{{ editSaving ? '저장 중…' : '수정 저장' }}</button>
                   <button class="btn" type="button" :disabled="editSaving" @click="editing = false">취소</button>
@@ -649,7 +655,6 @@ async function downloadPdf() {
               </table>
               <div v-if="v.overtime" class="overtime">
                 <b>잔업 · {{ formatTime(v.overtime.deadline) }} ~ {{ formatTime(v.overtime.until) }} (약 {{ formatNumber(v.overtime.minutes) }}분)</b>
-                <small class="overtime-note">근무 끝까지 남은 능력보다 많이 배정한 몫은 근무 뒤에 만듭니다.</small>
                 <ul>
                   <li v-for="l in v.overtime.lines" :key="l.lineId">{{ l.lineId }}라인 · 잔업 {{ formatNumber(l.qty) }}개 · {{ formatTime(l.until) }} 종료 예정</li>
                 </ul>
@@ -740,17 +745,18 @@ async function downloadPdf() {
 }
 
 /* ── 목록 ── */
+.side { padding: 0; }
+
 .list {
-  margin: 0 -20px;
-  padding: 0;
   overflow: auto;
+  border-radius: inherit;
 }
 
 .list .d {
   padding: 12px 20px 4px;
   border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-3);
-  font-size: 13px;
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
 }
 
 .list a {
@@ -773,6 +779,7 @@ async function downloadPdf() {
 }
 
 .list a b {
+  font-size: var(--fs-row);
   font-weight: 600;
 }
 
@@ -783,28 +790,25 @@ async function downloadPdf() {
 }
 
 .list a time {
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
   font-size: 14px;
 }
 
-/* 추가 주문 / 현재 트러블 슈팅 / 이전에 작성한 보고서 구분 (11/20: 선을 진하게, 글씨를 한 단계 크게) */
+/* 추가 주문 / 현재 트러블 슈팅 작은 제목 */
 .list-section {
   margin: 0;
-  padding: var(--sp-3) 20px var(--sp-2);
-  border-top: var(--line-w-strong) solid var(--c-ink-3);
+  padding: var(--sp-2) 20px;
   color: var(--c-ink);
   font-size: var(--fs-row);
   font-weight: var(--fw-strong);
 }
 
-.list > .list-section:first-child {
-  border-top: 0;
-}
+.trouble-card + .list-section { margin-top: var(--sp-3); }
 
 .trouble-card {
-  margin: 0 12px 10px;
-  padding: 11px 12px;
-  border: 1px solid #d6d9de;
+  margin: 0 16px 10px;
+  padding: 14px 16px;
+  border: 1px solid #c3c8cf;
   border-radius: 7px;
   background: var(--c-surface);
   cursor: pointer;
@@ -842,29 +846,31 @@ async function downloadPdf() {
 }
 
 .trouble-card b {
-  font-size: 13px;
+  font-size: var(--fs-row);
+  line-height: 1.35;
 }
 
 .trouble-card time {
+  flex: none;
   margin-left: auto;
-  color: var(--c-ink-3);
-  font-size: 11px;
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
 }
 
 .trouble-card p {
-  margin: 5px 0 7px;
-  color: var(--c-ink-2);
-  font-size: 11px;
-  line-height: 1.35;
+  margin: 6px 0 10px;
+  color: var(--c-ink);
+  font-size: var(--fs-md);
+  line-height: 1.45;
 }
 
 .trouble-badge {
   display: inline-flex;
-  padding: 3px 7px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: #fee2e2;
   color: #991b1b;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -1418,11 +1424,6 @@ async function downloadPdf() {
   border-radius: var(--r-1);
 }
 
-.overtime-note {
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
-}
-
 .overtime ul {
   margin: 0;
   padding-left: var(--sp-4);
@@ -1435,11 +1436,6 @@ async function downloadPdf() {
   align-items: center;
   gap: var(--sp-2);
   margin-top: var(--sp-2);
-}
-
-.quick-note {
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
 }
 
 .tbl tr.stopped td {

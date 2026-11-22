@@ -13,7 +13,6 @@ import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'
 import ChartBarList from '@/components/charts/ChartBarList.vue'
 import ChartColumns from '@/components/charts/ChartColumns.vue'
 import { useLoading } from '@/composables/useEndpoints'
-import { PER_BOX } from '@/lib/loading'
 
 const router = useRouter()
 const { figures, byLine, hours, rows } = useLoading()
@@ -31,21 +30,21 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
         <BaseFigure label="오늘 적재" :value="figures.done" unit="개" size="sm" />
         <BaseFigure label="계획" :value="figures.plan" unit="개" size="sm" />
         <BaseFigure label="달성률" :value="figures.rate" :digits="1" unit="%" size="sm" />
-        <BaseFigure :label="`상자 (1상자 = ${PER_BOX}개)`" :value="figures.boxes" size="sm" />
+        <BaseFigure label="상자" :value="figures.boxes" size="sm" />
       </BaseFigureRow>
     </template>
 
     <div class="body">
       <div class="left">
-        <BasePanel title="라인별 적재 / 계획" meta="오늘 · 막대 = 달성률">
+        <BasePanel title="라인별 적재 / 계획" meta="오늘">
           <ChartBarList label="라인별 적재 달성률" :rows="byLine" :max="100" thick />
         </BasePanel>
-        <BasePanel title="시간대별 적재" meta="오늘 · 개">
+        <BasePanel title="시간대별 적재" meta="오늘">
           <ChartColumns v-if="!hours.empty" label="시간대별 적재 수" :count="hours.values.length" :values="hours.values" :labels="hours.labels" :y-ticks="hours.yTicks" />
           <BaseEmpty v-else />
         </BasePanel>
       </div>
-      <BasePanel title="최근 적재 제품" meta="오늘 · 최근 50개">
+      <BasePanel title="최근 적재 제품" meta="오늘">
         <BaseTable :columns="columns" :rows="rows" :row-key="(r) => r.key" label="최근 적재 제품" empty="오늘 적재 없음">
           <template #cell-productId="{ row }">
             <button class="id" type="button" @click="openProduct(row.productId)">{{ row.productId }}</button>

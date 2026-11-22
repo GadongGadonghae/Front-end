@@ -57,6 +57,9 @@ h2 {
   align-items: center;
   gap: var(--sp-4);
   margin-left: auto;
+
+  /* 단추·범례 글이 두 줄로 쪼개지지 않게 (제목 옆 흐린 글이 먼저 줄어든다) */
+  white-space: nowrap;
 }
 
 .pb {

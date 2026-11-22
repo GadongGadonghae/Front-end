@@ -130,7 +130,7 @@
   --col-form: clamp(320px, 22vw, 400px);   /* 설정 화면 입력 열 */
   --col-detail: clamp(340px, 20vw, 400px); /* 고른 제품 기록 열 (생산 조회) */
   --ledger-name-w: 96px;                    /* 가동률 상태 줄: 이름 칸 */
-  --ledger-oee-w: 148px;                    /* OEE · 기준 대비 칸 */
+  --ledger-oee-w: 184px;                    /* OEE · 기준 대비 칸 (머리 글 "OEE · 비전 검사 100.0% 대비"가 한 줄에) */
   --ledger-loss-w: 72px;                    /* 손실 시간 칸 (보조 정보라 작게) */
   --ledger-row-min: 40px;                   /* 상태 줄 최소 높이 */
   --ledger-row-max: 96px;                   /* 상태 줄 최대 높이 (줄이 적을 때) */

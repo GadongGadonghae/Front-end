@@ -70,7 +70,7 @@ const saved = computed(() => {
     <ul v-if="plan.changes.length || plan.turnOff.length || plan.turnOn.length" class="todo">
       <li v-for="c in plan.changes" :key="c.lineId">{{ c.lineId }}라인 경로 {{ c.from }} → {{ c.to }}</li>
       <li v-for="p in plan.turnOn" :key="`on-${p}`">{{ p }} 다시 가동</li>
-      <li v-for="p in plan.turnOff" :key="`off-${p}`">{{ p }} 물량 적음 운휴 (계획정지, 손실 아님)</li>
+      <li v-for="p in plan.turnOff" :key="`off-${p}`">{{ p }} 물량 적음 운휴 (계획정지)</li>
       <li v-if="saved" class="note">{{ saved }}</li>
     </ul>
 
@@ -85,7 +85,6 @@ const saved = computed(() => {
       <summary>판단 근거</summary>
       <ul class="reasons">
         <li v-for="(r, i) in plan.reasons" :key="i">{{ r }}</li>
-        <li>고르는 순서: 넘치는 부하가 적은 안 → 켜는 도장이 적은 안 → 경로를 덜 바꾸는 안 → 기본 경로에 가까운 안 → 두 도장이 고른 안 (모든 경우를 다 따져 봄)</li>
       </ul>
     </details>
 
@@ -109,10 +108,9 @@ const saved = computed(() => {
           </span>
         </li>
       </ul>
-      <p class="hint">운휴 중인 도장으로 보내면 그 도장을 다시 켭니다. 바꾼 뒤 판단은 10초 안에 다시 계산됩니다.</p>
     </details>
   </div>
-  <BaseEmpty v-else text="도장 운영 판단을 불러오는 중 (서버 연결 필요)" />
+  <BaseEmpty v-else text="불러오는 중" />
 </template>
 
 <style scoped>

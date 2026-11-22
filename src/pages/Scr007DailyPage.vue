@@ -16,6 +16,7 @@ import { DOWNTIME_NAME, PROCESS_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
 import { downloadDailyDoc, type DailyDocData } from '@/lib/dailyDoc'
 import ReportApproval from '@/components/domain/ReportApproval.vue'
+import ReportFold from '@/components/domain/ReportFold.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 import type { DailyReport, ReplanSummary } from '@/types/report'
@@ -43,6 +44,9 @@ const pastDays = Array.from({ length: PAST_DAYS }, (_, i) => toDateStr(Date.pars
 const docOnly = computed(() => route.meta.docOnly === true)
 const date = ref(docOnly.value && typeof route.params.date === 'string' ? route.params.date : today)
 const isToday = computed(() => date.value === today)
+/** 왼쪽 묶음 펼침 (11/22): 처음엔 오늘 보고서만 */
+const nowOpen = ref(true)
+const prevOpen = ref(false)
 const generatedAt = ref<string | null>(null)
 /** 오늘 보고서를 팀장이 이미 작성(결재 요청)했으면 다른 계정에서도 보이게 */
 const todayFlow = computed(() => flow.flowOf(`daily:${today}`))
@@ -222,9 +226,8 @@ function writeFlow() {
 
     <div class="body">
       <section class="panel side">
-        <div class="ph"><h2>일일 생산 보고서</h2><span class="meta">마감 기록</span></div>
         <div class="list">
-          <h3 class="list-section">오늘 마감</h3>
+          <ReportFold v-model:open="nowOpen" title="일일 생산 보고서" :count="madeAt ? 0 : 1" alert>
           <div
             :class="['today-card', { on: isToday }]"
             role="button"
@@ -236,9 +239,9 @@ function writeFlow() {
             <div><b>{{ today }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
             <span :class="['draft-badge', { created: madeAt }]">{{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</span>
           </div>
+          </ReportFold>
 
-          <div class="previous-reports">
-            <h3 class="list-section">이전에 작성한 보고서</h3>
+          <ReportFold v-model:open="prevOpen" title="이전에 작성한 보고서" :count="listed.length">
             <form class="period-filter" role="search" aria-label="이전 보고서 기간 검색" @submit.prevent>
               <label><span>시작일</span><input v-model="from" type="date" :max="today" @input="preset = null"></label>
               <span class="sep" aria-hidden="true">~</span>
@@ -259,7 +262,7 @@ function writeFlow() {
               </a>
             </template>
             <p v-if="!periodInvalid && !listed.length" class="period-empty">선택한 기간에 작성한 보고서가 없습니다.</p>
-          </div>
+          </ReportFold>
         </div>
       </section>
 
@@ -452,29 +455,17 @@ function writeFlow() {
 
 /* ── 목록 ── */
 .list {
-  margin: 0 -20px;
-  padding: 0;
   overflow: auto;
+  border-radius: inherit;
 }
 
-.list-section {
-  margin: 0;
-  padding: 10px 20px 7px;
-  border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-2);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.list > .list-section:first-child {
-  border-top: 0;
-}
+.side { padding: 0; }
 
 .date-label {
   padding: 12px 20px 4px;
   border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-3);
-  font-size: 13px;
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
 }
 
 .list a {
@@ -497,6 +488,7 @@ function writeFlow() {
 }
 
 .list a b {
+  font-size: var(--fs-row);
   font-weight: 600;
 }
 
@@ -507,13 +499,13 @@ function writeFlow() {
 }
 
 .list a time {
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
   font-size: 14px;
 }
 
 .today-card {
-  margin: 0 12px 10px;
-  padding: 11px 12px;
+  margin: 0 16px 10px;
+  padding: 14px 16px;
   border: 1px solid #b9c9df;
   border-radius: 7px;
   background: #f6f9fd;
@@ -536,29 +528,23 @@ function writeFlow() {
 }
 
 .today-card b {
-  font-size: 13px;
+  font-size: var(--fs-row);
 }
 
 .today-card time {
   margin-left: auto;
-  color: var(--c-ink-3);
-  font-size: 11px;
-}
-
-.today-card p {
-  margin: 5px 0 7px;
   color: var(--c-ink-2);
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: var(--fs-md);
 }
 
 .draft-badge {
   display: inline-flex;
-  padding: 3px 7px;
+  margin-top: 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: #e5e7eb;
   color: #374151;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 

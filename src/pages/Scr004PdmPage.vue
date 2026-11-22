@@ -70,7 +70,7 @@ const legend = computed(() => [
 const pick = (r: RiskRow) => { selectedId.value = r.id }
 /** 펼쳐 보이는 묶음: 지금 고장 → 위험 → 주의. 정상·기준 미정은 접어 둔다 (D-61) */
 const topGroups = computed(() => [
-  { key: 'down', title: '지금 고장 · 멈추기 전 10분 평균', rows: g.value.down },
+  { key: 'down', title: '지금 고장', rows: g.value.down },
   { key: 'danger', title: `위험 · ${DANGER}% 이상`, rows: g.value.danger },
   { key: 'warn', title: `주의 · ${WARN}% 이상`, rows: g.value.warn },
 ])
@@ -84,7 +84,7 @@ const topGroups = computed(() => [
     </template>
 
     <div class="layout">
-      <BasePanel title="설비 위험도" meta="위험 순">
+      <BasePanel title="설비 위험도">
         <dl class="counts">
           <div class="danger"><dt>위험</dt><dd>{{ p.counts.value.danger }}</dd></div>
           <div class="warn"><dt>주의</dt><dd>{{ p.counts.value.warn }}</dd></div>
