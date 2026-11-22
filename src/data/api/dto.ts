@@ -383,7 +383,7 @@ export interface ReassignmentDetailDto {
     title: string; summary: string; actions: string[]; risks: string[]; markdown: string | null; model: string; mock: boolean; fallbackReason: string | null
     /** AI 추가 요청과 그 해석 (제외·정지 라인, 우선 기준 BALANCED·DUE_DATE·SAFETY) */
     additionalRequest: string | null
-    requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[] } | null
+    requestInterpretation: { excludedLines: string[]; stoppedLines: string[]; priority: string; appliedRules: string[]; onlyLines?: string[] | null; unhandled?: string[] | null } | null
     /** 원인 추적 (11/20 추가). 예전 보고서는 없음 */
     causeTrace?: CauseTraceDto | null
     /** 추가 주문 배정 조건과 라인 가동 비교 (kind = order, 11/20 추가) */

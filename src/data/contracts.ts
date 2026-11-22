@@ -123,11 +123,11 @@ export interface Commands {
   createReplanReport(stateEventId: string, additionalRequest?: string): Promise<ReplanReport>
   /** 보고서 승인(결재). 공장장만 (11/20) */
   approveReplanReport(reportId: string): Promise<ReplanReport>
-  /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리팀장 (11/20) */
+  /** 목표 변동 보고서 (고장 건 없이 오늘 목표 기준). 생산관리 팀장 (11/20) */
   createTargetReport(additionalRequest?: string): Promise<ReplanReport>
   /** 보고서 결재 줄을 서버에도 기록 (R-10·R-13·R-14, 11/20). key = 'replan:보고서ID' · 'daily:날짜'. 데모 데이터는 아무것도 안 함 */
   syncReportFlow(action: 'write' | 'recall' | 'approve' | 'send', key: string, content?: unknown): Promise<void>
-  /** 계획수정 보고서 배정 값 고치기 (생산관리팀장, 결재 요청 전만, R-07). addQty = { 라인: 추가 수량 } */
+  /** 계획수정 보고서 배정 값 고치기 (생산관리 팀장, 결재 요청 전만, R-07). addQty = { 라인: 추가 수량 } */
   editReplanAllocations(reportId: string, addQty: Record<string, number>): Promise<ReplanReport>
   /** R-05 추가 주문 배정 검토 만들기 (고장 건 없이). request = 현장 말 그대로 ("지금 A~D만 돌리는데 추가 주문 300개, 한 라인 더") */
   createOrderReport(request: string, targetChangeId?: number): Promise<ReplanReport>
@@ -141,7 +141,7 @@ export interface Commands {
   createUser(user: NewUser): Promise<SaveResult<{ loginId: string }>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */
   setPaintRoute(lineId: string, paintId: string, reason: string): Promise<SaveResult<{ lineId: string; currentPaintId: string; changedAt: string }>>
-  /** PT-02 도장 운영 제안 적용 (11/21): 서버가 그 순간 다시 계산해 경로 전환·운휴·다시 가동. 공장장·생산관리팀장 */
+  /** PT-02 도장 운영 제안 적용 (11/21): 서버가 그 순간 다시 계산해 경로 전환·운휴·다시 가동. 공장장·생산관리 팀장 */
   applyPaintPlan(): Promise<SaveResult<{ done: string[]; plan: PaintPlan }>>
   /** 백엔드 M-11 기준치 수정 (항목마다 1건씩, 바뀐 것만). 하한 > 상한이면 실패 */
   saveControlLimits(equipmentId: string, rows: { item: string; lower: number | null; upper: number | null }[]): Promise<SaveResult<ControlLimit[]>>

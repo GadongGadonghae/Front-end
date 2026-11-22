@@ -1,5 +1,5 @@
 <!-- AI 리포트 결재 줄 (11/20): 작성 → 결재 완료 → 전송 완료 단계를 모두에게 보이고,
-     버튼은 권한 있는 계정에만 보인다. 작성·회수 = 생산 관리 팀장 · 결재·보고서 전송 = 공장장 (전송은 결재 완료 후에만 켜짐)
+     버튼은 권한 있는 계정에만 보인다. 작성·회수 = 생산관리 팀장 · 결재·보고서 전송 = 공장장 (전송은 결재 완료 후에만 켜짐)
      🆕 11/20: 작성 중(만들기만) → [작성 완료 · 결재 요청] → (결재 전) [회수]로 작성 중. 지난 단계는 연두색, 다 끝나면(전송 완료) 줄 전체가 연두색 -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -26,7 +26,7 @@ const at = computed(() => ({ DRAFT: 0, WRITTEN: 1, APPROVED: 2, SENT: 3 })[props
 const steps = computed(() => [
   {
     name: at.value >= 1 ? '작성 완료' : props.status === 'DRAFT' ? '작성 중' : '작성',
-    who: at.value >= 1 ? props.written : props.status === 'DRAFT' ? '결재 요청 전' : '생산 관리 팀장',
+    who: at.value >= 1 ? props.written : props.status === 'DRAFT' ? '결재 요청 전' : '생산관리 팀장',
     done: at.value >= 1, now: at.value === 0,
   },
   {
@@ -60,8 +60,8 @@ const complete = computed(() => props.status === 'SENT')
         <BaseButton size="sm" variant="primary" :disabled="status !== 'WRITTEN' || busy" @click="emit('approve')">결재</BaseButton>
         <BaseButton size="sm" variant="primary" :disabled="status !== 'APPROVED' || busy" @click="emit('send')">보고서 전송</BaseButton>
       </template>
-      <span v-if="canApprove && (!status || status === 'DRAFT')" class="note">생산 관리 팀장이 결재 요청하면 결재할 수 있어요</span>
-      <span v-if="!canWrite && !canApprove" class="note">보기 전용 · 작성은 생산 관리 팀장, 결재·전송은 공장장</span>
+      <span v-if="canApprove && (!status || status === 'DRAFT')" class="note">생산관리 팀장이 결재 요청하면 결재할 수 있어요</span>
+      <span v-if="!canWrite && !canApprove" class="note">보기 전용 · 작성은 생산관리 팀장, 결재·전송은 공장장</span>
     </div>
   </div>
 </template>

@@ -231,6 +231,10 @@ export interface ReplanInterpretation {
   /** BALANCED 잔여 능력 · DUE_DATE 납기 · SAFETY 안전·품질 */
   priority: string
   appliedRules: string[]
+  /** 요청으로 이 라인에만 배정 (11/22) */
+  onlyLines?: string[] | null
+  /** 규칙으로 반영하지 못한 요청 (11/22) */
+  unhandled?: string[] | null
 }
 
 /** AI 보고서 문장. mock = 템플릿 문장, fallbackReason = LLM 호출이 실패해 템플릿으로 대신한 이유 */

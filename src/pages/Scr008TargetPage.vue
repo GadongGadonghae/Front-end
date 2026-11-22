@@ -1,5 +1,5 @@
 <!-- SCR-008 생산 목표 설정 (화면정의서 SCR-008, 시안 B-target)
-     왼쪽: 하루 목표 입력 (날짜 · 수량 · 라인 계획 자동 안내, D-87). 오른쪽: 최근 목표 목록 (날짜 · 목표 · 라인 계획 · 실적 · 달성률)
+     왼쪽: 하루 목표 입력 (날짜 · 수량). 오른쪽: 최근 목표 목록 (날짜 · 목표 · 실적 · 달성률). 라인 계획은 보이지 않는다 (11/22)
      오늘과 앞으로의 날짜만, 지난 날짜는 잠김. 같은 날짜는 덮어씀 (D-71). 목표 없는 날은 "목표 미설정" (D-72) -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -26,7 +26,6 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
 const COLS: TableColumn[] = [
   { key: 'date', label: '날짜' },
   { key: 'quantity', label: '목표', align: 'right' },
-  { key: 'plan', label: '라인 계획', align: 'right' },
   { key: 'done', label: '실적', align: 'right' },
   { key: 'rate', label: '달성률', align: 'right' },
   { key: 'by', label: '수정자' },
@@ -51,10 +50,6 @@ const { can } = useAuth()
             <BaseInput v-model="quantity" label="목표 수량" size="md" :invalid="!!t.error.value" inputmode="numeric" />
             <span class="unit">개</span>
           </div>
-          <div class="plan">
-            <span class="lab">라인 계획 (자동)</span>
-            <b class="n">{{ t.planText.value }}</b>
-          </div>
           <div class="actions">
             <BaseButton type="submit" variant="primary" :disabled="t.saving.value">{{ t.exists.value ? '덮어쓰기' : '저장' }}</BaseButton>
             <p v-if="t.error.value" class="msg err" role="alert">{{ t.error.value }}</p>
@@ -75,7 +70,6 @@ const { can } = useAuth()
             </template>
             <span v-else class="unset">목표 미설정</span>
           </template>
-          <template #cell-plan="{ row }"><span class="n">{{ formatNumber(row.plan) }}</span></template>
           <template #cell-done="{ row }"><span class="n">{{ formatNumber(row.done) }}</span></template>
           <template #cell-rate="{ row }">
             <span class="n">{{ row.rate != null ? `${formatNumber(row.rate, 1)}%` : '-' }}</span><span v-if="row.today && row.rate != null" class="live"> 진행 중</span>
@@ -93,7 +87,7 @@ const { can } = useAuth()
 </template>
 
 <style scoped>
-/* 오늘 목표를 올려 아직 라인에 안 나눈 수량 (생산관리팀장 배정 보고서 → 결재 후 반영) */
+/* 오늘 목표를 올려 아직 라인에 안 나눈 수량 (생산관리 팀장 배정 보고서 → 결재 후 반영) */
 .pending {
   color: var(--c-ink-3);
   font-size: var(--fs-sm);
@@ -136,28 +130,10 @@ const { can } = useAuth()
   gap: var(--sp-2);
 }
 
-.unit,
-.lab {
-  color: var(--c-ink-2);
-  font-size: var(--fs-sm);
-}
-
 .unit {
   padding-bottom: var(--sp-2);
-}
-
-.plan {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-1);
-  padding: var(--sp-3);
-  border-radius: var(--r-2);
-  background: var(--c-surface-sunk);
-}
-
-.plan b {
-  font-size: var(--fs-md);
-  font-weight: var(--fw-strong);
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
 }
 
 .actions {

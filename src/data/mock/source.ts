@@ -31,7 +31,7 @@ const DEMO_USER = '정연창'
 /** 데모 사용자 목록 (사용자 관리 화면) */
 const demoUsers: import('@/types/user').UserRow[] = [
   { loginId: 'abc', name: DEMO_USER, role: 'PLANT_HEAD', email: null, memo: '공장장', lastLoginAt: null },
-  { loginId: 'prodlead', name: '윤은빈', role: 'PROD_LEAD', email: null, memo: '생산관리팀장', lastLoginAt: null },
+  { loginId: 'prodlead', name: '윤은빈', role: 'PROD_LEAD', email: null, memo: '생산관리 팀장', lastLoginAt: null },
   { loginId: 'linelead', name: '김유석', role: 'LINE_WORKER', email: null, memo: 'A·B라인', lastLoginAt: null },
 ]
 const PAGE_SIZE = 50
@@ -455,7 +455,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     },
     cmd: {
       // 데모 계정: 아이디·비밀번호가 비어 있지 않으면 통과 (실제 계정은 백엔드, DT-008)
-      // 데모: 아이디로 권한을 고름 (prodlead 생산관리팀장 · linelead 라인 담당자 · 그 밖 공장장)
+      // 데모: 아이디로 권한을 고름 (prodlead 생산관리 팀장 · linelead 라인 담당자 · 그 밖 공장장)
       login: async (userId, password) => {
         if (!userId || !password) return { ok: false }
         const u = demoUsers.find((x) => x.loginId === userId)

@@ -45,7 +45,7 @@ const { canBack, goBack } = useBack()
 const nowIso = computed(() => new Date(now.value).toISOString())
 const { equipmentName, syncRoutes } = useMaster()
 const toast = useFaultToast()
-// 목표 생산량 변동 카드: 생산관리팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
+// 목표 생산량 변동 카드: 생산관리 팀장에게만, 공장장이 오늘 목표를 바꾸면 (11/20)
 const target = useTargetChange()
 const qty = (n: number | null) => (n == null ? '미설정' : `${formatNumber(n)}개`)
 /** 목표 변동 카드 → 목표 기준 AI 보고서 작성 화면 (11/20) */
@@ -56,7 +56,7 @@ function writeTargetReport() {
   // 11/21: 늘든 줄든 계획수정 보고서 화면의 깜빡이는 계획 변경 카드로 (감소면 정지·감산 검토)
   if (c) router.push({ path: '/reports/replan', query: { order: '1' } })
 }
-// 결재 대기 카드: 공장장에게만, 생산관리팀장이 [작성 완료 · 결재 요청]을 누르면 (11/20)
+// 결재 대기 카드: 공장장에게만, 생산관리 팀장이 [작성 완료 · 결재 요청]을 누르면 (11/20)
 const approvals = usePendingApprovals()
 const latestPending = computed(() => approvals.pending.value[0] ?? null)
 /** "계획수정 보고서 · 추가 주문 배정" 같은 제목. 일일 보고서는 그대로 */

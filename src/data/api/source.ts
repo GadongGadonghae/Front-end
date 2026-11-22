@@ -817,7 +817,7 @@ export function createApiSource(): DataSource {
       },
       async saveTarget(date, quantity) {
         // G-04 (11/20): 서버가 가동 라인(오늘은 계획정지 라인 빼고)에 나눠 저장. 오늘 목표를 올리면 라인은 그대로 두고
-        // 늘어난 수량을 배정 대기로 → 생산관리팀장 추가 주문 배정 보고서 → 공장장 결재 때 라인 목표에 들어간다
+        // 늘어난 수량을 배정 대기로 → 생산관리 팀장 추가 주문 배정 보고서 → 공장장 결재 때 라인 목표에 들어간다
         try {
           const r = await api.G04(date, quantity)
           return { ok: true, value: { date, quantity, done: null, updatedBy: null, pending: r.pending, before: r.before } }

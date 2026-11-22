@@ -1,5 +1,5 @@
 // 로그인 상태 (FN-016): 자동 로그아웃 없음, 브라우저를 닫아도 7일 유지 (D-75)
-// 계정별 권한 (11/20): 공장장·생산 관리 팀장·라인 담당자·캠퍼스장. 권한 표는 lib/access.ts
+// 계정별 권한 (11/20): 공장장·생산관리 팀장·라인 담당자·캠퍼스장. 권한 표는 lib/access.ts
 //   실서버: 로그인 응답(C-01)의 role·lines (백엔드 users.role·lines, DB v0.3.15)
 //   데모 데이터: 프론트 데모 계정표(data/accounts)의 4종 (plant·lead·lineA·campus, 비밀번호 1234)
 import { computed, ref } from 'vue'

@@ -113,7 +113,7 @@ export const api = {
   /** R-06 추가 주문 배정 승인·적용: 새 라인 계획정지 종료 · 오늘 목표 += 배정 · 새 라인 가동 명령 (한 번만) */
   R06: (reportId: number) => http.post<ApplyResponseDto>(`/reassignments/${reportId}/apply`, {}),
   // ── 보고서 결재·전송 (R-10 ~ R-14, 11/20 MES 명세 docs/api-spec-report-approval-mes.md) ──
-  /** R-10 작성 (생산관리팀장). DAILY는 화면이 계산한 내용을 content로 */
+  /** R-10 작성 (생산관리 팀장). DAILY는 화면이 계산한 내용을 content로 */
   R10: (body: { kind: 'DAILY' | 'REPLAN'; targetKey: string; additionalRequest?: string; content?: unknown }) => http.post<FlowReportDto>('/reports', body),
   /** R-11 목록 (content 없음). replanId = 계획수정 보고서 번호 */
   R11: (q: { kind?: 'DAILY' | 'REPLAN'; status?: string; replanId?: number; page?: number; size?: number } = {}) => http.get<Page<FlowReportDto>>('/reports', { page: 1, size: 100, ...q }),
@@ -121,11 +121,11 @@ export const api = {
   R13: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/approve`, {}),
   /** R-14 전송 (공장장, 결재 완료 후에만) → MES 수신함 */
   R14: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/send`, {}),
-  /** R-15 작성 완료 · 결재 요청 (생산관리팀장, 작성 중만). content = 그 순간 문서 (11/20) */
+  /** R-15 작성 완료 · 결재 요청 (생산관리 팀장, 작성 중만). content = 그 순간 문서 (11/20) */
   R15: (reportId: number, content?: unknown) => http.post<FlowReportDto>(`/reports/${reportId}/request`, { content }),
-  /** R-16 회수 (생산관리팀장, 결재 요청 중만) → 작성 중 (11/20) */
+  /** R-16 회수 (생산관리 팀장, 결재 요청 중만) → 작성 중 (11/20) */
   R16: (reportId: number) => http.post<FlowReportDto>(`/reports/${reportId}/recall`, {}),
-  /** R-07 배정 값 고치기 (생산관리팀장, 결재 요청 전만). body = { 라인: 추가 수량 } (11/20) */
+  /** R-07 배정 값 고치기 (생산관리 팀장, 결재 요청 전만). body = { 라인: 추가 수량 } (11/20) */
   R07: (reportId: number, addQty: Record<string, number>) => http.put<ReassignmentDetailDto>(`/reassignments/${reportId}/allocations`, addQty),
   /** M-01 임시 MES 수신함 (캠퍼스장): 전송된 보고서, 내용 포함 */
   MES01: (q: { campusId?: string; factoryId?: number } = {}) => http.get<Page<FlowReportDto>>('/mes/reports', { page: 1, size: 100, ...q }),

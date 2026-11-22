@@ -11,8 +11,6 @@ const DAY = 86_400_000
 /** 목록: 지난 14일 + 앞으로 7일 중 목표가 있는 날 */
 const PAST_DAYS = 14
 const AHEAD_DAYS = 7
-/** 가동 라인 수 (D-87) */
-const LINES = 6
 
 // ── 생산 목표 ──
 export function useTargets() {
@@ -22,7 +20,7 @@ export function useTargets() {
     .then((r) => { rows.value = r.filter((x) => x.date <= today || x.quantity != null) })
   load()
 
-  // 입력 칸: 날짜(오늘·미래만, D-71)와 수량. 날짜를 고르면 그날 저장된 값을 채운다
+  // 입력 칸: 날짜(오늘·미래만, D-71)와 수량. 처음엔 비워 두고(11/22), 날짜를 고르거나 [수정]을 누르면 그날 저장된 값을 채운다
   const date = ref(today)
   const quantity = ref('')
   const saving = ref(false)
@@ -32,28 +30,11 @@ export function useTargets() {
     const q = rows.value.find((r) => r.date === date.value)?.quantity
     quantity.value = q != null ? String(q) : ''
   }
-  watch(rows, fill, { once: true })
   watch(date, () => { fill(); error.value = ''; saved.value = '' })
 
   const qty = computed(() => {
     const t = quantity.value.replace(/[,\s]/g, '')
     return /^\d+$/.test(t) ? Number(t) : null
-  })
-  // 🆕 11/20: 오늘 목표는 지금 계획정지 중인 라인을 빼고 나눈다 (꺼진 라인에 물량이 잡히지 않게, 저장도 같은 기준)
-  const stopped = shallowRef<string[]>([])
-  source.q.getPlannedStopLines().then((l) => { stopped.value = l }).catch(() => {})
-  const running = computed(() => (date.value === today ? Math.max(1, LINES - stopped.value.length) : LINES))
-  const planText = computed(() => {
-    if (!qty.value) return '-'
-    // 오늘 목표를 올리면: 라인 계획은 그대로, 늘어난 만큼 추가 주문 배정 대기 (G-04)
-    const now = rows.value.find((r) => r.date === today)?.quantity ?? null
-    if (date.value === today && now != null && now > 0 && qty.value !== now) {
-      return qty.value > now
-        ? `기존 ${formatNumber(now)} + 추가 ${formatNumber(qty.value - now)}개 (생산관리팀장 배정 보고서 → 결재 후 라인에 반영)`
-        : `기존 ${formatNumber(now)} − 감소 ${formatNumber(now - qty.value)}개 (생산관리팀장 조정 보고서 → 결재 후 라인 정지·감산)`
-    }
-    const off = date.value === today && stopped.value.length ? ` (계획정지 ${stopped.value.join('·')}라인 제외)` : ''
-    return `${formatNumber(qty.value)} ÷ 가동 라인 ${running.value} = ${formatNumber(Math.round(qty.value / running.value))}개${off}`
   })
   const exists = computed(() => rows.value.some((r) => r.date === date.value && r.quantity != null))
 
@@ -67,12 +48,12 @@ export function useTargets() {
     saving.value = false
     if (!r.ok) { error.value = r.error; return }
     saved.value = r.value.pending
-      ? `오늘 목표 ${formatNumber(r.value.before ?? 0)} → ${formatNumber(qty.value)}개. ${r.value.pending > 0 ? `늘어난 ${formatNumber(r.value.pending)}개는 추가 주문 배정 대기` : `줄어든 ${formatNumber(-r.value.pending)}개는 감소 대기`}예요 (생산관리팀장이 보고서를 올리고 결재하면 라인 계획에 반영돼요)`
+      ? `오늘 목표 ${formatNumber(r.value.before ?? 0)} → ${formatNumber(qty.value)}개. ${r.value.pending > 0 ? `늘어난 ${formatNumber(r.value.pending)}개는 추가 주문 배정 대기` : `줄어든 ${formatNumber(-r.value.pending)}개는 감소 대기`}예요 (생산관리 팀장이 보고서를 올리고 결재하면 라인 계획에 반영돼요)`
       : `${date.value} 목표 ${formatNumber(qty.value)}개를 저장했습니다`
     await load()
   }
   /** 목록의 [수정]: 그 날짜를 입력 칸으로 */
-  const edit = (d: string) => { date.value = d }
+  const edit = (d: string) => { date.value = d; fill() }
 
   const tableRows = computed(() => rows.value.map((r) => ({
     key: r.date,
@@ -83,14 +64,13 @@ export function useTargets() {
     quantity: r.quantity,
     /** 오늘 목표를 올려서 아직 라인에 안 나눈 수량 (결재 대기, 11/21) */
     pending: r.pending ?? 0,
-    plan: r.quantity != null ? Math.round(r.quantity / LINES) : null,
     done: r.done,
     rate: r.quantity && r.done != null ? Math.round((r.done / r.quantity) * 1000) / 10 : null,
     by: r.updatedBy,
-    editing: r.date === date.value,
+    editing: r.date === date.value && quantity.value !== '',
   })))
 
-  return { today, date, quantity, qty, planText, exists, saving, error, saved, save, edit, tableRows }
+  return { today, date, quantity, qty, exists, saving, error, saved, save, edit, tableRows }
 }
 
 // ── 관리값 기준 ──

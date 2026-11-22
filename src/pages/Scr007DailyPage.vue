@@ -208,7 +208,7 @@ async function downloadDoc() {
   }
 }
 
-// ── 결재·전송 (11/20): 작성 = 생산 관리 팀장, 결재·전송 = 공장장 ──
+// ── 결재·전송 (11/20): 작성 = 생산관리 팀장, 결재·전송 = 공장장 ──
 const flowKey = computed(() => `daily:${date.value}`)
 const flowView = computed(() => flowLine(flow.flowOf(flowKey.value)))
 function writeFlow() {
@@ -387,7 +387,7 @@ function writeFlow() {
           <section><h3>6. 다음 근무조 인계사항</h3><ol class="report-list"><li v-for="(h, i) in doc.handover" :key="i">{{ h }}</li></ol></section>
 
           <table class="approval">
-            <thead><tr><th>작성 · 생산 관리 팀장</th><th>결재 · 공장장</th></tr></thead>
+            <thead><tr><th>작성 · 생산관리 팀장</th><th>결재 · 공장장</th></tr></thead>
             <tbody><tr><td>{{ flowView.writer ?? AUTHOR }}</td><td>{{ flowView.approver ?? '' }}</td></tr></tbody>
           </table>
           <p class="note2">※ 본 문서는 생산 마감 기록이며, 생성 이후 원천 데이터 변경과 관계없이 작성 이력으로 보존합니다. AI 검토 문장은 마감 숫자로 만든 초안입니다.</p>

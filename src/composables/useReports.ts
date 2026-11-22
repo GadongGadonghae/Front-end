@@ -145,7 +145,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     await loadList()
   }
 
-  /** 배정 값 고치기 (생산관리팀장, 결재 요청 전만, R-07). 고친 보고서로 화면을 바꿔요 */
+  /** 배정 값 고치기 (생산관리 팀장, 결재 요청 전만, R-07). 고친 보고서로 화면을 바꿔요 */
   async function editAllocations(addQty: Record<string, number>) {
     const r = report.value
     if (!r) return
@@ -202,11 +202,13 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       shortageText: isTarget
         ? '계획정지 중인 라인이 자정까지 만들 예정이던 계획이 부족 수량입니다.'
         : r.kind === 'line'
-        ? `${josa(line ?? '', '이/가')} 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.`
+        ? `${josa(line ?? '', '이/가')} 근무 끝(18:00)까지 만들 예정이던 라인 계획이 부족 수량입니다.`
         : r.kind === 'paint'
-          ? `${josa(name, '이/가')} 자정까지 맡을 예정이던 수량이 부족 수량입니다.`
+          ? `${josa(name, '이/가')} 근무 끝(18:00)까지 맡을 예정이던 수량이 부족 수량입니다.`
           : '오늘 남은 적재 전량이 부족 수량입니다.',
-      allocText: r.allocations.length
+      allocText: r.allocations.length && r.ai?.interpretation?.onlyLines?.length
+        ? `요청에 따라 ${r.ai.interpretation.onlyLines.join('·')}라인에 ${formatNumber(r.shortage)}개를 모두 배정했습니다. 남은 능력 = 남은 시간 ÷ 라인 CT ${ct} − 남은 계획.`
+        : r.allocations.length
         ? `${r.kind === 'line' || isTarget ? `${isTarget ? '가동 중인' : '정상'} 라인 ${r.allocations.length}개` : '다른 도장 설비'}의 남은 능력 비율대로 ${formatNumber(r.shortage)}개를 나눴습니다. 남은 능력 = 남은 시간 ÷ ${r.kind === 'paint' ? '도장 CT' : '라인 CT'} ${ct} − 남은 계획.`
         : r.kind === 'vision' ? '대신할 설비가 없어 나눌 곳이 없습니다.' : '정상인 다른 라인(설비)이 없어 나눌 곳이 없습니다.',
       rows: r.allocations.map((a) => ({

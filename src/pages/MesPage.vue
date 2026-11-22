@@ -116,7 +116,7 @@ async function onLogout() {
 </script>
 
 <template>
-  <div :class="['mes', { home: view === 'home' }]">
+  <div :class="['mes', { home: view === 'home', inbox: view === 'reports' }]">
     <header class="top">
       <button v-if="canBack" type="button" class="out" aria-label="이전 화면" @click="goBack">‹ 이전</button>
       <b class="brand">차체 캠퍼스 MES</b>
@@ -142,7 +142,7 @@ async function onLogout() {
         </button>
       </nav>
 
-      <main :class="['body', { home: view === 'home' }]">
+      <main :class="['body', { home: view === 'home', inbox: view === 'reports' }]">
         <!-- 현황 대시보드 (전부 더미) -->
         <template v-if="view === 'home'">
           <section class="kpis">
@@ -275,7 +275,8 @@ async function onLogout() {
                 </div>
                 <BaseButton size="sm" @click="download">Word(.doc) 받기</BaseButton>
               </div>
-              <MesReportView :daily="picked.daily" :replan="picked.replan" :src="pickedSrc" />
+              <!-- 보고서만 내려간다 (11/22). 다른 보고서를 고르면 맨 위부터 -->
+              <div :key="picked.key" class="vscroll"><MesReportView :daily="picked.daily" :replan="picked.replan" :src="pickedSrc" /></div>
             </template>
             <p v-else class="empty">보고서를 고르면 내용이 보입니다.</p>
           </section>
@@ -672,11 +673,45 @@ th {
   flex: 1;
 }
 
+/* 수신 보고서: 화면은 한 장에 고정, 왼쪽 목록과 오른쪽 보고서가 따로 내려간다 (11/22) */
+.mes.inbox {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+}
+
+.mes.inbox .frame { grid-template-rows: minmax(0, 1fr); }
+
+.body.inbox {
+  grid-template-rows: minmax(0, 1fr);
+  align-content: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .reports {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 320px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: var(--sp-4);
-  align-items: start;
+  min-height: 0;
+}
+
+.reports .list {
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.vscroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .list ul {
@@ -732,6 +767,7 @@ h3 small {
 
 .vh {
   display: flex;
+  flex: none;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-3);

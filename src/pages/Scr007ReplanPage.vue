@@ -26,7 +26,7 @@ const router = useRouter()
 const docOnly = computed(() => route.meta.docOnly === true)
 const selectedId = computed(() => (typeof route.params.id === 'string' && route.params.id ? route.params.id : null))
 const rp = useReplanReports(selectedId)
-// 계정 권한 (11/20): 작성 = 생산관리팀장, 결재·전송 = 공장장 (결재 줄 ReportApproval · useReportFlow, 결재하면 서버가 계획에 적용)
+// 계정 권한 (11/20): 작성 = 생산관리 팀장, 결재·전송 = 공장장 (결재 줄 ReportApproval · useReportFlow, 결재하면 서버가 계획에 적용)
 const { can } = useAuth()
 const flow = useReportFlow()
 const { equipmentName } = useMaster()
@@ -264,6 +264,18 @@ const doc = computed(() => {
   }
 })
 
+/** 추가 요청을 어떻게 처리했는지 (11/22): 요청 → 처리 내용·근거 → 반영하지 못한 것. A4 문서와 .doc에 들어간다 */
+const requestLines = computed(() => {
+  const a = ai.value
+  const it = a?.interpretation
+  if (!a?.additionalRequest || !it) return []
+  return [
+    { label: '추가 요청', text: a.additionalRequest },
+    { label: '처리 내용', text: [...it.appliedRules, ...(report.value?.order?.notes ?? [])].join(' · ') },
+    ...(it.unhandled?.length ? [{ label: '반영 못한 요청', text: it.unhandled.join(' · ') }] : []),
+  ]
+})
+
 /** .doc 양식 값. 내려받기와 결재 작성(MES로 보낼 내용)에 같이 쓴다 */
 const docData = computed<ReplanDocData | null>(() => {
   const r = report.value
@@ -275,7 +287,7 @@ const docData = computed<ReplanDocData | null>(() => {
     plan: r.stoppedPlan, actual: r.stoppedDone, shortage: r.shortage, stopSec: d.stopSec,
     factLine: d.targetLine, factEquipment: vv.name, factStart: vv.start, factCause: `${vv.code} · ${vv.detail}`,
     remainingSec: r.remainingSec, modelName: d.model, docStatus: d.status, author: d.author,
-    allocationText: vv.allocText,
+    allocationText: [vv.allocText, ...requestLines.value.map((x) => `[${x.label}] ${x.text}`)].join(' '),
     rows: d.rows.map((x) => [x.label, formatNumber(x.remainingPlan), formatNumber(x.capacity), `${formatNumber(x.share, 1)}%`, formatNumber(x.add)]),
     totalPlan: formatNumber(d.totalPlan), totalCapacity: formatNumber(vv.sums.capacity), totalAllocation: formatNumber(vv.sums.add),
     resultGrade: d.grade, resultText: d.resultText, actions: d.actions, risks: d.risks,
@@ -296,7 +308,7 @@ async function downloadDoc() {
   }
 }
 
-// ── 결재·전송 (11/20): 작성 = 생산 관리 팀장, 결재·전송 = 공장장 ──
+// ── 결재·전송 (11/20): 작성 = 생산관리 팀장, 결재·전송 = 공장장 ──
 const flowKey = computed(() => (selectedId.value ? `replan:${selectedId.value}` : null))
 const flowView = computed(() => flowLine(flow.flowOf(flowKey.value)))
 const flowBusy = ref(false)
@@ -321,7 +333,7 @@ function approveFlow() {
 }
 const sendFlow = () => { const key = flowKey.value; if (key) busy(() => flow.send(key)) }
 
-// ── 배정 값 고치기 (11/20): 생산관리팀장, 결재 요청 전(작성 중)에만. 결재하면 고친 수량대로 목표에 들어간다 ──
+// ── 배정 값 고치기 (11/20): 생산관리 팀장, 결재 요청 전(작성 중)에만. 결재하면 고친 수량대로 목표에 들어간다 ──
 const canEdit = computed(() => can('reportWrite') && !!report.value && !report.value.approved
   && (!flowView.value.status || flowView.value.status === 'DRAFT') && ['order', 'line', 'target'].includes(report.value.kind ?? 'line'))
 const editing = ref(false)
@@ -495,7 +507,7 @@ async function downloadPdf() {
           </div>
           <p v-if="genError" class="gen-error">{{ genError }}</p>
           <p v-if="flow.lastError.value" class="gen-error">결재 기록 실패: {{ flow.lastError.value }}</p>
-          <p v-if="!can('reportWrite') && !report" class="gen-error">AI 보고서·추가 주문 배정 작성은 생산관리팀장 권한이에요.</p>
+          <p v-if="!can('reportWrite') && !report" class="gen-error">AI 보고서·추가 주문 배정 작성은 생산관리 팀장 권한이에요.</p>
           <p v-if="slackMsg" :class="slackMsg.ok ? 'slack-msg' : 'gen-error'" role="status" aria-live="polite">{{ slackMsg.text }}</p>
           <div v-if="isOrder && report?.approved && report.order" class="info-panel">
             <h4>결재 · 적용 완료{{ report.approvedAt ? ` · ${formatTime(report.approvedAt).slice(0, 5)}` : '' }}</h4>
@@ -521,6 +533,7 @@ async function downloadPdf() {
               <div><b>정지·제외 라인</b>{{ ai.interpretation.excludedLines.length ? ai.interpretation.excludedLines.join(', ') : '없음' }}</div>
               <div><b>우선 기준</b>{{ PRIORITY[ai.interpretation.priority] ?? ai.interpretation.priority }}</div>
               <div><b>적용 규칙</b>{{ ai.interpretation.appliedRules.join(' · ') }}</div>
+              <div v-if="ai.interpretation.unhandled?.length"><b>반영하지 못한 요청</b>{{ ai.interpretation.unhandled.join(' · ') }}</div>
             </div>
           </div>
         </div>
@@ -623,6 +636,9 @@ async function downloadPdf() {
             <h3>4. 생산 재배정안</h3>
             <div>
               <p>{{ v.allocText }}</p>
+              <dl v-if="requestLines.length" class="request-box">
+                <template v-for="x in requestLines" :key="x.label"><dt>{{ x.label }}</dt><dd>{{ x.text }}</dd></template>
+              </dl>
               <div v-if="canEdit" class="edit-bar no-print">
                 <template v-if="!editing"><button class="btn" type="button" @click="startEdit">배정 값 수정</button></template>
                 <template v-else>
@@ -679,7 +695,7 @@ async function downloadPdf() {
           </section>
 
           <div class="approval">
-            <table><thead><tr><th>작성 · 생산 관리 팀장</th><th>결재 · 공장장</th></tr></thead><tbody><tr><td>{{ flowView.writer ?? doc.author }}</td><td>{{ flowView.approver ?? doc.approvedBy }}</td></tr></tbody></table>
+            <table><thead><tr><th>작성 · 생산관리 팀장</th><th>결재 · 공장장</th></tr></thead><tbody><tr><td>{{ flowView.writer ?? doc.author }}</td><td>{{ flowView.approver ?? doc.approvedBy }}</td></tr></tbody></table>
           </div>
           <p class="note2">※ 본 문서는 AI 기반 의사결정 지원 초안이며, 담당자 검토 및 승인 후 생산계획에 반영합니다.</p>
         </article>
@@ -1430,6 +1446,22 @@ async function downloadPdf() {
 }
 
 /* 계획 변경 카드: 바로 생성 버튼 (11/21) */
+/* 추가 요청 처리 (A4 문서 안) */
+.request-box {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  border: 1px solid #c3c8cf;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.request-box dt { font-weight: 600; }
+.request-box dd { margin: 0; }
+
 .quick {
   display: flex;
   flex-wrap: wrap;

@@ -7,7 +7,7 @@ export type Perm = 'action' | 'target' | 'limits' | 'users' | 'reportWrite' | 'r
 
 export const ROLE_NAME: Record<AppRole, string> = {
   PLANT_HEAD: '공장장',
-  PROD_LEAD: '생산 관리 팀장',
+  PROD_LEAD: '생산관리 팀장',
   LINE_WORKER: '라인 담당자',
   CAMPUS: '캠퍼스장',
 }
@@ -21,15 +21,15 @@ const GRANTS: Record<AppRole, Perm[]> = {
 
 /** 권한이 없을 때 화면에 쓰는 문구: "공장장만 할 수 있습니다" */
 export const PERM_OWNER: Record<Perm, string> = {
-  action: '생산 관리 팀장·라인 담당자(본인 라인)',
+  action: '생산관리 팀장·라인 담당자(본인 라인)',
   target: '공장장',
-  limits: '생산 관리 팀장',
+  limits: '생산관리 팀장',
   users: '공장장',
-  reportWrite: '생산 관리 팀장',
+  reportWrite: '생산관리 팀장',
   reportApprove: '공장장',
-  slack: '공장장·생산 관리 팀장',
+  slack: '공장장·생산관리 팀장',
   mes: '캠퍼스장',
-  paint: '공장장·생산 관리 팀장',
+  paint: '공장장·생산관리 팀장',
 }
 
 /** 설비 ID → 라인 ("A-PR1" → "A"). 도장·비전·출하 같은 공용 설비는 null */

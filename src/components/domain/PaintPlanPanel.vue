@@ -76,7 +76,7 @@ const saved = computed(() => {
 
     <div class="acts">
       <BaseButton v-if="plan.changeNeeded && props.canApply" variant="primary" :disabled="busy" @click="emit('apply')">{{ busy ? '적용 중…' : '제안대로 적용' }}</BaseButton>
-      <span v-else-if="plan.changeNeeded" class="hint">적용은 공장장·생산 관리 팀장만 할 수 있습니다</span>
+      <span v-else-if="plan.changeNeeded" class="hint">적용은 공장장·생산관리 팀장만 할 수 있습니다</span>
       <span v-if="message" class="ok" role="status">{{ message }}</span>
       <span v-if="error" class="err" role="alert">{{ error }}</span>
     </div>
