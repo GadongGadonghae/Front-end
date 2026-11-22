@@ -131,6 +131,7 @@ export const PAST_DETAIL: Record<DowntimeCode, string[]> = {
   PL_PM: ['정기 점검', '윤활 점검'],
   PL_CHANGE: ['금형 교체', '규격 변경'],
   PL_SETUP: ['코일 교체', '나이프 교체'],
+  PL_STANDBY: ['물량 적음 운휴'],
   UP_SHORTAGE: ['앞 공정 정지', '코일 공급 지연'],
   UP_BLOCKED: ['뒤 프레스 단 정지로 넘기지 못함'],
   UP_DELAY: ['뒤 공정 정지', '적재 대차 부족'],

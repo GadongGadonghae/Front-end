@@ -72,6 +72,7 @@ const downtimeCodes: DowntimeCodeDef[] = [
   { code: 'PL_PM', name: '예방보전', state: 'S' },
   { code: 'PL_CHANGE', name: '모델 교체', state: 'S' },
   { code: 'PL_SETUP', name: '코일·나이프 교체', state: 'S' },
+  { code: 'PL_STANDBY', name: '물량 적음 운휴', state: 'S' },
   { code: 'UP_SHORTAGE', name: '재공부족', state: 'I' },
   { code: 'UP_BLOCKED', name: '후공정 정지 대기', state: 'I' },
   { code: 'UP_DELAY', name: '작업지연', state: 'I' },

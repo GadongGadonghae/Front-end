@@ -4,7 +4,7 @@
 export type StatusCode = 'R' | 'S' | 'I' | 'D' | 'DC'
 export type ProcessCode = 'COIL' | 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING' | 'INSPECTION'
 export type ReasonCode =
-  | 'PL_SHIFT' | 'PL_PM' | 'PL_CHANGE' | 'PL_SETUP'
+  | 'PL_SHIFT' | 'PL_PM' | 'PL_CHANGE' | 'PL_SETUP' | 'PL_STANDBY'
   | 'UP_BREAKDOWN' | 'UP_ALARM' | 'UP_DELAY' | 'UP_SHORTAGE' | 'UP_BLOCKED' | 'UP_LABOR' | 'UP_SAFETY' | 'UP_ETC'
 
 /** 목록 (v3.2 합의: { items, total, page, size }, page는 1부터) */
