@@ -117,7 +117,7 @@ const doc = computed(() => {
     ? `${toDateStr(Date.parse(madeAt.value))} ${formatTime(madeAt.value)}`
     : `${r.date} 24:00`
   const processes = r.processes.map((p) => ({
-    name: p.process === 'INSPECTION' ? '출고 비전' : PROCESS_NAME[p.process],
+    name: PROCESS_NAME[p.process],
     output: p.output, ng: p.ng, rate: p.output ? (p.ng / p.output) * 100 : null,
   }))
   const reportOf = (eventId: string) => replans.value.find((x) => x.stateEventId === eventId)

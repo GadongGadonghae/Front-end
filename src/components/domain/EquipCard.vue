@@ -1,4 +1,4 @@
-<!-- 공정 상세 설비 카드 (SCR-002 2번): 위 = 상태 색 띠(코드 · 명칭 · 지속시간), 아래 = 이름 · 오늘 숫자. 누르면 그 설비를 고른다
+<!-- 공정 상세 설비 카드 (SCR-002 2번): 위 = 상태 색 띠(코드 · 명칭, 고장·통신 끊김이면 지속시간), 아래 = 이름 · 오늘 숫자. 누르면 그 설비를 고른다
      고른 카드는 먹색 테두리. 예지보전은 카드 바깥 테두리 + 글자 -->
 <script setup lang="ts">
 import { STATE_NAME } from '@/lib/status'
@@ -19,7 +19,7 @@ defineEmits<{ select: [id: string] }>()
     <span class="band" :class="`st-${card.state}`">
       <b class="code">{{ card.state }}</b>
       <span class="word">{{ STATE_NAME[card.state] }}</span>
-      <span class="dur">{{ card.duration }}</span>
+      <span v-if="card.duration" class="dur">{{ card.duration }}</span>
     </span>
     <span class="body">
       <span class="name">{{ card.name }}<span v-if="card.tag" class="tag">{{ card.tag }}</span></span>

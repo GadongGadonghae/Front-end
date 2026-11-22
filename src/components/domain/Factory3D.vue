@@ -1,13 +1,15 @@
 <!-- SCR-005 3D 공장 (대시보드 배치도의 3D 보기, D-118). 설비 상태 색 · 이상 표시 · 도장 경로 · 제품 상자(데모)
      3D ↔ 탑뷰: 같은 원근 카메라가 부드럽게 날아간다. 탑뷰에 도착하면 바닥 상태 칸 + 설비 상태 칩 (예전 탑뷰 모양)
-     설비를 누르면 카메라가 그 설비로 다가가고(화면 가운데) 왼쪽에 설비 팝업. 닫으면(× · Esc · 팝업 밖) 누르기 전 자리로
+     설비를 누르면 왼쪽에 설비 팝업 (카메라는 그대로, 11/22 줌인 뺌). 닫기: × · Esc · 팝업 밖
      라인 바닥에 마우스를 올리면 외곽선, 누르면 오른쪽 위에 간단한 라인 카드. 값은 props로 받고, 이동은 emit으로 페이지에 맡긴다 -->
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { createFactoryScene, type FactoryScene, type SceneColors, type ViewMode } from '@/components/domain/factory3d/scene'
+import BaseIcon from '@/components/base/BaseIcon.vue'
 import EquipPanel from '@/components/domain/factory3d/EquipPanel.vue'
 import LinePanel from '@/components/domain/factory3d/LinePanel.vue'
 import { formatDuration } from '@/lib/format'
+import { showsSince } from '@/lib/status'
 import type { Equipment, Line, LineId, ProductionLineId } from '@/types/plant'
 import type { EquipmentLive, FlowPositions, LineSummary } from '@/types/live'
 import type { StateCode } from '@/types/state'
@@ -22,12 +24,13 @@ const props = defineProps<{
   now: number
   /** 오늘 승인·적용된 추가 주문 배정 수량 (라인별, 배정 칸 "+N 추가 배정"). 배정량은 lineSummaries.plan */
   additions?: Partial<Record<LineId, number>>
-  /** 오늘 비전 검사 양품·불량 (비전 칸 · 출하 적재 상자, 11/21) */
+  /** 오늘 비전 검사 양품·불량 (비전 창 · 적재 상자, 11/21) */
   vision?: { ok: number; ng: number } | null
 }>()
 const emit = defineEmits<{
   'open-line': [id: LineId]
-  'open-outbound': []
+  'open-vision': []
+  'open-loading': []
   'open-inbound': []
   'open-action': [equipmentId: string]
 }>()
@@ -40,6 +43,8 @@ const selLine = ref<ProductionLineId | null>(null)
 const popId = ref<string | null>(null)
 /** 확인한 이상: 설비 ID@시작 시각. 같은 상태가 이어지는 동안 이상 표시를 숨긴다 */
 const acked = ref(new Set<string>())
+/** 조작 방법 펼침 (왼쪽 아래, 처음엔 접힘) */
+const helpOpen = ref(false)
 
 const liveById = computed(() => new Map(props.live.map((e) => [e.id, e])))
 const eqById = computed(() => new Map(props.equipment.map((e) => [e.id, e])))
@@ -79,30 +84,29 @@ function colors(): SceneColors {
 }
 
 // ── 설비 팝업 (왼쪽) ──
-/** 11/21 이상 설비(고장 · 통신 끊김 · 원인 있는 대기)만 다가가서 창을 열어요. 정상 설비는 눌러도 그대로 (볼 게 상태 색뿐이라)
+/** 11/21 이상 설비(고장 · 통신 끊김 · 원인 있는 대기)만 창을 열어요. 정상 설비는 눌러도 그대로 (볼 게 상태 색뿐이라)
  *  force = 비전 검사 칸처럼 구역 단추로 부를 때는 상태와 상관없이 열어요 */
 function pick(id: string, force = false) {
   if (!eqById.value.has(id)) return
   const l = liveById.value.get(id)
   if (!force && !(l && isIssue(l))) return
   popId.value = id
-  scene.value?.focus(id)
+  scene.value?.mark(id)
   // 라인 상세가 열려 있으면 그 설비의 라인으로 따라간다
   const a = eqById.value.get(id)!.area
   if (selLine.value && a !== 'PT' && a !== 'VI' && a !== selLine.value) selectLine(a as ProductionLineId)
 }
-/** restore = 누르기 전 카메라 자리로 돌아간다 (보기 전환 버튼은 스스로 날아가므로 false) */
-function closePop(restore = true) {
+function closePop() {
   if (!popId.value) return
   popId.value = null
-  if (restore) scene.value?.unfocus()
+  scene.value?.mark(null)
 }
 function selectLine(L: ProductionLineId | null) {
   selLine.value = L
   scene.value?.select(L)
 }
 function setView(m: ViewMode) {
-  closePop(false)
+  closePop()
   scene.value?.setView(m)
 }
 
@@ -128,8 +132,8 @@ onMounted(() => {
       if (popId.value) { closePop(); return }
       selectLine(L)
     },
-    // 11/21 비전 검사는 출고 화면 대신 비전 설비 창 (양품·불량은 칸에 바로), 적재는 출고 화면
-    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : z === 'vision' ? pick('VI', true) : emit('open-outbound')),
+    // 11/21 비전 검사는 비전 설비 창 (합격·불량 + 상세 보기), 적재는 적재 화면
+    onZone: (z) => (z === 'inbound' ? emit('open-inbound') : z === 'paint' ? emit('open-line', 'PT') : z === 'vision' ? pick('VI', true) : emit('open-loading')),
     onEmpty: () => {
       if (popId.value) closePop()
       else if (selLine.value) selectLine(null)
@@ -147,15 +151,15 @@ onBeforeUnmount(() => {
   scene.value?.dispose()
 })
 
-/** 탑뷰 설비 카드 둘째 줄: 가동이 아니면 지속 시간 */
+/** 탑뷰 설비 카드 둘째 줄: 고장(D)·통신 끊김(DC)만 지속 시간 (11/22) */
 function push() {
   const s = scene.value
   if (!s) return
-  s.setStates(props.live.map((l) => ({ id: l.id, state: l.state, note: l.state === 'R' ? null : formatDuration(secOf(l)) })))
+  s.setStates(props.live.map((l) => ({ id: l.id, state: l.state, note: showsSince(l.state) ? formatDuration(secOf(l)) : null })))
   s.setIssues(issues.value.map((e) => ({ equipmentId: e.id, state: e.state })))
   s.setRoutes(Object.fromEntries(props.lines.filter((l) => l.kind === 'production').map((l) => [l.id, l.currentPaintId])))
   s.setFlow(props.flow)
-  // 출하 적재: 오늘 출고 양품 (비전 검사 양품 = 출고). 없으면 라인별 실적 합
+  // 적재: 오늘 비전 검사 합격 수 (합격 = 적재). 없으면 라인별 실적 합
   s.setShipped(props.vision?.ok ?? props.lineSummaries.filter((x) => x.lineId !== 'PT').reduce((a, x) => a + (x.done ?? 0), 0))
 }
 watch(() => [props.live, props.lines, props.flow, issues.value, props.now, props.lineSummaries, props.additions, props.vision], push)
@@ -166,7 +170,7 @@ const pop = computed(() => {
   const e = eqById.value.get(id)
   const l = liveById.value.get(id)
   if (!e || !l) return null
-  const line = e.area === 'PT' ? '도장 (공용)' : e.area === 'VI' ? '출고 (공용)' : `${e.area}라인`
+  const line = e.area === 'PT' ? '도장 (공용)' : e.area === 'VI' ? '공용' : `${e.area}라인`
   return { e, l, line, sec: secOf(l), abnormal: isIssue(l), issue: isIssue(l) && !acked.value.has(ackKey(l)) }
 })
 function ack() {
@@ -174,16 +178,16 @@ function ack() {
   if (l) acked.value = new Set(acked.value).add(ackKey(l))
   closePop()
 }
-/** 생산 라인은 3D에서 그 라인으로 다가간 뒤 라인 상세로 (D-119). 도장·출고는 바로 */
+/** 생산 라인은 3D에서 그 라인으로 다가간 뒤 라인 상세로 (D-119). 도장·비전 검사는 바로 */
 function openLine(id: LineId) {
   const s = scene.value
   if (!s || id === 'PT' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { emit('open-line', id); return }
-  closePop(false)
+  closePop()
   s.dive(id as ProductionLineId, () => emit('open-line', id))
 }
 function goLine() {
   const a = pop.value?.e.area
-  if (a === 'VI') emit('open-outbound')
+  if (a === 'VI') emit('open-vision')
   else if (a) openLine(a)
 }
 
@@ -214,7 +218,15 @@ const panel = computed(() => {
       <button type="button" :aria-pressed="view === '3d'" @click="setView('3d')">3D</button>
       <button type="button" :aria-pressed="view === 'top'" @click="setView('top')">탑뷰</button>
     </div>
-    <p class="hint">라인 바닥을 누르면 라인 상세 · 고장 설비를 누르면 가까이 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전</p>
+    <!-- 11/22 조작 방법: 접혀 있다가 누르면 오른쪽으로 펼쳐진다 -->
+    <div class="help" :class="{ open: helpOpen }" data-keep-pop>
+      <button type="button" class="help-btn" :aria-expanded="helpOpen" aria-controls="f3d-help" @click="helpOpen = !helpOpen">
+        조작 방법<BaseIcon :name="helpOpen ? 'chevron-left' : 'chevron-right'" :size="16" />
+      </button>
+      <div id="f3d-help" class="help-body" :aria-hidden="!helpOpen">
+        <p>라인 바닥을 누르면 라인 상세 · 고장·대기 설비를 누르면 상태 창 · 왼쪽 끌기 이동 · 휠 확대 · 오른쪽 끌기 회전</p>
+      </div>
+    </div>
 
     <aside v-if="!pop" class="side" aria-label="라인별 생산 / 배정" data-keep-pop>
       <section>
@@ -239,6 +251,7 @@ const panel = computed(() => {
         :line-name="pop.line"
         :abnormal="pop.abnormal"
         :issue="pop.issue"
+        :vision="pop.e.area === 'VI' ? vision : null"
         @close="closePop()"
         @ack="ack"
         @go-line="goLine"
@@ -304,22 +317,59 @@ const panel = computed(() => {
   color: var(--c-inverse-ink);
 }
 
-.hint {
+/* 조작 방법 (11/22): 단추만 보이다가 누르면 옆으로 펼쳐짐 */
+.help {
   position: absolute;
+  z-index: 4;
   bottom: var(--sp-3);
   left: var(--sp-3);
+  display: grid;
+  grid-template-columns: auto 0fr;
   max-width: calc(100% - var(--sp-6));
-  margin: 0;
-  padding: 2px var(--sp-2);
   overflow: hidden;
-  border-radius: var(--r-1);
+  border: var(--line-w) solid var(--c-line-strong);
+  border-radius: var(--r-2);
   background: var(--c-surface);
-  color: var(--c-ink-2);
   font-size: var(--fs-sm);
+  transition: grid-template-columns var(--dur-enter) var(--ease-out);
+}
+
+.help.open { grid-template-columns: auto 1fr; }
+
+.help-btn {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-h-sm);
+  padding: 0 var(--sp-1) 0 var(--sp-3);
+  border: 0;
+  background: none;
+  color: var(--c-ink-2);
+  font: inherit;
+  font-weight: var(--fw-strong);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.help-btn:hover { background: var(--c-surface-sunk); }
+
+.help-body {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--c-ink-2);
+  line-height: var(--control-h-sm);
+}
+
+.help-body p {
+  margin: 0;
+  padding: 0 var(--sp-3) 0 var(--sp-1);
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  pointer-events: none;
 }
+
+/* 접혀 있을 때는 글이 읽히지 않게 (화면 낭독기·선택) */
+.help:not(.open) .help-body { visibility: hidden; }
 
 /* 왼쪽 패널 (11/21): 보기 버튼 아래. 설비 팝업이 열리면 그 자리를 팝업이 씀 */
 .side {
@@ -330,7 +380,7 @@ const panel = computed(() => {
   display: grid;
   gap: var(--sp-2);
   width: 216px;
-  max-height: calc(100% - var(--control-h-sm) - var(--sp-3) * 4 - var(--fs-sm) * 1.6);
+  max-height: calc(100% - var(--control-h-sm) * 2 - var(--sp-3) * 4);
   overflow-y: auto;
 }
 
@@ -571,7 +621,7 @@ const panel = computed(() => {
 
 .stage :deep(.f3d-zone.go.dark:hover) { background: var(--c-ink-2); }
 
-/* 적재 단추 안 출하 수 (11/21) */
+/* 적재 단추 안 적재 수 (11/21) */
 .stage :deep(.f3d-zone.go small) {
   margin-left: var(--sp-1);
   color: var(--c-ink-2);

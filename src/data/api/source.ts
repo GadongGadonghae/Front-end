@@ -29,7 +29,7 @@ const LINES = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 // ── 기준정보 중 API에 없는 것 (명세 공통 규칙에서 옮김) ──
 const PROCESSES: Process[] = [
   { id: 'COIL', name: '코일입고', order: 1 }, { id: 'SLITTING', name: '슬리팅', order: 2 }, { id: 'PRESS', name: '프레스', order: 3 },
-  { id: 'WELDING', name: '용접', order: 4 }, { id: 'PAINTING', name: '도장', order: 5 }, { id: 'INSPECTION', name: '출고', order: 6 },
+  { id: 'WELDING', name: '용접', order: 4 }, { id: 'PAINTING', name: '도장', order: 5 }, { id: 'INSPECTION', name: '비전 검사', order: 6 },
 ]
 /** 공정별 제품 1개 처리 시간 (명세 11/17 갱신) */
 const TYPES: EquipmentType[] = [
@@ -498,6 +498,7 @@ export function createApiSource(): DataSource {
           defects: (ngList?.items ?? []).map((x) => ({ t: x.at, productId: x.productId, equipmentId: x.equipmentId, reason: x.reason ?? (x.itemName ? `${x.itemName} 기준 이탈` : '공정 불량') })),
         }
       },
+      getLoadedToday: async () => (await api.M08({ ...todayRange(), result: 'OK', page: 1, size: 50 })).items.map((i) => ({ t: i.inspectedAt, productId: i.productId, lineId: i.lineId })),
       getMicrostopsToday: async (equipmentId) => ({ equipmentId, count: 0, lossSec: 0, bands: [] }),
       async getInboundToday() {
         const coil = await api.M16()

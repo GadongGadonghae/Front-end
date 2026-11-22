@@ -1,6 +1,6 @@
 <!-- 설비 칸: 칸 전체를 상태 색으로 칠한다 (DESIGN.md Components "설비 칸")
      작게(배치도, SCR-001 1번): 이름 · 상태 코드·명칭 · 고장이면 지속시간 · 예지보전 비율
-     크게(라인 흐름, SCR-010 3번): 이름 → 오늘 사이클·불량·평균 CT (모든 상태·설비에서 같은 자리, 11/21) → (아래쪽) 고장·대기 사유 → 코드·명칭·지속시간
+     크게(라인 흐름, SCR-010 3번): 이름 → 오늘 사이클·불량·평균 CT (모든 상태·설비에서 같은 자리, 11/21) → (아래쪽) 고장·대기 사유 → 코드·명칭 (고장·통신 끊김이면 지속시간)
      칸이 좁으면 명칭을 숨기고 코드 글자는 남긴다 (색만으로 말하지 않기) -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -29,7 +29,7 @@ const large = computed(() => ('info' in props.cell ? props.cell : null))
         <div class="foot">
           <span class="code">{{ large.state }}</span>
           <span class="word">{{ STATE_NAME[large.state] }}</span>
-          <span class="dur">{{ large.duration }}</span>
+          <span v-if="large.duration" class="dur">{{ large.duration }}</span>
         </div>
       </div>
     </div>

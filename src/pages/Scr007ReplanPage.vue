@@ -237,7 +237,7 @@ const doc = computed(() => {
   return {
     documentNo: r.documentNo ?? r.id,
     created,
-    targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : r.kind === 'target' ? '전체 라인' : '출고'),
+    targetLine: r.kind === 'order' ? `${vv.rows.map((x) => x.key).join('·')}라인` : vv.line ?? (r.kind === 'paint' ? '도장' : r.kind === 'target' ? '전체 라인' : '비전 검사'),
     model: r.ai ? (r.ai.mock ? '템플릿 초안' : 'AI 분석 보고서') : '규칙 계산',
     author: r.createdBy,
     // 결재 줄 상태 (작성 중 → 결재 요청 → 결재 완료 → 전송 완료). 추가 주문은 결재와 함께 적용

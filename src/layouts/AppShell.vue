@@ -184,7 +184,7 @@ function viewFault() {
   align-items: center;
   align-self: center;
   gap: var(--sp-1);
-  margin-right: calc(var(--sp-4) * -1);
+  margin-right: 0;
   padding: var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-2);
   border: var(--line-w) solid var(--c-line-strong);
   border-radius: var(--r-1);
@@ -288,6 +288,11 @@ nav a.on {
   .top {
     gap: var(--sp-4);
     font-size: var(--fs-md);
+  }
+
+  /* 로고와 조금 더 떨어지게 (11/22) */
+  .back {
+    margin-right: var(--sp-2);
   }
 
   .brand {

@@ -4,7 +4,7 @@
 import type { LineId, MasterData } from '@/types/plant'
 import type { PlantSnapshot, PlantSummary, ProductMove, FlowPositions } from '@/types/live'
 import type { AlarmEvent, HistoryEvent, HistoryQuery, HistorySummary, HistorySummaryQuery, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
-import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
+import type { HourlyOutput, LoadedProduct, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
@@ -58,8 +58,10 @@ export interface Queries {
   getTelemetry(equipmentId: string, range: TelemetryRange): Promise<TelemetrySeries>
   /** U-08 상태 이력 (지금은 설비 하나의 오늘 이력) */
   getStateEvents(filter: { equipmentId: string }): Promise<StateEvent[]>
-  /** M-07·M-08 오늘 공정 검사. 출고는 process INSPECTION, lineId 없음 */
+  /** M-07·M-08 오늘 공정 검사. 비전 검사는 process INSPECTION, lineId 없음 */
   getInspectionsToday(process: ProcessId, lineId?: LineId): Promise<InspectionToday>
+  /** M-08 (result OK) 오늘 적재된 제품 최근 50건 (비전 검사 합격 = 적재) */
+  getLoadedToday(): Promise<LoadedProduct[]>
   /** 백엔드 없음 오늘 미세정지 [차순위] */
   getMicrostopsToday(equipmentId: string): Promise<MicrostopToday>
   /** M-13 (오늘 입고 수는 백엔드 없음) 코일입고 */

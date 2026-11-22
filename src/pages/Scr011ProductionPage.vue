@@ -26,7 +26,7 @@ import type { Period } from '@/types/analysis'
 import type { LineId } from '@/types/plant'
 
 const route = useRoute()
-// 공정 검사·출고 불량 목록에서 제품 ID를 눌러 들어오면 그 제품을 찾아 둔다 (D-88)
+// 공정 검사·비전 불량 목록에서 제품 ID를 눌러 들어오면 그 제품을 찾아 둔다 (D-88)
 const p = useProduction(typeof route.query.q === 'string' ? route.query.q : '')
 const { tab, lineId, period, date, result, q, page, scale } = p
 watch(() => route.query.q, (v) => { if (typeof v === 'string' && v) p.findProduct(v) })
@@ -38,7 +38,7 @@ const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일
 const LINES: { value: '' | LineId; label: string }[] = [{ value: '', label: '전체' }, ...(['A', 'B', 'C', 'D', 'E', 'F'] as LineId[]).map((l) => ({ value: l, label: `${l}라인` }))]
 const RESULTS = computed<{ value: ResultFilter; label: string }[]>(() => [
   { value: 'all', label: '전체' },
-  { value: 'ok', label: `양품 출고 ${formatNumber(p.summary.value?.done)}` },
+  { value: 'ok', label: `적재 완료 ${formatNumber(p.summary.value?.done)}` },
   { value: 'ng', label: `불량 제외 ${formatNumber(p.ngTotal.value)}` },
   { value: 'wip', label: `진행 중 ${formatNumber(p.summary.value?.wip)}` },
 ])

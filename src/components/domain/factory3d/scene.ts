@@ -1,13 +1,14 @@
 // 3D 공장 장면 (SCR-005). Three.js로 설비 39대·컨베이어·재공 상자·제품 상자를 그린다
 // 보기 (D-118): 3D(비스듬히) ↔ 탑뷰(같은 원근 카메라가 위로 날아가 내려다본다. 평면 그림으로 바꾸지 않음)
 //   탑뷰에 도착하면 바닥 상태 칸을 진하게 하고 설비마다 상태 칩(설비 번호 + 이상이면 상태 글자)을 띄운다 (11/20 예전 탑뷰 모양)
-// 설비를 누르면 카메라가 그 설비로 다가가 화면 가운데에 두고, 닫으면(unfocus) 누르기 전 자리로 돌아온다
+// 설비를 눌러도 카메라는 움직이지 않는다: 바닥에 고른 테두리만 (mark, 11/22 줌인 뺌)
 // 라인 바닥에 마우스를 올리면 그 라인 외곽선, 누르면 라인 선택 (on.onLine). 빈 곳을 누르면 on.onEmpty
 // 마우스: 왼쪽 끌기 = 이동, 휠 = 확대, 오른쪽 끌기 = 회전 (탑뷰에서 오른쪽을 누르면 3D로)
 // 값은 밖에서 넣는다 (setStates · setIssues · setRoutes · setFlow). 이 파일은 데이터를 부르지 않는다
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { makeKit } from '@/components/domain/factory3d/equipment'
+import { PER_BOX } from '@/lib/loading'
 import { STATE_NAME } from '@/lib/status'
 import type { StateCode } from '@/types/state'
 import type { FlowPositions, FlowLocation } from '@/types/live'
@@ -29,13 +30,13 @@ export interface SceneHandlers {
   onPick(equipmentId: string): void
   /** 라인 바닥을 눌렀을 때 */
   onLine(lineId: ProductionLineId): void
-  /** 구역 이름을 눌렀을 때 (코일 적재장 · 도장 · 비전/출하) */
+  /** 구역 이름을 눌렀을 때 (코일 적재장 · 도장 · 비전 검사 · 적재) */
   onZone(zone: ZoneId): void
   /** 설비·라인이 아닌 빈 곳을 눌렀을 때 (끌기는 아님) */
   onEmpty(): void
 }
 
-export type ZoneId = 'inbound' | 'paint' | 'vision' | 'outbound'
+export type ZoneId = 'inbound' | 'paint' | 'vision' | 'loading'
 
 export interface SceneIssue { equipmentId: string; state: StateCode }
 
@@ -65,7 +66,6 @@ const MOVE_MS = 900
 /** 탑뷰에 담을 범위 (배정 칸 ~ 출하). 11/21: 배정 칸(x −94)도 탑뷰에 보이게 왼쪽을 넓힘 */
 const TOP_FRAME = { x0: -104, x1: 99, z0: -47, z1: 40 }
 /** 출하 적재: 상자 1개 = 제품 20개, 파렛트에 3×3씩 쌓음 */
-const SHIP_PER_BOX = 20
 const SHIP_MAX = 45
 /** 처음 3D 자리 */
 const HOME = { pos: new THREE.Vector3(-52, 96, 110), tgt: new THREE.Vector3(0, 0, 4) }
@@ -378,7 +378,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     kit.shipping(sg, i === 0)
     scene.add(sg)
   })
-  // 11/21 출하 적재: 오늘 출고(양품)만큼 상자가 쌓여요 (상자 1개 = 20개). 검사 뒤 컨베이어 끝 오른쪽 파렛트
+  // 11/21 적재: 오늘 적재 수만큼 상자가 쌓여요 (상자 1개 = 20개). 검사 뒤 컨베이어 끝 오른쪽 파렛트
   const SHIP_X = 93
   box(SLOT * 3 + 0.3, 0.2, SLOT * 3 + 0.3, pallet, SHIP_X, 0, 0)
   const shipMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(SLOT * 0.9, SLOT * 0.8, SLOT * 0.9), M(C.carton, { roughness: 0.9, metalness: 0 }), SHIP_MAX)
@@ -422,7 +422,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const ZONES: [string, number, number, number, ZoneId | null][] = [
     // 11/21 공정 이름은 A라인 뒤로 더 물리고 높여서, A라인 설비 알림과 떨어지게 (z -37 → -44)
     ['코일 입고', -64, 7, -42, 'inbound'], ['슬리팅', -42, 10, -44, null], ['프레스 ×4', -12, 14, -44, null], ['용접', 18, 11, -44, null],
-    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -8, 'vision'], ['적재', SHIP_X, 6, -9, 'outbound'],
+    ['도장 1', 48, 9, -24, null], ['도장 2', 48, 9, 12, null], ['비전 검사', 74, 8, -8, 'vision'], ['적재', SHIP_X, 6, -9, 'loading'],
   ]
   // 11/21 구역 이름도 겹치면 비켜 쌓아요 (도장·비전·적재 이름이 재공 수·알림과 겹치던 것). 알림(이상 표시)은 이 뒤에 놓여 구역 이름을 피해 가요
   for (const [n, x, y, z, go] of ZONES) {
@@ -431,7 +431,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       // 비전 검사는 설비 이름표처럼 까만 칸 (11/21). 코일 입고·적재는 다른 화면으로 가는 흰 표지판
       t = tag(`<button type="button" class="f3d-zone go${go === 'vision' ? ' dark' : ''}">${n}${ICON_GO}</button>`, '', [x, y, z])
       t.el.firstElementChild!.addEventListener('click', () => on.onZone(go))
-      if (go === 'outbound') shipBtn = t.el.firstElementChild as HTMLElement
+      if (go === 'loading') shipBtn = t.el.firstElementChild as HTMLElement
     } else t = tag(`<span class="f3d-zone">${n}</span>`, '', [x, y, z])
     t.stack = true
     t.yields = true
@@ -569,7 +569,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const drawEdges = () => {
     const live = new Set<string>()
     for (const [id, b] of bangs) {
-      if (b.state !== 'D' || focusId) continue
+      if (b.state !== 'D') continue
       const e = EQ.get(id)!
       v3.set(e.x, e.h, e.z).project(cam)
       const off = v3.z > 1 || Math.abs(v3.x) > 0.95 || Math.abs(v3.y) > 0.92
@@ -581,7 +581,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
         el.type = 'button'
         el.className = 'f3d-edge'
         el.innerHTML = `${ICON_ARROW}<span>${id} 고장</span>`
-        el.addEventListener('click', () => on.onPick(id))
+        // 화면 밖 설비라 확대 없이 옆으로만 옮겨 보이게 한다
+        el.addEventListener('click', () => { on.onPick(id); panTo(id) })
         layer.appendChild(el)
         edges.set(id, el)
       }
@@ -773,7 +774,7 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       e.caps.forEach((m) => matOf(m).color.set(c))
       const pm = e.pad.material as THREE.MeshBasicMaterial
       pm.color.set(c)
-      pm.opacity = e.dim ? 0.08 : topUi ? 0.75 : e.id === hoverEq || e.id === focusId ? 0.6 : 0.35
+      pm.opacity = e.dim ? 0.08 : topUi ? 0.75 : e.id === hoverEq || e.id === markId ? 0.6 : 0.35
       const hot = e.state === 'D' && blink
       e.group.traverse((o) => { if ((o as THREE.Mesh).isMesh) matOf(o).emissive.setHex(hot ? 0x8a1c1c : 0) })
       if (topUi) {
@@ -911,25 +912,25 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
     // 바로 위에서 조금 앞(+z): 화면 위쪽 = 공장 안쪽(A라인)으로 3D와 같은 방향
     return { pos: new THREE.Vector3(cx, h, cz + 0.01), tgt: new THREE.Vector3(cx, 0, cz) }
   }
-  /** 설비 다가가기: 그 설비를 과녁(화면 가운데)으로, 3D 첫 화면과 같은 방향에서 비스듬히 */
-  const focusPose = (e: Eq): Pose => {
-    const tgt = new THREE.Vector3(e.x, e.h * 0.45, e.z)
-    const r = THREE.MathUtils.clamp(e.h * 2.4 + e.pw * 1.4 + 6, 26, 64)
-    const pos = new THREE.Vector3().setFromSpherical(new THREE.Spherical(r, THREE.MathUtils.degToRad(52), THREE.MathUtils.degToRad(-22))).add(tgt)
-    return { pos, tgt }
+  /** 화면 밖 고장 단추: 거리·방향은 그대로 두고 그 설비가 화면 가운데에 오게 옆으로만 옮긴다 */
+  const panTo = (id: string) => {
+    const e = EQ.get(id)
+    if (!e) return
+    const p = pose()
+    const d = new THREE.Vector3(e.x - p.tgt.x, 0, e.z - p.tgt.z)
+    fly({ pos: p.pos.add(d), tgt: p.tgt.add(d) }, 600)
   }
 
   let mode: ViewMode = '3d'
-  let focusId: string | null = null
-  /** 설비 다가가기 전 자리 (닫으면 여기로) */
-  let saved: Pose | null = null
+  /** 고른 설비 (팝업이 열린 설비): 바닥 테두리 */
+  let markId: string | null = null
   /** 탑뷰로 가기 전 3D 자리 (3D로 돌아올 때 여기로) */
   let onMode: ((m: ViewMode) => void) | null = null
-  /** 탑뷰에 도착해 카드가 떠 있는 상태 (설비에 다가가 있거나 날고 있으면 아님) */
+  /** 탑뷰에 도착해 카드가 떠 있는 상태 (날고 있으면 아님) */
   let topUi = false
   const syncTopUi = () => {
-    ctl.enableRotate = !(mode === 'top' && !focusId)
-    const v = mode === 'top' && !focusId && !tween
+    ctl.enableRotate = mode !== 'top'
+    const v = mode === 'top' && !tween
     if (v === topUi) return
     topUi = v
     host.classList.toggle('topui', v)
@@ -940,18 +941,20 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   // 고른 설비 테두리 (바닥)
   const ringM = new THREE.MeshBasicMaterial({ color: C.accent, transparent: true, depthWrite: false })
   let ring: THREE.Mesh | null = null
-  const setRing = (e: Eq | null) => {
+  const setRing = (e: Eq | null | undefined) => {
     if (ring) { scene.remove(ring); ring.geometry.dispose(); ring = null }
     if (!e) return
     ring = new THREE.Mesh(ringGeo(e.pw + 1.4, e.pd + 1.4, 0.32, 0.9), ringM)
     ring.position.set(e.x, 0.07, e.z)
     scene.add(ring)
   }
+  const mark = (id: string | null) => {
+    markId = id
+    setRing(id ? EQ.get(id) : null)
+  }
 
   const setView = (m: ViewMode) => {
-    focusId = null
-    saved = null
-    setRing(null)
+    mark(null)
     if (m === 'top') {
       mode = 'top'
       onMode?.('top')
@@ -964,38 +967,20 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       fly(homePose(), wasTop ? 950 : 700)
     }
   }
-  const focus = (id: string) => {
-    const e = EQ.get(id)
-    if (!e) return
-    if (!saved) saved = pose()
-    focusId = id
-    setRing(e)
-    fly(focusPose(e), 800)
-  }
   /** 라인 상세로 가기 전: 그 라인을 내려다보며 다가간다 (다음 화면 '라인 흐름'으로 이어지게, D-119) */
   const dive = (L: ProductionLineId, done: () => void) => {
     const i = LINES.indexOf(L)
     if (i < 0) { done(); return }
-    focusId = null
-    saved = null
-    setRing(null)
+    mark(null)
     sel = L
     applyDim()
     const tgt = new THREE.Vector3(-12, 0, lineZ(i))
     const pos = new THREE.Vector3().setFromSpherical(new THREE.Spherical(58, THREE.MathUtils.degToRad(48), THREE.MathUtils.degToRad(-8))).add(tgt)
     fly({ pos, tgt }, 600, done)
   }
-  const unfocus = () => {
-    if (!focusId) return
-    focusId = null
-    setRing(null)
-    const s = saved
-    saved = null
-    if (s) fly(s, 650)
-  }
 
   // ── 마우스 ──
-  const onRightDown = (ev: PointerEvent) => { if (mode === 'top' && !focusId && ev.button === 2) setView('3d') }
+  const onRightDown = (ev: PointerEvent) => { if (mode === 'top' && ev.button === 2) setView('3d') }
   host.addEventListener('pointerdown', onRightDown, true)
   const noMenu = (e: Event) => e.preventDefault()
   renderer.domElement.addEventListener('contextmenu', noMenu)
@@ -1076,12 +1061,12 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       if (LINES.some((L) => next[L] !== routes[L])) { routes = next; drawRoutes() }
     },
     select(L: ProductionLineId | null) { sel = L; applyDim() },
-    /** 출하 적재: 오늘 출고(양품) 수 → 파렛트 상자 (상자 1개 = 20개) + 적재 단추에 "출하 N개" */
+    /** 오늘 적재 수 → 파렛트 상자 (상자 1개 = 20개) + 적재 단추에 "N개" (11/22 '출하' 글씨 뺌) */
     setShipped(n: number | null) {
       const v = Math.max(0, n ?? 0)
       if (v === shipped) return
       shipped = v
-      const k = Math.min(SHIP_MAX, Math.ceil(v / SHIP_PER_BOX))
+      const k = Math.min(SHIP_MAX, Math.ceil(v / PER_BOX))
       const m4 = new THREE.Matrix4()
       for (let i = 0; i < k; i++) {
         const layer = Math.floor(i / 9), cell = i % 9
@@ -1090,12 +1075,11 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
       }
       shipMesh.count = k
       shipMesh.instanceMatrix.needsUpdate = true
-      if (shipBtn) shipBtn.innerHTML = `적재<small>출하 ${v.toLocaleString('ko-KR')}개</small>${ICON_GO}`
+      if (shipBtn) shipBtn.innerHTML = `적재<small>${v.toLocaleString('ko-KR')}개</small>${ICON_GO}`
     },
     setView,
     onModeChange(cb: (m: ViewMode) => void) { onMode = cb },
-    focus,
-    unfocus,
+    mark,
     dive,
     dispose() {
       cancelAnimationFrame(raf)

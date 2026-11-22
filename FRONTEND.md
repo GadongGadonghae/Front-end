@@ -235,7 +235,8 @@ DESIGN.md를 같이 고친다.
 | SCR-002-1 | 코일입고 상세 | `/inbound` | `pages/Scr0021InboundPage.vue` |
 | SCR-002-2~4 | 슬리팅·프레스·용접 상세 | `/lines/:lineId/:process` (slit·press·weld), `?eq=` 처음 고를 설비 | `pages/Scr002ProcessPage.vue` (공통 틀 하나, 공정별로 다른 칸만 바꿈) |
 | SCR-002-5 | 도장 상세 | `/lines/PT/paint` | `pages/Scr002ProcessPage.vue` |
-| SCR-002-6 | 출고 상세 | `/outbound` | `pages/Scr0026OutboundPage.vue` |
+| SCR-002-6 | 비전 검사 상세 | `/vision` | `pages/Scr0026VisionPage.vue` |
+| SCR-002-7 | 적재 상세 | `/loading` | `pages/Scr0027LoadingPage.vue` |
 | SCR-003 | 가동률 | `/utilization` | `pages/Scr003UtilizationPage.vue` |
 | SCR-004 | 예지보전 | `/pdm` | `pages/Scr004PdmPage.vue` |
 | SCR-006 | 알람·비가동 이력 | `/alarms` (`?tab=risk`) | `pages/Scr006AlarmsPage.vue` |

@@ -17,7 +17,7 @@ const processes: Process[] = [
   { id: 'PRESS', name: '프레스', order: 3 },
   { id: 'WELDING', name: '용접', order: 4 },
   { id: 'PAINTING', name: '도장', order: 5 },
-  { id: 'INSPECTION', name: '출고', order: 6 },
+  { id: 'INSPECTION', name: '비전 검사', order: 6 },
 ]
 
 /** 제품 1개 처리 시간(초) — 백엔드 API v3.1 공통 규칙 (11/17 갱신). 라인 능력은 가장 느린 프레스·용접 17초 → 시간당 약 211개 */

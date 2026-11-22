@@ -39,7 +39,7 @@ const bottleneck = (i: number) => (props.view.wip[i] ?? 0) > 0 && props.view.gro
 function cellLabel(c: FlowCellView, group: string) {
   const why = c.reason ? `, ${c.reason.code}${c.reason.detail ? ` ${c.reason.detail}` : ''}` : ''
   const pdm = c.pdm ? `, 예지보전 ${c.pdm.text}` : ''
-  return `${props.lineName} ${group} ${c.name}, ${STATE_NAME[c.state]} ${c.duration}${why}${pdm}. 공정 상세로`
+  return `${props.lineName} ${group} ${c.name}, ${STATE_NAME[c.state]}${c.duration ? ` ${c.duration}` : ''}${why}${pdm}. 공정 상세로`
 }
 function onKey(e: KeyboardEvent, go: () => void) {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() }

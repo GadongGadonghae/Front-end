@@ -11,7 +11,7 @@ import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { useTodayAlarms } from '@/composables/useTodayAlarms'
-import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState } from '@/lib/status'
+import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState, showsSince } from '@/lib/status'
 import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
 
 /** 공정 요약 갱신 주기 (API 명세 6장) */
@@ -60,7 +60,7 @@ export function useLineDetail(lineId: LineId) {
       id: e.id,
       name: longShortName(e),
       state,
-      duration: l ? formatDuration((now.value - Date.parse(l.since)) / 1000) : '-',
+      duration: l && showsSince(state) ? formatDuration((now.value - Date.parse(l.since)) / 1000) : null,   // 고장 · 통신 끊김만 (11/22)
       pdm: l?.pdm ? { level: l.pdm.level, text: `${l.pdm.level === 'danger' ? '위험' : '주의'} ${l.pdm.percent}%` } : null,
       reason: l && state !== 'R' && l.code ? { code: DOWNTIME_NAME[l.code], detail: l.detail } : null,
       note: row?.slowest ? '가장 느린 단' : null,
@@ -82,7 +82,7 @@ export function useLineDetail(lineId: LineId) {
       // 도장 #1·#2는 병렬: 세로로 쌓고, A~F 라인이 지금 어느 도장으로 보내는지 선으로 보인다
       groups[0].stack = true
       const feeds = master.value.lines.filter((l) => l.kind === 'production').map((l) => ({ label: l.name, to: l.currentPaintId }))
-      return { from: '라인에서', to: '출고로', groups, wip: [], feeds }
+      return { from: '라인에서', to: '비전 검사로', groups, wip: [], feeds }
     }
     const wip = lineSummary.value?.wip.map((w) => w.qty) ?? [null, null]
     return { from: '입고에서', to: '도장으로', groups, wip, endWip: [null, null] }

@@ -2,7 +2,7 @@
      11/18 변경: 첫 화면은 3D 공장만 크게. 오늘 생산 · 종합 가동률 · 불량률(11/20 "품질"에서 이름 바꿈)은 왼쪽 카드 열.
      알림 열(D-46)은 뺐다 (고장은 토스트·헤더 알림으로). 2D 전환은 없앰 (3D 탑뷰로 대신)
      D-118 왼쪽 카드 다시 설계: 핵심 숫자를 조금 크게(--fs-kpi). 생산 = 실적 / 목표 + 달성률 진행,
-     종합 가동률 = 게이지 + 3요소 곱셈(시간 × 성능 × 양품), 품질 = 출고 불량률 + 공정 검사 불량 몫 막대(공정 순서, 공정 색)
+     종합 가동률 = 게이지 + 3요소 곱셈(시간 × 성능 × 양품), 품질 = 비전 불량률 + 공정 검사 불량 몫 막대(공정 순서, 공정 색)
      설비 대수는 배치도 범례에 함께 적는다. 화면은 조립만 하고 값은 composable이 만든다 -->
 <script setup lang="ts">
 import { computed, defineAsyncComponent } from 'vue'
@@ -63,7 +63,7 @@ const ng = computed(() => {
   <div class="dash">
     <h1 class="sr-only">대시보드</h1>
     <div class="cards">
-      <BasePanel class="go" title="오늘 생산" meta="실적 = 출고 양품" @click="router.push('/production')">
+      <BasePanel class="go" title="오늘 생산" meta="실적 = 적재 수량" @click="router.push('/production')">
         <div class="row">
           <p class="kpi"><BaseNumber :value="plant?.done" /><small v-if="plant?.target != null" class="of">/ {{ formatNumber(plant.target) }}</small></p>
           <p v-if="plant?.target != null" class="side-fig">
@@ -90,12 +90,12 @@ const ng = computed(() => {
         </div>
       </BasePanel>
 
-      <BasePanel class="go" title="불량률" meta="오늘" @click="router.push('/outbound')">
+      <BasePanel class="go" title="불량률" meta="오늘" @click="router.push('/vision')">
         <div class="qual">
         <div class="row">
           <div>
             <p class="kpi"><BaseNumber :value="plant?.quality.outbound.rate" :digits="1" unit="%" /></p>
-            <p class="cap">출고 불량률</p>
+            <p class="cap">비전 불량률</p>
           </div>
           <dl v-if="plant" class="okng">
             <div><dt>양품</dt><dd>{{ formatNumber(plant.quality.outbound.ok) }}</dd></div>
@@ -127,7 +127,8 @@ const ng = computed(() => {
         :flow="f3d.flow.value"
         :now="f3d.now.value"
         @open-line="(id) => router.push(linePath(id))"
-        @open-outbound="router.push('/outbound')"
+        @open-vision="router.push('/vision')"
+        @open-loading="router.push('/loading')"
         @open-inbound="router.push('/inbound')"
         @open-action="(id) => router.push({ path: '/alarms', query: { eq: id } })"
       />
@@ -258,7 +259,7 @@ const ng = computed(() => {
   font-weight: var(--fw-strong);
 }
 
-/* 품질: 위 = 출고 검사(불량률 · 양품·불량), 아래 = 공정 검사 불량 몫. 둘은 다른 검사라 카드가 길면 아래 덩어리를 바닥에 붙인다 */
+/* 품질: 위 = 비전 검사(불량률 · 양품·불량), 아래 = 공정 검사 불량 몫. 둘은 다른 검사라 카드가 길면 아래 덩어리를 바닥에 붙인다 */
 .qual {
   display: flex;
   flex: 1;
@@ -266,7 +267,7 @@ const ng = computed(() => {
   gap: var(--sp-4);
 }
 
-/* 품질: 출고 양품·불량 */
+/* 품질: 비전 양품·불량 */
 .okng {
   display: grid;
   gap: 2px;

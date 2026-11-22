@@ -1,5 +1,5 @@
 <!-- 공정 검사 (SCR-002 7번, D-88): 오늘 검사 수 · 불량 수 · 불량률 + 불량 목록(시각, 제품 ID, 설비·사유). 제품 ID → 생산 조회 그 제품
-     compact: 출고처럼 숫자를 제목 줄에 따로 두는 화면에서는 목록만 -->
+     compact: 비전 검사처럼 숫자를 제목 줄에 따로 두는 화면에서는 목록만 -->
 <script setup lang="ts">
 import BaseFigure from '@/components/base/BaseFigure.vue'
 import BaseTable, { type TableColumn } from '@/components/base/BaseTable.vue'

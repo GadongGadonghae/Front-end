@@ -426,6 +426,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getTelemetry: async (equipmentId, range) => telemetry.series(equipmentId, range),
       getStateEvents: async ({ equipmentId }) => events.filter((e) => e.equipmentId === equipmentId).map((e) => ({ ...e })),
       getInspectionsToday: async (process, lineId) => inspections(process, lineId),
+      getLoadedToday: async () => PRODUCTION_LINES.flatMap((l) => products.day(today(), l)).filter((x) => x.result === 'ok' && x.doneAt)
+        .sort((a, b) => b.doneAt!.localeCompare(a.doneAt!)).slice(0, PAGE_SIZE).map((x) => ({ t: x.doneAt!, productId: x.id, lineId: x.lineId })),
       getMicrostopsToday: async (equipmentId) => telemetry.microstops(equipmentId),
       getInboundToday: async () => inboundToday(),
       // 라인 수율 = 출고 양품 ÷ 슬리팅 투입 (D-92). 공장·생산 라인 단위만

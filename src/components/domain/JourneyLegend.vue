@@ -1,6 +1,6 @@
 <!-- 제품 여정 범례 (ProductJourney와 같은 칠): 공정 5색 · 지금 처리 중(옅은 칠 + 파란 테두리) · 설비 고장으로 멈춤 · 지금 이후 -->
 <script setup lang="ts">
-const PROCS = ['슬리팅', '프레스', '용접', '도장', '출고']
+const PROCS = ['슬리팅', '프레스', '용접', '도장', '비전 검사']
 </script>
 
 <template>

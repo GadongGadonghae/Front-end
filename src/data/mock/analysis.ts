@@ -9,8 +9,8 @@ import { LINE_DETAIL, PLANT_OEE } from '@/data/mock/scenario'
 import { between, dayStart, daysOf, hash, localDate, noise, periodRange, rng } from '@/data/mock/rand'
 
 const AREAS = ['A', 'B', 'C', 'D', 'E', 'F', 'PT', 'VI'] as const
-const AREA_LABEL: Record<string, string> = { PT: '도장', VI: '출고', A: 'A라인', B: 'B라인', C: 'C라인', D: 'D라인', E: 'E라인', F: 'F라인' }
-const PROCESS_NAME: Record<string, string> = { SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '출고' }
+const AREA_LABEL: Record<string, string> = { PT: '도장', VI: '비전 검사', A: 'A라인', B: 'B라인', C: 'C라인', D: 'D라인', E: 'E라인', F: 'F라인' }
+const PROCESS_NAME: Record<string, string> = { SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '비전 검사' }
 // 대표 상태 순서 D > DC > S > I > R (백엔드 API v3.1)
 const RANK: Record<StateCode, number> = { R: 0, I: 1, S: 2, DC: 3, D: 4 }
 const round1 = (n: number) => Math.round(n * 10) / 10

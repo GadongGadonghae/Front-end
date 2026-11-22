@@ -8,7 +8,7 @@ import { useMaster } from '@/composables/useMaster'
 import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
-import { countByState, longShortName } from '@/lib/status'
+import { countByState, longShortName, showsSince } from '@/lib/status'
 import { formatDuration, formatNumber } from '@/lib/format'
 import { metricLabel } from '@/lib/metrics'
 
@@ -21,7 +21,7 @@ export function toEquipCard(e: Equipment, live: EquipmentLive | undefined, nowMs
     id: e.id,
     name: longShortName(e),
     state: live?.state ?? 'R',
-    duration: live ? formatDuration((nowMs - Date.parse(live.since)) / 1000) : '-',
+    duration: live && showsSince(live.state) ? formatDuration((nowMs - Date.parse(live.since)) / 1000) : null,   // 고장 · 통신 끊김만 (11/22)
     pdm: live?.pdm ? { level: live.pdm.level, text: `${live.pdm.level === 'danger' ? '위험' : '주의'} · ${metricLabel(live.pdm.item)} ${live.pdm.percent}%` } : null,
     tag,
     info,
