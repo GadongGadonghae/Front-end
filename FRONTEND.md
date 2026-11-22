@@ -307,6 +307,8 @@ export interface DataSource { live: LiveChannel; q: Queries; cmd: Commands }
 - 성능에 닿는 변경(3D, 구독, 주기 조회, 화면 전환)은 `npm run perf -- --label 이름`으로 전후를 같은 조건에서 재고, `npm run perf -- --compare 전 후` 표를 문서에 남긴다. 결과는 `docs/perf/*.json`.
 - 3D 장면(`factory3d/scene.ts`)은 **바뀐 것이 있을 때만 그린다.** 장면에 보이는 것을 바꾸는 코드는 끝에 `invalidate()`를 부른다 (이름표 글은 `setHtml`이 대신 부름). 모형(그림자를 드리우는 것)을 바꾸면 `renderer.shadowMap.needsUpdate = true`. 매 프레임 DOM을 읽거나(`clientWidth`) 같은 값을 다시 쓰지 않는다.
 - 대시보드는 `AppShell`의 `KeepAlive`로 보관된다. 대시보드 아래 부품에서 문서 전체 이벤트(`document.addEventListener`)를 걸면 보관 중(`onDeactivated`)에는 반응하지 않게 막는다.
+- 반복 애니메이션(깜빡임 등)은 `opacity`·`transform`만 바꾼다. 색을 바꿔야 하면 그 색의 면을 따로 깔고(`::before`) 투명도만 움직인다. `background`·`color`·`box-shadow`를 반복해서 바꾸면 매 프레임 스타일 계산·그리기가 돈다 (11/22 배정 패널 깜빡임: 브라우저 작업 449 → 262ms).
+- 3D 카메라가 멈춘 뒤 0.5초 동안은 장면은 다시 그리지 않고 이름표 자리만 맞춘다 (`scene.ts` `settling`, 멈추면 이름표를 정수 자리로·올렸던 구역 이름을 내림).
 - 높이가 모자라 칸이 낮아지면 칸 안 배치를 옆으로 놓아 해결한다 (예: 대시보드 오늘 생산 = 숫자 왼쪽 열 + 그래프 오른쪽). 그래프는 `--chart-min-h`보다 납작해지지 않게 한다.
 
 ---

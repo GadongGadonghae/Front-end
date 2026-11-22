@@ -434,8 +434,22 @@ const panel = computed(() => {
   background: var(--c-accent);
 }
 
-/* 고장 설비가 있는 라인: 빨간 바탕이 깜빡임 (11/21) */
+/* 고장 설비가 있는 라인: 빨간 바탕이 깜빡임 (11/21)
+   11/22 성능(D-120): 배경색을 바꾸면 매 프레임 스타일 계산·그리기가 돌아(5초에 스타일 계산 8 → 581번) 빨간 면을 한 장 깔고 투명도만 바꾼다 (합성만, 보이는 모양은 같음) */
 .alloc li.down {
+  position: relative;
+  isolation: isolate;
+}
+
+.alloc li.down::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--c-down) 22%, transparent);
+  content: "";
+  opacity: 0;
+  pointer-events: none;
   animation: line-down 1.1s ease-in-out infinite;
 }
 
@@ -444,14 +458,14 @@ const panel = computed(() => {
 }
 
 @keyframes line-down {
-  0%, 100% { background: transparent; }
-  50% { background: color-mix(in srgb, var(--c-down) 22%, transparent); }
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .alloc li.down {
+  .alloc li.down::before {
     animation: none;
-    background: color-mix(in srgb, var(--c-down) 16%, transparent);
+    opacity: 0.73; /* 예전 16% 면과 같은 진하기 (22% × 0.73) */
   }
 }
 

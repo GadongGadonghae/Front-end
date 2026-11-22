@@ -1,0 +1,60 @@
+{
+  "label": "합친뒤-깜빡임수정",
+  "date": "2026-11-22T07:07:47.925Z",
+  "commit": "339d20f+수정",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "idle": {
+      "jsMs": 136,
+      "taskMs": 262,
+      "longCount": 0
+    },
+    "enter": {
+      "readyMs": 62,
+      "longCount": 0,
+      "longMax": 0,
+      "longSum": 0
+    }
+  },
+  "raw": {
+    "idle": [
+      {
+        "jsMs": 5327,
+        "taskMs": 7774,
+        "longCount": 33
+      },
+      {
+        "jsMs": 136,
+        "taskMs": 262,
+        "longCount": 0
+      },
+      {
+        "jsMs": 128,
+        "taskMs": 253,
+        "longCount": 0
+      }
+    ],
+    "enter": [
+      {
+        "readyMs": 62,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 71,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 52,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      }
+    ]
+  }
+}
