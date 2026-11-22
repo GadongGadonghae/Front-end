@@ -22,7 +22,7 @@ const props = defineProps<{
   flow: FlowPositions | null
   /** 지금 시각 (ms). 지속 시간 계산용 */
   now: number
-  /** 오늘 승인·적용된 추가 주문 배정 수량 (라인별, 배정 칸 "+N 추가 배정"). 배정량은 lineSummaries.plan */
+  /** 오늘 승인·적용된 추가 주문 배정 수량 (라인별, 배정 칸 "+N 포함" · 추가분뿐이면 "추가 가동"). 배정량은 lineSummaries.plan */
   additions?: Partial<Record<LineId, number>>
   /** 오늘 비전 검사 양품·불량 (비전 창 · 적재 상자, 11/21) */
   vision?: { ok: number; ng: number } | null
@@ -65,6 +65,8 @@ const allocRows = computed(() => props.lineSummaries.filter((x) => x.lineId !== 
   done: x.done,
   plan: x.plan,
   added: props.additions?.[x.lineId] ?? 0,
+  // 배정(plan)에는 추가분이 이미 들어 있다 → 추가분뿐이면 새로 켠 라인 (11/22)
+  fresh: (props.additions?.[x.lineId] ?? 0) > 0 && (x.plan ?? 0) <= (props.additions?.[x.lineId] ?? 0),
   pct: x.done != null && x.plan ? Math.min(100, Math.round((x.done / x.plan) * 100)) : 0,
   st: lineState(x.lineId),
 })))
@@ -226,7 +228,7 @@ const panel = computed(() => {
           <li v-for="r in allocRows" :key="r.id" :class="[{ more: r.added > 0 }, r.st]" :title="r.st === 'down' ? '고장 설비 있음' : r.st === 'stop' ? '라인 정지' : undefined">
             <!-- 11/21 두 줄 정돈: 윗줄 = 라인 · 생산 / 배정 (+추가) · 달성률, 아랫줄 = 막대 (모든 줄이 같은 자리·같은 길이) -->
             <b class="id">{{ r.id }}</b>
-            <span class="n"><b>{{ num(r.done) }}</b> / {{ num(r.plan) }}<span v-if="r.added" class="add">+{{ num(r.added) }}</span></span>
+            <span class="n"><b>{{ num(r.done) }}</b> / {{ num(r.plan) }}<span v-if="r.added" class="add">{{ r.fresh ? '추가 가동' : `+${num(r.added)} 포함` }}</span></span>
             <span class="pct">{{ r.plan ? `${r.pct}%` : '-' }}</span>
             <span class="bar"><i :style="{ width: `${r.pct}%` }" /></span>
           </li>
@@ -326,7 +328,7 @@ const panel = computed(() => {
   left: var(--sp-3);
   display: grid;
   gap: var(--sp-2);
-  width: 216px;
+  width: 248px;
   max-height: calc(100% - var(--control-h-sm) * 2 - var(--sp-3) * 4);
   overflow-y: auto;
 }
@@ -412,7 +414,7 @@ const panel = computed(() => {
 }
 
 .alloc .add {
-  margin-left: var(--sp-1);
+  margin-left: var(--sp-2);
   color: var(--c-accent);
   font-size: var(--fs-sm);
   font-weight: var(--fw-strong);

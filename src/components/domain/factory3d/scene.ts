@@ -153,8 +153,8 @@ export function createFactoryScene(host: HTMLElement, C: SceneColors, on: SceneH
   const cam = new THREE.PerspectiveCamera(40, W() / H(), 1, 1000)
   cam.position.copy(HOME.pos)
   // 11/21 처음 3D 자리: 화면 크기에 맞춰, 왼쪽 배정 패널에 코일 입고가 가리지 않고 오른쪽 적재까지 들어오게 (homePose)
-  //   패널 오른쪽 끝(px) = 12 + 216 + 여유 16
-  const PANEL_R = 244
+  //   패널 오른쪽 끝(px) = 12 + 248 + 여유 16
+  const PANEL_R = 276
   const HOME_DIR = HOME.pos.clone().sub(HOME.tgt)
   const fitPts = [
     ...[-70, -57].flatMap((x) => [-40, -20, 0, 20, 34].flatMap((z) => [[x, 0, z], [x, 8, z]])), [-64, 7, -42], [-64, 9, -30],
