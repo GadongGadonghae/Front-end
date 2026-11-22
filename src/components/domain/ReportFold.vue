@@ -72,5 +72,6 @@ button:hover { background: var(--c-surface-sunk); }
   color: var(--c-down-ink);
 }
 
-.in { padding-bottom: var(--sp-3); }
+/* 위 여백: 첫 카드의 고른 테두리(바깥 2px)가 제목 줄에 가려지지 않게 */
+.in { padding: var(--sp-1) 0 var(--sp-3); }
 </style>
