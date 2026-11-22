@@ -376,7 +376,8 @@ Spring Boot가 하는 것(판정): 상태(R/S/I/D/DC), 알람, 공정 OK/NG, 비
 | W-01 | `/topic/status` | RSID가 바뀔 때 | 모니터링 흐름도 | P1 |
 | W-02 | `/topic/alarms` | 알람 발생·해제·확인 시 | 알람 팝업·목록 | P1 |
 | W-03 | `/topic/production` | 비전 검사 1건마다 · 공정 NG 발생 시 | 양품/불량 카운터 | P1 |
-| W-04 | `/topic/metrics/{equipmentId}` | 1초마다 (상세 창을 열었을 때만 구독) | 설비 상세 실시간 차트 | P2 |
+| W-04 | `/topic/metrics/{equipmentId}` | 1초마다, 새 점이 있을 때만 (구독한 화면이 있을 때만 계산, 11/22) | 설비 상세 실시간 차트 | P2 |
+| W-05 | `/topic/flow` | 1초마다 (구독한 화면이 있을 때만 계산, 11/22 추가) | 3D 물류 (제품 위치 · 코일 재고) | P2 |
 
 ```json
 // W-01 /topic/status
