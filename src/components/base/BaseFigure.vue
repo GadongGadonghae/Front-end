@@ -29,6 +29,7 @@ withDefaults(defineProps<{
 .label {
   color: var(--c-ink-2);
   font-size: var(--fs-figure);
+  white-space: nowrap;
 }
 
 /* 값은 이름과 같은 크기, 굵기·진한 색으로만 구분한다 (sm·md) */

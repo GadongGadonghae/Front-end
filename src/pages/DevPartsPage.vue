@@ -41,7 +41,7 @@ const pressure: [number, number][] = Array.from({ length: 60 }, (_, i) => [i, 29
     <div class="grid">
       <BasePanel title="숫자 덩어리" meta="BaseFigure · ChartProgress">
         <div class="figs">
-          <BaseFigure label="실적 · 출고 양품 / 계획" :value="742" suffix="/ 1,200" size="lg" sub="달성률 61.8%" />
+          <BaseFigure label="실적 · 적재 수량 / 계획" :value="742" suffix="/ 1,200" size="lg" sub="달성률 61.8%" />
           <ChartProgress :percent="61.8" label="달성률 61.8%" />
           <BaseFigure label="라인 OEE" :value="68.9" :digits="1" unit="%" />
           <BaseFigure label="값 없음" :value="null" unit="%" sub="부하시간 0이면 -" size="sm" />

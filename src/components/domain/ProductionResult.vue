@@ -1,4 +1,4 @@
-<!-- 결과 도넛 (생산 조회 이력, D-107): 투입 = 양품 출고 + 불량 제외 + 진행 중. 가운데 = 투입 수.
+<!-- 결과 도넛 (생산 조회 이력, D-107): 투입 = 적재 완료 + 불량 제외 + 진행 중. 가운데 = 투입 수.
      양품 = 강조 파랑, 불량 = 먹색, 진행 중 = 옅은 파랑. 옆에 값 목록 (색만으로 말하지 않게) -->
 <script setup lang="ts">
 import { computed } from 'vue'
@@ -9,7 +9,7 @@ import { formatNumber } from '@/lib/format'
 const props = defineProps<{ input: number | null; ok: number | null; ng: number | null; wip: number | null }>()
 
 const items = computed(() => [
-  { key: 'ok', label: '양품 출고', value: props.ok ?? 0, color: 'color-mix(in srgb, var(--c-accent) 80%, transparent)' },
+  { key: 'ok', label: '적재 완료', value: props.ok ?? 0, color: 'color-mix(in srgb, var(--c-accent) 80%, transparent)' },
   { key: 'ng', label: '불량 제외', value: props.ng ?? 0, color: 'var(--c-ink)' },
   { key: 'wip', label: '진행 중', value: props.wip ?? 0, color: 'color-mix(in srgb, var(--c-accent) 30%, transparent)' },
 ])

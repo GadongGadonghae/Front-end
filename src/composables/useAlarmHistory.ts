@@ -39,7 +39,7 @@ export const MAX_DAYS = 31
 const DAY = 86_400_000
 const AREAS = [
   { value: 'A', label: 'A라인' }, { value: 'B', label: 'B라인' }, { value: 'C', label: 'C라인' }, { value: 'D', label: 'D라인' },
-  { value: 'E', label: 'E라인' }, { value: 'F', label: 'F라인' }, { value: 'PT', label: '도장' }, { value: 'VI', label: '출고' },
+  { value: 'E', label: 'E라인' }, { value: 'F', label: 'F라인' }, { value: 'PT', label: '도장' }, { value: 'VI', label: '비전 검사' },
 ]
 
 /** 표 한 줄 (알람·비가동) */

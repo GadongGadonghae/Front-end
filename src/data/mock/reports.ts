@@ -261,7 +261,7 @@ export function createReports(ctx: Ctx) {
       allocations, unmet, target: ctx.targetOf(date),
       order: {
         request: text, addQty, dueAt: '24:00', setupMinutes: setup, runningLines: runLines, newLines, recommended: recommended && newLines.length > 0,
-        idleLines: idle.filter((l) => !newLines.includes(l)), excludedLines: [], parsedBy: '규칙 (데모)', notes: ['데모 모드: 요청은 간단한 규칙으로 읽었습니다'],
+        idleLines: idle.filter((l) => !newLines.includes(l)), excludedLines: [], parsedBy: '규칙', notes: [],
         current: { lines: runLines, capacity: currentCap, unmet: Math.max(0, addQty - currentCap) },
         withNew: { lines: rows.map((r) => r.target), capacity: withCap, unmet: Math.max(0, addQty - withCap) },
       },
@@ -304,7 +304,7 @@ export function createReports(ctx: Ctx) {
     return {
       appliedAt: at, startedLines: r.order?.newLines ?? [], lineCommandSent: false,
       targets: r.allocations.filter((a) => a.add > 0).map((a) => ({ lineId: a.target, before: 0, after: a.add })),
-      notes: ['데모 모드: 적용 표시만 하고 대시보드 라인 상태는 바뀌지 않습니다'],
+      notes: [],
     }
   }
 

@@ -197,7 +197,7 @@ DESIGN.md를 같이 고친다.
 | `StateLegend` | 범례 (상태 4색 + 주의·위험, 대수 선택) | 001, 010, 003 |
 | `EquipCell` | 설비 칸 (작게: 배치도 / 크게: 라인 흐름, 사유·사이클 포함) | 001, 010 |
 | `FactoryMap` | 공장 배치도 (입고 → 6라인 → 도장 2 → 비전 1, 연결선, 모눈) | 001 |
-| `Factory3D` | 3D 공장 (`factory3d/scene.ts` Three.js 장면): 3D ↔ 탑뷰(원근 카메라 이동 + 바닥 상태 칸·설비 칩), 설비 다가가기·돌아오기, 라인 바닥 외곽선, 제품 상자 물류 (D-118) | 001 |
+| `Factory3D` | 3D 공장 (`factory3d/scene.ts` Three.js 장면): 3D ↔ 탑뷰(원근 카메라 이동 + 바닥 상태 칸·설비 칩), 고른 설비 바닥 테두리(카메라는 그대로, 11/22), 라인 바닥 외곽선, 제품 상자 물류 (D-118) | 001 |
 | `factory3d/EquipPanel` | 3D 왼쪽에 붙는 설비 팝업 (상태 · 설비 ID · 지속 시간 · 원인 · 확인/라인/조치) | 001 |
 | `factory3d/LinePanel` | 3D 오른쪽 위에 붙는 라인 카드 (생산·달성률·OEE, 상태별 대수, 재공 한 줄) | 001 |
 | `LineFlow` | 라인 흐름 (슬리팅 → 프레스 1~4 → 용접, 재공·생산·불량) | 010 |
@@ -235,7 +235,8 @@ DESIGN.md를 같이 고친다.
 | SCR-002-1 | 코일입고 상세 | `/inbound` | `pages/Scr0021InboundPage.vue` |
 | SCR-002-2~4 | 슬리팅·프레스·용접 상세 | `/lines/:lineId/:process` (slit·press·weld), `?eq=` 처음 고를 설비 | `pages/Scr002ProcessPage.vue` (공통 틀 하나, 공정별로 다른 칸만 바꿈) |
 | SCR-002-5 | 도장 상세 | `/lines/PT/paint` | `pages/Scr002ProcessPage.vue` |
-| SCR-002-6 | 출고 상세 | `/outbound` | `pages/Scr0026OutboundPage.vue` |
+| SCR-002-6 | 비전 검사 상세 | `/vision` | `pages/Scr0026VisionPage.vue` |
+| SCR-002-7 | 적재 상세 | `/loading` | `pages/Scr0027LoadingPage.vue` |
 | SCR-003 | 가동률 | `/utilization` | `pages/Scr003UtilizationPage.vue` |
 | SCR-004 | 예지보전 | `/pdm` | `pages/Scr004PdmPage.vue` |
 | SCR-006 | 알람·비가동 이력 | `/alarms` (`?tab=risk`) | `pages/Scr006AlarmsPage.vue` |

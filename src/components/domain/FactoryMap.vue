@@ -1,6 +1,6 @@
 <!-- 공장 배치도 (화면정의서 SCR-001 1~5번, D-81): 설비 하나 = 칸 하나, 모눈 위에 왼쪽에서 오른쪽으로
-     입고 1칸 → 6갈래 → 라인 A~F (슬리팅 1 · 프레스 4 · 용접 1) → 도장 2칸으로 합류 → 비전 1칸(출고)
-     라인 줄·도장 칸 → 라인 상세, 입고 칸 → 입고 상세, 비전 칸 → 출고 상세 (이벤트로 알림, 이동은 화면이 함) -->
+     입고 1칸 → 6갈래 → 라인 A~F (슬리팅 1 · 프레스 4 · 용접 1) → 도장 2칸으로 합류 → 비전 검사 1칸
+     라인 줄·도장 칸 → 라인 상세, 입고 칸 → 입고 상세, 비전 칸 → 비전 검사 상세 (이벤트로 알림, 이동은 화면이 함) -->
 <script setup lang="ts">
 import EquipCell from '@/components/domain/EquipCell.vue'
 import { formatNumber } from '@/lib/format'
@@ -31,7 +31,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
     <div class="cols head" aria-hidden="true">
       <span>입고</span><span></span>
       <span class="lhead"><span>라인</span><span>슬리팅</span><span>프레스</span><span>용접</span></span><span></span>
-      <span>도장</span><span></span><span>출고</span>
+      <span>도장</span><span></span><span>비전 검사</span>
     </div>
 
     <div class="cols body">
@@ -89,7 +89,7 @@ const onKey = (e: KeyboardEvent, go: () => void) => {
           class="hit stub left"
           role="button"
           tabindex="0"
-          :aria-label="cellLabel('출고 상세', view.vision)"
+          :aria-label="cellLabel('비전 검사 상세', view.vision)"
           @click="emit('openOutbound')"
           @keydown="onKey($event, () => emit('openOutbound'))"
         ><EquipCell :cell="view.vision" /></div>

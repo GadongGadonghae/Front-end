@@ -43,7 +43,7 @@ const { can } = useAuth()
     </template>
 
     <div class="layout">
-      <BasePanel title="하루 목표 입력" meta="공장 전체 · 하루 1건">
+      <BasePanel title="하루 목표 입력">
         <p v-if="!can('target')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.target }}만 바꿀 수 있습니다</p>
         <form class="form" :inert="!can('target')" @submit.prevent="can('target') && t.save()">
           <BaseDateField v-model="date" label="날짜" :min="t.today" />
@@ -60,15 +60,10 @@ const { can } = useAuth()
             <p v-if="t.error.value" class="msg err" role="alert">{{ t.error.value }}</p>
             <p v-else-if="t.saved.value" class="msg ok" role="status">{{ t.saved.value }}</p>
           </div>
-          <ul class="rules">
-            <li>오늘과 앞으로의 날짜만 입력할 수 있음. 지난 날짜는 잠김</li>
-            <li>같은 날짜에 다시 저장하면 덮어씀</li>
-            <li>저장하면 대시보드 달성률에 바로 반영</li>
-          </ul>
         </form>
       </BasePanel>
 
-      <BasePanel title="최근 목표" meta="지난 14일 · 앞으로 정해 둔 날">
+      <BasePanel title="최근 목표">
         <BaseTable label="최근 목표" :columns="COLS" :rows="t.tableRows.value" :row-key="(r) => r.key">
           <template #cell-date="{ row }">
             <span :class="{ strong: row.today }">{{ dateWithDay(row.date) }}<template v-if="row.today"> · 오늘</template></span>
@@ -184,15 +179,6 @@ const { can } = useAuth()
 
 .msg.ok {
   color: var(--c-ink-2);
-}
-
-.rules {
-  margin: 0;
-  padding: var(--sp-3) 0 0 var(--sp-4);
-  border-top: var(--line-w) solid var(--c-line);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  line-height: 1.7;
 }
 
 .n {

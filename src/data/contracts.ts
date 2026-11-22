@@ -4,13 +4,14 @@
 import type { LineId, MasterData } from '@/types/plant'
 import type { PlantSnapshot, PlantSummary, ProductMove, FlowPositions } from '@/types/live'
 import type { AlarmEvent, HistoryEvent, HistoryQuery, HistorySummary, HistorySummaryQuery, RiskEvent, RiskQuery, StateEvent } from '@/types/events'
-import type { HourlyOutput, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
+import type { HourlyOutput, LoadedProduct, Paged, Product, ProductDetail, ProductionQuery, ProductionSummary } from '@/types/production'
 import type { InboundToday, InspectionToday, MicrostopToday, ProcessToday, TelemetryRange, TelemetrySeries, TelemetryTick } from '@/types/process'
 import type { OeeQuery, OeeReport, StateTimeline } from '@/types/analysis'
 import type { ControlLimit, ProcessId } from '@/types/plant'
 import type { EquipmentRisk, PdmEta } from '@/types/pdm'
 import type { DailyReport, PendingTarget, ReplanApplyResult, ReplanReport, ReplanSummary, ReportFlowRecord, SlackSendResult, TargetRow } from '@/types/report'
 import type { NewUser, UserRow } from '@/types/user'
+import type { PaintPlan } from '@/types/paint'
 
 export type Unsubscribe = () => void
 
@@ -57,8 +58,10 @@ export interface Queries {
   getTelemetry(equipmentId: string, range: TelemetryRange): Promise<TelemetrySeries>
   /** U-08 상태 이력 (지금은 설비 하나의 오늘 이력) */
   getStateEvents(filter: { equipmentId: string }): Promise<StateEvent[]>
-  /** M-07·M-08 오늘 공정 검사. 출고는 process INSPECTION, lineId 없음 */
+  /** M-07·M-08 오늘 공정 검사. 비전 검사는 process INSPECTION, lineId 없음 */
   getInspectionsToday(process: ProcessId, lineId?: LineId): Promise<InspectionToday>
+  /** M-08 (result OK) 오늘 적재된 제품 최근 50건 (비전 검사 합격 = 적재) */
+  getLoadedToday(): Promise<LoadedProduct[]>
   /** 백엔드 없음 오늘 미세정지 [차순위] */
   getMicrostopsToday(equipmentId: string): Promise<MicrostopToday>
   /** M-13 (오늘 입고 수는 백엔드 없음) 코일입고 */
@@ -87,6 +90,8 @@ export interface Queries {
   getMesReports(): Promise<ReportFlowRecord[] | null>
   /** 공장장이 그날 목표를 올려서 생긴 배정 대기 (G-05). 없으면 null. 데모 데이터는 null */
   getPendingTarget(date: string): Promise<PendingTarget | null>
+  /** PT-01 도장 운영 판단 (11/21). 데모 데이터는 null (서버 계산 전용) */
+  getPaintPlan(): Promise<PaintPlan | null>
   /** 지금 계획정지 중인 라인 (S-01). 목표를 가동 라인에만 나눌 때 */
   getPlannedStopLines(): Promise<LineId[]>
   /** 백엔드 없음 [차순위] PDF. 만들 수 없으면 null (데모는 브라우저 인쇄로 대신) */
@@ -136,6 +141,8 @@ export interface Commands {
   createUser(user: NewUser): Promise<SaveResult<{ loginId: string }>>
   /** 백엔드 M-09 도장 경로 전환: 그 라인 제품을 이 도장 설비로 보낸다 (MQTT Q-03이 Node-RED로 나감) */
   setPaintRoute(lineId: string, paintId: string, reason: string): Promise<SaveResult<{ lineId: string; currentPaintId: string; changedAt: string }>>
+  /** PT-02 도장 운영 제안 적용 (11/21): 서버가 그 순간 다시 계산해 경로 전환·운휴·다시 가동. 공장장·생산관리팀장 */
+  applyPaintPlan(): Promise<SaveResult<{ done: string[]; plan: PaintPlan }>>
   /** 백엔드 M-11 기준치 수정 (항목마다 1건씩, 바뀐 것만). 하한 > 상한이면 실패 */
   saveControlLimits(equipmentId: string, rows: { item: string; lower: number | null; upper: number | null }[]): Promise<SaveResult<ControlLimit[]>>
 }

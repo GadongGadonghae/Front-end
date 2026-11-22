@@ -29,7 +29,7 @@ const LINES = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 // ── 기준정보 중 API에 없는 것 (명세 공통 규칙에서 옮김) ──
 const PROCESSES: Process[] = [
   { id: 'COIL', name: '코일입고', order: 1 }, { id: 'SLITTING', name: '슬리팅', order: 2 }, { id: 'PRESS', name: '프레스', order: 3 },
-  { id: 'WELDING', name: '용접', order: 4 }, { id: 'PAINTING', name: '도장', order: 5 }, { id: 'INSPECTION', name: '출고', order: 6 },
+  { id: 'WELDING', name: '용접', order: 4 }, { id: 'PAINTING', name: '도장', order: 5 }, { id: 'INSPECTION', name: '비전 검사', order: 6 },
 ]
 /** 공정별 제품 1개 처리 시간 (명세 11/17 갱신) */
 const TYPES: EquipmentType[] = [
@@ -498,15 +498,15 @@ export function createApiSource(): DataSource {
           defects: (ngList?.items ?? []).map((x) => ({ t: x.at, productId: x.productId, equipmentId: x.equipmentId, reason: x.reason ?? (x.itemName ? `${x.itemName} 기준 이탈` : '공정 불량') })),
         }
       },
+      getLoadedToday: async () => (await api.M08({ ...todayRange(), result: 'OK', page: 1, size: 50 })).items.map((i) => ({ t: i.inspectedAt, productId: i.productId, lineId: i.lineId })),
       getMicrostopsToday: async (equipmentId) => ({ equipmentId, count: 0, lossSec: 0, bands: [] }),
       async getInboundToday() {
-        const coil = await api.M16()
+        const [coil, trend] = await Promise.all([api.M16(), api.M18().catch(() => [])])
         // 같은 시각에 들어온 롤은 한 줄로 묶어요 (예: 0초에 4롤 → 한 줄 "4"), 최근순
         const byTime = new Map<string, number>()
         for (const r of coil.receipts) byTime.set(r.receivedAt, (byTime.get(r.receivedAt) ?? 0) + 1)
         const receipts = [...byTime].map(([t, coils]) => ({ t, coils })).reverse()
-        // 재고 추이(stockTrend)는 API가 없어서 비워 둬요
-        return { today: coil.receivedRolls, stock: coil.stockRolls, input: coil.inputQty, receipts, stockTrend: [] }
+        return { today: coil.receivedRolls, stock: coil.stockRolls, input: coil.inputQty, receipts, stockTrend: trend.map((p) => ({ t: p.at, total: p.rolls })) }
       },
       async getOee(q) {
         const { first, last } = periodRange(q.period, q.date)
@@ -640,6 +640,7 @@ export function createApiSource(): DataSource {
       getMesReports: async () => (await api.MES01()).items.map(flowRecordOf).filter((x): x is ReportFlowRecord => !!x),
       getPlannedStopLines: plannedStopLines,
       getPendingTarget: async (date) => (await api.G05(date)) ?? null,
+      getPaintPlan: async () => (await api.PT01()) ?? null,
       async getOrderAdditions(date) {
         const p = await api.R01({ from: date, to: date, page: 1, size: 100 })
         const out: Partial<Record<LineId, number>> = {}
@@ -821,6 +822,9 @@ export function createApiSource(): DataSource {
           const r = await api.G04(date, quantity)
           return { ok: true, value: { date, quantity, done: null, updatedBy: null, pending: r.pending, before: r.before } }
         } catch (e) { return fail(e) }
+      },
+      async applyPaintPlan() {
+        try { return { ok: true, value: await api.PT02() } } catch (e) { return fail(e) }
       },
       async setPaintRoute(lineId, paintId, reason) {
         try { return { ok: true, value: await api.M09(lineId, { paintId, reason }) } } catch (e) { return fail(e) }

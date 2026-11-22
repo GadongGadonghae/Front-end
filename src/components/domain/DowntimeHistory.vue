@@ -34,7 +34,6 @@ const tint = (r: HistoryRowView) => (r.ongoing && r.state === 'D' ? 't-down' : r
         <BaseButton type="submit" variant="primary" :disabled="memo.busy.value">저장</BaseButton>
         <BaseButton @click="memo.close()">취소</BaseButton>
         <p v-if="memo.error.value" class="note err" role="alert">{{ memo.error.value }}</p>
-        <p class="note">저장하면 조치 담당자는 로그인한 사람으로 기록</p>
       </form>
       <div v-else class="memo-line">
         <span v-if="r.memo" class="memo-text">{{ r.memo.text }} <span class="by">· {{ r.memo.by ?? '-' }} {{ r.memo.at }}</span></span>

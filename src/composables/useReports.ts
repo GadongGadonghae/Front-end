@@ -37,7 +37,7 @@ export function useDailyReport() {
     POLL_MS, date,
   )
 
-  const procLabel = (p: string) => (p === 'INSPECTION' ? '출고 (비전)' : PROCESS_NAME[p as keyof typeof PROCESS_NAME])
+  const procLabel = (p: string) => PROCESS_NAME[p as keyof typeof PROCESS_NAME]
   /** 공정 앞 재공: 그 공정으로 들어오기 전 공정 사이에 쌓인 수 (슬리팅 앞은 코일, 롤) */
   const wipBefore = (p: string) => report.value?.wip.find((w) => w.to === p) ?? null
   const processRows = computed(() => (report.value?.processes ?? []).map((p) => {
@@ -53,7 +53,7 @@ export function useDailyReport() {
   const stamp = computed(() => {
     const r = report.value
     if (!r) return ''
-    return r.closed ? `${r.date.slice(5)} 마감` : `00:00 ~ ${formatTime(r.at).slice(0, 5)} 기준`
+    return r.closed ? `${r.date.slice(5)} 마감` : `09:00 ~ ${formatTime(r.at).slice(0, 5)} 기준`
   })
 
   return { date, today, report, processRows, downtime, stamp }
@@ -192,8 +192,8 @@ export function useReplanReports(selectedId: Ref<string | null>) {
           ? `${josa(name, '이/가')} ${formatTime(r.start)}에 ${josa(DOWNTIME_NAME[r.code], '으로/로')} 멈췄습니다. 같은 도장 공정의 다른 1대가 나머지를 맡는 것으로 계산했습니다.`
           : `${josa(name, '이/가')} ${formatTime(r.start)}에 ${josa(DOWNTIME_NAME[r.code], '으로/로')} 멈췄습니다. 비전검사기는 1대뿐이라 대신할 설비가 없습니다.`,
       remaining,
-      remainingRange: `${formatTime(r.baseAt)} ~ 24:00${baseDay !== toDateStr(Date.parse(r.createdAt)) ? ` (${baseDay})` : ''}`,
-      stoppedLabel: isTarget ? '계획정지 라인 남은 계획' : r.kind === 'line' ? `${line} 남은 라인 계획` : r.kind === 'paint' ? `${name} 남은 계획` : '남은 출고 (목표 − 실적)',
+      remainingRange: `${formatTime(r.baseAt)} ~ 18:00${baseDay !== toDateStr(Date.parse(r.createdAt)) ? ` (${baseDay})` : ''}`,
+      stoppedLabel: isTarget ? '계획정지 라인 남은 계획' : r.kind === 'line' ? `${line} 남은 라인 계획` : r.kind === 'paint' ? `${name} 남은 계획` : '남은 적재 (목표 − 실적)',
       stoppedSub: r.kind === 'line' || isTarget
         ? `라인 계획 ${formatNumber(r.stoppedPlan)} − 실적 ${formatNumber(r.stoppedDone)}`
         : r.kind === 'paint'
@@ -205,7 +205,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
         ? `${josa(line ?? '', '이/가')} 자정까지 만들 예정이던 라인 계획이 부족 수량입니다.`
         : r.kind === 'paint'
           ? `${josa(name, '이/가')} 자정까지 맡을 예정이던 수량이 부족 수량입니다.`
-          : '오늘 남은 출고 전량이 부족 수량입니다.',
+          : '오늘 남은 적재 전량이 부족 수량입니다.',
       allocText: r.allocations.length
         ? `${r.kind === 'line' || isTarget ? `${isTarget ? '가동 중인' : '정상'} 라인 ${r.allocations.length}개` : '다른 도장 설비'}의 남은 능력 비율대로 ${formatNumber(r.shortage)}개를 나눴습니다. 남은 능력 = 남은 시간 ÷ ${r.kind === 'paint' ? '도장 CT' : '라인 CT'} ${ct} − 남은 계획.`
         : r.kind === 'vision' ? '대신할 설비가 없어 나눌 곳이 없습니다.' : '정상인 다른 라인(설비)이 없어 나눌 곳이 없습니다.',
@@ -233,7 +233,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
     const capSum = r.allocations.reduce((a, x) => a + x.capacity, 0)
     const planSum = r.allocations.reduce((a, x) => a + x.remainingPlan, 0)
     const addSum = r.allocations.reduce((a, x) => a + x.add, 0)
-    const due = o?.dueAt === '24:00' ? '오늘 24:00' : `오늘 ${o?.dueAt ?? '24:00'}`
+    const due = `오늘 ${o?.dueAt ?? '18:00'}`
     const newText = o?.newLines.length ? `${lines(o.newLines)}${o.recommended ? ' (계산으로 추천)' : ''}` : '없음'
     let compare = ''
     if (o) {
@@ -252,7 +252,7 @@ export function useReplanReports(selectedId: Ref<string | null>) {
       start: formatTime(r.baseAt), code: '추가 주문', detail: o?.request ?? '-',
       occurred: `추가 주문 ${formatNumber(o?.addQty ?? r.shortage)}개가 들어와 ${due}까지 만들어야 합니다.`,
       remaining: formatDuration(r.remainingSec),
-      remainingRange: `${formatTime(r.baseAt)} ~ ${o?.dueAt ?? '24:00'}`,
+      remainingRange: `${formatTime(r.baseAt)} ~ ${o?.dueAt ?? '18:00'}`,
       stoppedLabel: '추가 주문', stoppedSub: `납기 ${due}`,
       shortageText: '추가 주문 수량을 지금 가동 라인과 새로 켤 라인의 남은 능력 비율대로 나눕니다.',
       allocText: r.allocations.length

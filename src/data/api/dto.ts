@@ -164,6 +164,9 @@ export interface FlowPositionsDto {
   }[]
 }
 
+/** M-18 코일 재고 추이 한 점 (11/22) */
+export interface CoilTrendDto { at: string; qty: number; rolls: number }
+
 /** M-16 코일 입고 현황 (1롤 = 제품 20개, 11/18 추가) */
 export interface CoilTodayDto {
   date: string

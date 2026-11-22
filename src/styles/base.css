@@ -98,26 +98,3 @@ a {
   }
 }
 
-/* ── 화면 사이 이어지는 전환 (D-119, src/router/viewTransition.ts) ──
-   대시보드 "공장 배치도" 칸 ↔ 라인 상세 "라인 흐름" 칸: 같은 이름이라 자리·크기가 옮겨 가며 바뀐다 */
-.vt-line-stage {
-  view-transition-name: line-stage;
-}
-
-::view-transition-group(line-stage) {
-  animation-duration: var(--dur-page);
-  animation-timing-function: var(--ease-out);
-}
-
-/* 옛·새 모습을 늘이지 않고 칸에 맞춰 자른다 (3D 그림이 찌그러지지 않게) */
-::view-transition-old(line-stage),
-::view-transition-new(line-stage) {
-  height: 100%;
-  object-fit: cover;
-  overflow: clip;
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: var(--dur-enter);
-}

@@ -5,10 +5,12 @@ const LABEL: Record<string, string> = {
   // 슬리터
   torque: '토크',
   // 프레스
-  pressureLeft: '압력(좌)',
-  pressureRight: '압력(우)',
+  // 11/21 DB 관리값 기준(threshold.item_label)과 같은 이름으로. 3단 압력 차가 빠져 영어로 보이던 것
+  pressureLeft: '좌 압력',
+  pressureRight: '우 압력',
+  pressureDiff: '압력 차 (좌−우)',
   pressureTotal: '압력 합계',
-  pressTime: '프레스 시간',
+  pressTime: '가압 시간',
   // 용접
   pressForce: '가압력',
   weldTime: '통전시간',
@@ -36,3 +38,23 @@ const LABEL: Record<string, string> = {
 
 /** 화면에 보일 항목 이름. 모르는 이름은 그대로 */
 export const metricLabel = (metric: string): string => LABEL[metric] ?? metric
+
+/** 11/21 항목 설명 한 줄 (그래프 제목 옆): 무엇을 재는 값인지 */
+const HELP: Record<string, string> = {
+  pressureLeft: '프레스 1단이 재는 값 · 금형 왼쪽 실린더 압력',
+  pressureRight: '프레스 2단이 재는 값 · 금형 오른쪽 실린더 압력',
+  pressureDiff: '프레스 3단이 재는 값 · 좌우 압력 차 (한쪽으로 쏠리면 커져요)',
+  pressTime: '프레스 4단이 재는 값 · 눌러 주는 시간 (단위 0.01초)',
+  pressForce: '용접 팁이 누르는 힘',
+  weldTime: '전류를 흘리는 시간',
+  current: '설비에 흐르는 전류',
+  voltage: '설비에 걸린 전압',
+  ph: '도료 산성도',
+  temperature: '도료 온도',
+}
+export const metricHelp = (metric: string): string | null => HELP[metric] ?? null
+
+/** 11/21 공정별로 재지 않는 항목 (기준표에는 있지만 값이 오지 않음): 0 대신 "측정 안 함" */
+export const NOT_MEASURED: Partial<Record<string, Record<string, string>>> = {
+  SLITTING: { torque: '토크는 교육장 인버터(LS SV-iG5A)가 주지 않는 값이라 측정하지 않아요' },
+}

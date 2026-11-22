@@ -33,8 +33,8 @@ export const RUN_AGO_SEC = 4 * 3600 + 2 * 60 + 15
 
 /** 예지보전 80% 이상인 설비 */
 export const PDM: { equipmentId: string; level: PdmLevel; item: string; percent: number }[] = [
-  { equipmentId: 'A-WD', level: 'warn', item: 'weldTime', percent: 84 },
-  { equipmentId: 'E-PR2', level: 'danger', item: 'pressureLeft', percent: 92 },
+  { equipmentId: 'A-WD', level: 'warn', item: 'tipTemp', percent: 84 },
+  { equipmentId: 'E-PR2', level: 'danger', item: 'hydraulicTemp', percent: 92 },
 ]
 
 /** 오늘 끝난 상태 이력: 시작은 지금보다 agoSec 전, 길이 durSec */

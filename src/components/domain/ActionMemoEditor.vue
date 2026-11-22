@@ -35,7 +35,7 @@ const emit = defineEmits<{ save: []; cancel: [] }>()
       <BaseTextarea v-model="draft" label="조치 메모" :hint="subject" :rows="3" placeholder="무엇을 했는지 적기 (선택)" />
       <p v-if="error" class="err" role="alert">{{ error }}</p>
       <div class="act">
-        <span class="note">{{ lastSaved ? `마지막 저장 ${lastSaved}` : '저장하면 로그인한 사람 이름이 조치 담당자로 남음' }} · Ctrl+Enter 저장 · Esc 닫기</span>
+        <span class="note">{{ lastSaved ? `마지막 저장 ${lastSaved}` : '' }}</span>
         <BaseButton @click="emit('cancel')">취소</BaseButton>
         <BaseButton type="submit" variant="primary">{{ saving ? '저장 중' : '저장' }}</BaseButton>
       </div>

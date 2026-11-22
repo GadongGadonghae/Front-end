@@ -6,7 +6,9 @@ import PageLayout from '@/layouts/PageLayout.vue'
 import BaseBreadcrumb from '@/components/base/BaseBreadcrumb.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
-import ChartDonutValue from '@/components/charts/ChartDonutValue.vue'
+import ChartGauge from '@/components/charts/ChartGauge.vue'
+import ChartProgress from '@/components/charts/ChartProgress.vue'
+import BaseNumber from '@/components/base/BaseNumber.vue'
 import { useAllLines } from '@/composables/useAllLines'
 import { linePath, lineTabs } from '@/lib/routes'
 import { formatNumber } from '@/lib/format'
@@ -28,22 +30,20 @@ const tabs = lineTabs(lineName)
       <section v-for="c in columns" :key="c.id" class="col" :aria-label="c.name">
         <button type="button" class="name" @click="router.push(linePath(c.id))">{{ c.name }}<BaseIcon name="chevron-right" :size="16" /></button>
 
-        <!-- 실적은 도넛(달성률)으로 한눈에, 라인 상세 요약 카드와 같은 색 -->
-        <div class="fig plan">
-          <h3>오늘 라인 실적 / 계획</h3>
-          <ChartDonutValue
-            :parts="[{ value: c.rate ?? 0, color: 'var(--c-accent)' }, { value: Math.max(0, 100 - (c.rate ?? 0)), color: 'var(--c-track)' }]"
-            :center="c.rate != null ? `${formatNumber(c.rate, 1)}%` : '-'"
-            sub="달성률"
-            :label="`${c.name} 달성률 ${formatNumber(c.rate, 1)}%`"
-            :size="96"
-          />
-          <p class="mid num">{{ formatNumber(c.done) }}<small> / {{ formatNumber(c.plan) }}</small></p>
+        <!-- 11/21 대시보드·라인 상세 카드와 같은 모양: 실적 / 계획 + 달성률 막대, OEE 게이지 -->
+        <div class="fig">
+          <h3>라인 실적 / 계획</h3>
+          <p class="big num">{{ formatNumber(c.done) }}<small v-if="c.plan != null"> / {{ formatNumber(c.plan) }}</small></p>
+          <p class="sub">달성률 <b class="num"><BaseNumber :value="c.rate" :digits="1" unit="%" /></b></p>
+          <ChartProgress v-if="c.plan != null" :percent="c.rate" :label="`${c.name} 달성률 ${formatNumber(c.rate, 1)}%`" />
         </div>
 
-        <div class="fig">
+        <div class="fig gauge">
           <h3>라인 OEE</h3>
-          <p class="big num">{{ formatNumber(c.oee, 1) }}<small v-if="c.oee != null">%</small></p>
+          <ChartGauge :value="c.oee" :label="`${c.name} OEE ${formatNumber(c.oee, 1)}%`">
+            <span class="g-num num"><BaseNumber :value="c.oee" :digits="1" unit="%" /></span>
+            <span class="g-lab">OEE</span>
+          </ChartGauge>
         </div>
 
         <div class="fig">
@@ -53,7 +53,7 @@ const tabs = lineTabs(lineName)
         </div>
 
         <div class="fig">
-          <h3>오늘 알람 이력</h3>
+          <h3>알람 이력</h3>
           <p class="big num">{{ formatNumber(c.alarms.total) }}<small>건</small></p>
           <p class="sub" :class="{ on: c.alarms.ongoing > 0 }">진행 중 <b class="num">{{ formatNumber(c.alarms.ongoing) }}</b></p>
         </div>
@@ -73,7 +73,9 @@ const tabs = lineTabs(lineName)
 
 .col {
   display: grid;
-  grid-template-rows: auto minmax(0, 1.8fr) repeat(3, minmax(0, 1fr));
+
+  /* 실적(숫자 + 막대) · OEE(게이지가 커서 넓게) · 불량 · 알람 (11/21) */
+  grid-template-rows: auto minmax(0, 1.2fr) minmax(0, 1.6fr) repeat(2, minmax(0, 1fr));
   min-width: 0;
   min-height: 0;
   padding: var(--sp-3) var(--sp-4);
@@ -117,36 +119,40 @@ const tabs = lineTabs(lineName)
   font-weight: var(--fw-regular);
 }
 
+/* 11/22 네 칸의 큰 숫자(실적 · OEE · 불량 · 알람)는 모두 같은 크기, 나머지 글은 모두 같은 크기 */
 .big {
   margin: 0;
   color: var(--c-ink);
-  font-size: var(--fs-xl);
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
   line-height: var(--lh-tight);
   white-space: nowrap;
 }
 
-.plan {
+/* 라인 OEE 게이지 (대시보드 종합 가동률과 같은 게이지, 11/21) */
+.gauge {
   align-items: center;
 }
 
-.plan h3 {
+.gauge h3 {
   align-self: stretch;
 }
 
-.mid {
-  margin: 0;
-  color: var(--c-ink);
-  font-size: var(--fs-lg);
+.g-num {
+  font-size: var(--fs-page);
   font-weight: var(--fw-strong);
-  white-space: nowrap;
+  line-height: var(--lh-tight);
 }
 
-.big small,
-.mid small {
+.g-lab {
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
+}
+
+.big small {
   margin-left: 2px;
   color: var(--c-ink-3);
-  font-size: var(--fs-figure);
+  font-size: var(--fs-md);
   font-weight: var(--fw-regular);
 }
 

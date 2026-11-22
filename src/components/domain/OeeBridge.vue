@@ -42,7 +42,7 @@ const lost = (v: number) => `−${formatNumber(v, 1)}`
       <i class="sw p"></i><dt>성능가동률</dt><dd>{{ formatNumber(oee?.performance, 1) }}%</dd><dd class="lost">{{ parts ? lost(parts.lp) : '' }}</dd>
       <i class="sw q"></i><dt>양품률</dt><dd>{{ formatNumber(oee?.quality, 1) }}%</dd><dd class="lost">{{ parts ? lost(parts.lq) : '' }}</dd>
     </dl>
-    <p v-if="lineYield != null" class="yield"><span>라인 수율 (OEE와 별도)</span><b>{{ formatNumber(lineYield, 1) }}%</b></p>
+    <p v-if="lineYield != null" class="yield"><span>라인 수율</span><b>{{ formatNumber(lineYield, 1) }}%</b></p>
   </div>
 </template>
 

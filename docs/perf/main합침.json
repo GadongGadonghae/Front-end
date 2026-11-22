@@ -1,0 +1,104 @@
+{
+  "label": "main합침",
+  "date": "2026-11-22T06:50:18.692Z",
+  "commit": "9a5af21+수정",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "idle": {
+      "jsMs": 126,
+      "taskMs": 449,
+      "longCount": 0
+    },
+    "enter": {
+      "readyMs": 81,
+      "longCount": 0,
+      "longMax": 0,
+      "longSum": 0
+    },
+    "revisit": {
+      "firstMs": 883,
+      "secondMs": 39
+    },
+    "memory": {
+      "heapStartMb": 13.7,
+      "heapEndMb": 15.1,
+      "domEnd": 769,
+      "listenersEnd": 187
+    }
+  },
+  "raw": {
+    "idle": [
+      {
+        "jsMs": 115,
+        "taskMs": 436,
+        "longCount": 0
+      },
+      {
+        "jsMs": 126,
+        "taskMs": 481,
+        "longCount": 0
+      },
+      {
+        "jsMs": 166,
+        "taskMs": 449,
+        "longCount": 0
+      }
+    ],
+    "enter": [
+      {
+        "readyMs": 114,
+        "longCount": 1,
+        "longMax": 56,
+        "longSum": 56
+      },
+      {
+        "readyMs": 72,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      },
+      {
+        "readyMs": 81,
+        "longCount": 0,
+        "longMax": 0,
+        "longSum": 0
+      }
+    ],
+    "revisit": [
+      {
+        "firstMs": 893,
+        "secondMs": 27
+      },
+      {
+        "firstMs": 883,
+        "secondMs": 68
+      },
+      {
+        "firstMs": 881,
+        "secondMs": 39
+      }
+    ],
+    "memory": [
+      {
+        "heapStartMb": 13.7,
+        "heapEndMb": 14.5,
+        "domEnd": 769,
+        "listenersEnd": 187
+      },
+      {
+        "heapStartMb": 13.6,
+        "heapEndMb": 15.1,
+        "domEnd": 769,
+        "listenersEnd": 187
+      },
+      {
+        "heapStartMb": 13.7,
+        "heapEndMb": 15.2,
+        "domEnd": 770,
+        "listenersEnd": 187
+      }
+    ]
+  }
+}

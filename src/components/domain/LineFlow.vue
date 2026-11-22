@@ -39,7 +39,7 @@ const bottleneck = (i: number) => (props.view.wip[i] ?? 0) > 0 && props.view.gro
 function cellLabel(c: FlowCellView, group: string) {
   const why = c.reason ? `, ${c.reason.code}${c.reason.detail ? ` ${c.reason.detail}` : ''}` : ''
   const pdm = c.pdm ? `, 예지보전 ${c.pdm.text}` : ''
-  return `${props.lineName} ${group} ${c.name}, ${STATE_NAME[c.state]} ${c.duration}${why}${pdm}. 공정 상세로`
+  return `${props.lineName} ${group} ${c.name}, ${STATE_NAME[c.state]}${c.duration ? ` ${c.duration}` : ''}${why}${pdm}. 공정 상세로`
 }
 function onKey(e: KeyboardEvent, go: () => void) {
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go() }
@@ -186,6 +186,40 @@ function onKey(e: KeyboardEvent, go: () => void) {
 
 .grp.stack :deep(.lg) {
   justify-content: space-between;
+  gap: var(--sp-1);
+}
+
+/* 11/21 쌓은 칸(도장)은 높이가 절반: 숫자(사이클·불량·평균 CT)는 다른 칸과 같은 자리에 한 줄로,
+   사유는 아래쪽에 한 줄(코드 + 내용, 넘치면 …). 그래도 넘치면 칸 안에서 자름 */
+.grp.stack :deep(.cell) {
+  overflow: hidden;
+}
+
+.grp.stack :deep(.why) {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: baseline;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.grp.stack :deep(.why b) {
+  display: inline;
+  flex: none;
+}
+
+.grp.stack :deep(.why span) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.grp.stack :deep(.info) {
+  grid-template-columns: repeat(3, auto auto);
+  justify-content: start;
+}
+
+.grp.stack :deep(.note) {
+  display: none;
 }
 
 /* 도장 라인 앞 끝: A~F 라인 이름 (세로로 고르게) + 지금 보내는 도장으로 가는 흐린 선 */

@@ -1,4 +1,5 @@
-// 예지보전 (SCR-004, FN-007): 위험도 목록(웹소켓 risk 5초) · 고른 설비의 관리값 추이 · 상한 도달 예상 [차순위, API-061 1분]
+// 예지보전 (SCR-004, FN-007): 위험도 목록(웹소켓 risk 5초) · 고른 설비의 상태 센서 추이 · 상한 도달 예상 [차순위, API-061 1분]
+// 설비 상태 센서(온도·진동·전류)만 본다. 공정 관리값(압력·전류·가압 시간 등)은 라인 화면(공정 상세)에서 본다
 import { computed, onScopeDispose, ref, shallowRef, watch, type Ref } from 'vue'
 import { source } from '@/data'
 import type { EquipmentRisk } from '@/types/pdm'
@@ -23,6 +24,14 @@ const dig = (n: number) => (Number.isInteger(n) ? 0 : 1)
 export type Grade = 'danger' | 'warn' | 'normal' | 'unset'
 export const gradeOf = (p: number | null): Grade => (p == null ? 'unset' : p >= DANGER ? 'danger' : p >= WARN ? 'warn' : 'normal')
 
+/** 위험도에서 공정 관리값을 빼고 센서 항목으로 다시 고른다 */
+function sensorOnly(r: EquipmentRisk): EquipmentRisk {
+  const items = r.items.filter((i) => (i.source ?? 'process') === 'sensor')
+  if (items.length === r.items.length) return r
+  const top = items.filter((i) => i.percent != null).sort((a, b) => b.percent! - a.percent!)[0]
+  return { ...r, items, percent: top?.percent ?? null, item: top?.item ?? null }
+}
+
 export interface RiskRow {
   id: string
   name: string
@@ -38,7 +47,7 @@ export function usePdm(selectedId: Ref<string | null>) {
   const now = useNow()
 
   const risks = shallowRef<EquipmentRisk[]>([])
-  const off = source.live.onRisk((r) => { risks.value = r })
+  const off = source.live.onRisk((r) => { risks.value = r.map(sensorOnly) })
   onScopeDispose(off)
 
   const stateOf = (id: string): StateCode => snap.value?.equipment.find((e) => e.id === id)?.state ?? 'R'
@@ -71,7 +80,8 @@ export function usePdm(selectedId: Ref<string | null>) {
   const range = ref<TelemetryRange>('8h')
   const item = ref('')
   watch(selectedId, () => { item.value = '' })
-  const series = useTelemetry(selectedId, range)
+  const raw = useTelemetry(selectedId, range)
+  const series = computed(() => raw.value && { ...raw.value, items: raw.value.items.filter((i) => i.source === 'sensor') })
   // 고른 항목이 위험도 목록에도 추이에도 없을 때만 가장 높은 항목으로 (센서 카드에서 고른 공정값을 지키려고)
   watch([selected, series], ([s, ser]) => {
     if (!s || s.items.some((i) => i.item === item.value) || ser?.items.some((i) => i.item === item.value)) return

@@ -1,0 +1,60 @@
+{
+  "label": "main그대로",
+  "date": "2026-11-22T06:51:40.522Z",
+  "commit": "965a189",
+  "gpu": false,
+  "runs": 3,
+  "viewport": "1920x940",
+  "results": {
+    "idle": {
+      "jsMs": 521,
+      "taskMs": 639,
+      "longCount": 0
+    },
+    "enter": {
+      "readyMs": 505,
+      "longCount": 3,
+      "longMax": 308,
+      "longSum": 476
+    }
+  },
+  "raw": {
+    "idle": [
+      {
+        "jsMs": 507,
+        "taskMs": 620,
+        "longCount": 0
+      },
+      {
+        "jsMs": 521,
+        "taskMs": 639,
+        "longCount": 0
+      },
+      {
+        "jsMs": 542,
+        "taskMs": 662,
+        "longCount": 0
+      }
+    ],
+    "enter": [
+      {
+        "readyMs": 496,
+        "longCount": 3,
+        "longMax": 308,
+        "longSum": 471
+      },
+      {
+        "readyMs": 2672,
+        "longCount": 5,
+        "longMax": 1160,
+        "longSum": 2476
+      },
+      {
+        "readyMs": 505,
+        "longCount": 3,
+        "longMax": 297,
+        "longSum": 476
+      }
+    ]
+  }
+}

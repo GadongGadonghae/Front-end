@@ -1,5 +1,5 @@
-<!-- SCR-002-6 출고 상세 (화면정의서 SCR-002-6). 라인·공정 탭 없음. 관리값 그래프·미세정지 없음 (D-51)
-     제목 줄 오른쪽: 오늘 검사 · 양품 · 불량 · 불량률. 본문 왼쪽: 비전 카드 + 라인별 출고 불량 → 불량 목록. 오른쪽 열: 비가동 이력 -->
+<!-- SCR-002-6 비전 검사 상세 (화면정의서 SCR-002-6, 11/22 적재와 나눔). 라인·공정 탭 없음. 관리값 그래프·미세정지 없음 (D-51)
+     제목 줄 오른쪽: 오늘 검사 · 합격 · 불량 · 불량률. 본문 왼쪽: 비전 카드 + 라인별 불량 → 불량 목록. 오른쪽 열: 비가동 이력 -->
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
@@ -12,11 +12,11 @@ import ChartBarList from '@/components/charts/ChartBarList.vue'
 import EquipCard from '@/components/domain/EquipCard.vue'
 import InspectionPanel from '@/components/domain/InspectionPanel.vue'
 import DowntimeHistory from '@/components/domain/DowntimeHistory.vue'
-import { useOutbound } from '@/composables/useEndpoints'
+import { useVision } from '@/composables/useEndpoints'
 import { useEquipmentHistory } from '@/composables/useEquipmentHistory'
 
 const router = useRouter()
-const { card, inspections, byLine, equipmentId } = useOutbound()
+const { card, inspections, byLine, equipmentId } = useVision()
 const history = useEquipmentHistory(equipmentId)
 const { can } = useAuth()
 const d = inspections.data
@@ -26,12 +26,12 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
 <template>
   <PageLayout>
     <template #head>
-      <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: '출고' }]" />
+      <BaseBreadcrumb :items="[{ label: '대시보드', to: '/' }, { label: '비전 검사' }]" />
     </template>
     <template #head-right>
       <BaseFigureRow>
         <BaseFigure label="오늘 검사" :value="d?.inspected" size="sm" />
-        <BaseFigure label="양품 (= 공장 실적)" :value="d ? d.inspected - d.ng : null" size="sm" />
+        <BaseFigure label="합격" :value="d ? d.inspected - d.ng : null" size="sm" />
         <BaseFigure label="불량" :value="d?.ng" size="sm" />
         <BaseFigure label="불량률" :value="d?.rate" :digits="1" unit="%" size="sm" />
       </BaseFigureRow>
@@ -41,13 +41,11 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
       <div class="left">
         <div class="top">
           <EquipCard v-if="card" :card="card" selected />
-          <BasePanel title="라인별 출고 불량" meta="오늘">
-            <ChartBarList label="라인별 출고 불량 수" :rows="byLine" />
-            <!-- D-90 -->
-            <p class="note">비전은 1대라 고장 나면 대신할 설비가 없음</p>
+          <BasePanel title="라인별 불량" meta="오늘">
+            <ChartBarList label="라인별 비전 불량 수" :rows="byLine" />
           </BasePanel>
         </div>
-        <BasePanel title="불량 목록" meta="오늘 출고 불량 · 최근순">
+        <BasePanel title="불량 목록" meta="오늘">
           <InspectionPanel :inspected="null" :ng="null" :rate="null" :rows="inspections.rows.value" detail="where" compact @open-product="openProduct" />
         </BasePanel>
       </div>
@@ -81,9 +79,4 @@ const openProduct = (id: string) => router.push({ path: '/production', query: { 
   gap: var(--sp-4);
 }
 
-.note {
-  margin-top: var(--sp-3);
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-}
 </style>

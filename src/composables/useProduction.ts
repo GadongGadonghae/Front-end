@@ -16,6 +16,7 @@ import { useLiveSnapshot } from '@/composables/useLiveSnapshot'
 import { useNow } from '@/composables/useNow'
 import { DOWNTIME_NAME, PROCESS_NAME, lineName } from '@/lib/status'
 import { josa } from '@/lib/josa'
+import { shiftBasis } from '@/lib/shift'
 import { formatHm, formatSpan, formatTime, toDateStr } from '@/lib/format'
 
 const LIVE_MS = 10_000
@@ -132,12 +133,12 @@ export function useProduction(initialQ = '') {
   const rangeText = computed(() => {
     const s = summary.value
     if (!s) return ''
-    if (!multiDay.value) return date.value === today ? `00:00 ~ ${formatHm(s.to)} 기준` : `${date.value} 하루`
+    if (!multiDay.value) return date.value === today ? shiftBasis(clockNow()) : `${date.value} 하루`
     return `${toDateStr(Date.parse(s.from))} ~ ${toDateStr(Date.parse(s.to) - 1).slice(5)}`
   })
   const timeText = (iso: string | null) => (iso ? (multiDay.value ? `${iso.slice(5, 10)} ${formatHm(iso)}` : formatTime(iso)) : '-')
   const leadText = (p: Product) => (p.doneAt ? formatSpan((Date.parse(p.doneAt) - Date.parse(p.inputAt)) / 1000) : '-')
-  const resultText = (p: Product) => (p.result === 'ok' ? '양품 출고' : p.result === 'wip' ? '진행 중' : `불량 제외 · ${PROCESS_NAME[p.ngProcess ?? 'SLITTING']}`)
+  const resultText = (p: Product) => (p.result === 'ok' ? '적재 완료' : p.result === 'wip' ? '진행 중' : `불량 제외 · ${PROCESS_NAME[p.ngProcess ?? 'SLITTING']}`)
 
   /** 제품 ID로 찾기 (공정 검사 불량 목록에서 들어올 때): 그 제품을 만든 날로 옮기고 고른다 (D-88) */
   function findProduct(id: string) {
@@ -178,7 +179,7 @@ export function useProduction(initialQ = '') {
       id: p.id,
       lineLabel: lineName(p.lineId),
       state,
-      stateText: { stuck: '설비 고장으로 멈춤', wip: '공정 중', ok: '양품 출고', ng: '불량 제외' }[state],
+      stateText: { stuck: '설비 고장으로 멈춤', wip: '공정 중', ok: '적재 완료', ng: '불량 제외' }[state],
       whereLabel: p.result === 'wip' ? '지금 위치' : '결과',
       where: p.result === 'wip' ? whereText(p) : resultText(p),
       inputAt: p.inputAt,

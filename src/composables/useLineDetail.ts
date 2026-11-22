@@ -11,13 +11,12 @@ import { useLiveSummary } from '@/composables/useLiveSummary'
 import { useNow } from '@/composables/useNow'
 import { usePoll } from '@/composables/usePoll'
 import { useTodayAlarms } from '@/composables/useTodayAlarms'
-import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState } from '@/lib/status'
+import { countByState, DOWNTIME_NAME, longShortName, PROCESS_NAME, worstState, showsSince } from '@/lib/status'
 import { formatDuration, formatNumber, toDateStr } from '@/lib/format'
 
 /** 공정 요약 갱신 주기 (API 명세 6장) */
 const PROCESS_POLL_MS = 30_000
 /** 프레스는 4단 뒤 1회 검사 (A-09) */
-const INSPECTION_NOTE: Partial<Record<ProcessId, string>> = { PRESS: '4단 뒤 검사' }
 
 export function useLineDetail(lineId: LineId) {
   const { master } = useMaster()
@@ -51,7 +50,7 @@ export function useLineDetail(lineId: LineId) {
     const row = todayOf(e.process)?.equipment.find((x) => x.id === e.id)
     const info: FlowCellView['info'] = []
     if (row) {
-      info.push({ label: e.process === 'PRESS' ? '오늘 사이클' : '오늘 생산', value: formatNumber(row.cycles) })
+      info.push({ label: e.process === 'PRESS' ? '사이클' : '생산', value: formatNumber(row.cycles) })
       // 그 설비에서 공정 판정 NG(폐기)된 수 (11/20). 있으면 빨간 글씨
       info.push({ label: '불량', value: formatNumber(row.ng ?? 0), alert: (row.ng ?? 0) > 0 })
       if (row.avgCtMs != null) info.push({ label: '평균 CT', value: `${formatNumber(row.avgCtMs / 1000, 1)}초` })
@@ -60,7 +59,7 @@ export function useLineDetail(lineId: LineId) {
       id: e.id,
       name: longShortName(e),
       state,
-      duration: l ? formatDuration((now.value - Date.parse(l.since)) / 1000) : '-',
+      duration: l && showsSince(state) ? formatDuration((now.value - Date.parse(l.since)) / 1000) : null,   // 고장 · 통신 끊김만 (11/22)
       pdm: l?.pdm ? { level: l.pdm.level, text: `${l.pdm.level === 'danger' ? '위험' : '주의'} ${l.pdm.percent}%` } : null,
       reason: l && state !== 'R' && l.code ? { code: DOWNTIME_NAME[l.code], detail: l.detail } : null,
       note: row?.slowest ? '가장 느린 단' : null,
@@ -76,13 +75,13 @@ export function useLineDetail(lineId: LineId) {
       cells: equipment.value.filter((e) => e.process === p).sort((a, b) => a.order - b.order).map(cell),
       output: todayOf(p)?.output ?? null,
       ng: lineSummary.value?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? null,
-      note: INSPECTION_NOTE[p] ?? null,
+      note: null,
     }))
     if (lineId === 'PT') {
       // 도장 #1·#2는 병렬: 세로로 쌓고, A~F 라인이 지금 어느 도장으로 보내는지 선으로 보인다
       groups[0].stack = true
       const feeds = master.value.lines.filter((l) => l.kind === 'production').map((l) => ({ label: l.name, to: l.currentPaintId }))
-      return { from: '라인에서', to: '출고로', groups, wip: [], feeds }
+      return { from: '라인에서', to: '비전 검사로', groups, wip: [], feeds }
     }
     const wip = lineSummary.value?.wip.map((w) => w.qty) ?? [null, null]
     return { from: '입고에서', to: '도장으로', groups, wip, endWip: [null, null] }
@@ -94,7 +93,7 @@ export function useLineDetail(lineId: LineId) {
     const plan = ls?.plan ?? null
     const ngRows = processes.map((p) => ({
       process: p,
-      label: INSPECTION_NOTE[p] ? `${PROCESS_NAME[p]} (${INSPECTION_NOTE[p]})` : PROCESS_NAME[p],
+      label: PROCESS_NAME[p],
       value: ls?.ngByProcess[p as 'SLITTING' | 'PRESS' | 'WELDING' | 'PAINTING'] ?? 0,
     }))
     return {

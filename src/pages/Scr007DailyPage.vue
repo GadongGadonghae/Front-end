@@ -6,6 +6,7 @@
 <script setup lang="ts">
 import { now as clockNow } from '@/clock'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BaseTabs from '@/components/base/BaseTabs.vue'
 import { useMaster } from '@/composables/useMaster'
@@ -15,6 +16,7 @@ import { DOWNTIME_NAME, PROCESS_NAME } from '@/lib/status'
 import { formatDuration, formatNumber, formatTime, secondsBetween, toDateStr } from '@/lib/format'
 import { downloadDailyDoc, type DailyDocData } from '@/lib/dailyDoc'
 import ReportApproval from '@/components/domain/ReportApproval.vue'
+import ReportFold from '@/components/domain/ReportFold.vue'
 import { useAuth } from '@/composables/useAuth'
 import { useReportFlow, flowLine } from '@/composables/useReportFlow'
 import type { DailyReport, ReplanSummary } from '@/types/report'
@@ -27,9 +29,9 @@ const TABS = [
 /** 이전 보고서 목록: 지난 30일 (그날 마감 값) */
 const PAST_DAYS = 30
 const DAY = 86_400_000
-const SHIFT = '일 단위 (00:00~24:00)'
-const SHIFT_SHORT = '일 단위'
-const AUTHOR = source.demo ? '김현수' : ''
+const SHIFT = '주간 (09:00~18:00)'
+const AUTHOR = source.demo ? '윤은빈' : ''
+const route = useRoute()
 const { can } = useAuth()
 const flow = useReportFlow()
 
@@ -38,8 +40,13 @@ const today = toDateStr(clockNow())
 const pastDays = Array.from({ length: PAST_DAYS }, (_, i) => toDateStr(Date.parse(today) - (i + 1) * DAY))
 
 /** 고른 날짜. 오늘은 [AI 일일 리포트 생성]을 눌러야 보고서가 보임 */
-const date = ref(today)
+/** 문서만 보기 (/doc/daily/:date, 임시 MES 틀 안, 11/21): 그날 보고서를 바로 */
+const docOnly = computed(() => route.meta.docOnly === true)
+const date = ref(docOnly.value && typeof route.params.date === 'string' ? route.params.date : today)
 const isToday = computed(() => date.value === today)
+/** 왼쪽 묶음 펼침 (11/22): 처음엔 오늘 보고서만 */
+const nowOpen = ref(true)
+const prevOpen = ref(false)
 const generatedAt = ref<string | null>(null)
 /** 오늘 보고서를 팀장이 이미 작성(결재 요청)했으면 다른 계정에서도 보이게 */
 const todayFlow = computed(() => flow.flowOf(`daily:${today}`))
@@ -111,9 +118,9 @@ const doc = computed(() => {
   const rate = plan ? (r.done / plan) * 100 : null
   const at = isToday.value && madeAt.value
     ? `${toDateStr(Date.parse(madeAt.value))} ${formatTime(madeAt.value)}`
-    : `${r.date} 24:00`
+    : `${r.date} 18:00`
   const processes = r.processes.map((p) => ({
-    name: p.process === 'INSPECTION' ? '출고 비전' : PROCESS_NAME[p.process],
+    name: PROCESS_NAME[p.process],
     output: p.output, ng: p.ng, rate: p.output ? (p.ng / p.output) * 100 : null,
   }))
   const reportOf = (eventId: string) => replans.value.find((x) => x.stateEventId === eventId)
@@ -211,7 +218,7 @@ function writeFlow() {
 </script>
 
 <template>
-  <PageLayout>
+  <PageLayout :class="{ 'doc-only': docOnly }">
     <template #head>
       <h1 class="title">AI 리포트</h1>
       <BaseTabs :items="TABS" active="daily" label="리포트 종류" />
@@ -219,9 +226,8 @@ function writeFlow() {
 
     <div class="body">
       <section class="panel side">
-        <div class="ph"><h2>일일 생산 보고서</h2><span class="meta">마감 기록</span></div>
         <div class="list">
-          <h3 class="list-section">오늘 마감</h3>
+          <ReportFold v-model:open="nowOpen" title="일일 생산 보고서" :count="madeAt ? 0 : 1" alert>
           <div
             :class="['today-card', { on: isToday }]"
             role="button"
@@ -230,13 +236,12 @@ function writeFlow() {
             @keydown.enter.prevent="date = today"
             @keydown.space.prevent="date = today"
           >
-            <div><b>{{ today }} {{ SHIFT_SHORT }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
-            <p>오늘 생산 마감 · {{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</p>
+            <div><b>{{ today }}</b><time>{{ madeAt ? `${formatTime(madeAt).slice(0, 5)} 작성` : '마감 대기' }}</time></div>
             <span :class="['draft-badge', { created: madeAt }]">{{ madeAt ? '보고서 작성 완료' : '보고서 미작성' }}</span>
           </div>
+          </ReportFold>
 
-          <div class="previous-reports">
-            <h3 class="list-section">이전에 작성한 보고서</h3>
+          <ReportFold v-model:open="prevOpen" title="이전에 작성한 보고서" :count="listed.length">
             <form class="period-filter" role="search" aria-label="이전 보고서 기간 검색" @submit.prevent>
               <label><span>시작일</span><input v-model="from" type="date" :max="today" @input="preset = null"></label>
               <span class="sep" aria-hidden="true">~</span>
@@ -253,19 +258,18 @@ function writeFlow() {
             <template v-for="d in listed" :key="d">
               <div class="date-label">{{ dateWithDay(d) }}</div>
               <a href="#" :class="{ on: d === date }" :aria-current="d === date ? 'page' : undefined" @click.prevent="date = d">
-                <b>일일 생산 마감</b><time>24:00</time><span>{{ SHIFT_SHORT }} · 마감</span>
+                <b>일일 생산 마감</b><time>18:00</time>
               </a>
             </template>
             <p v-if="!periodInvalid && !listed.length" class="period-empty">선택한 기간에 작성한 보고서가 없습니다.</p>
-          </div>
+          </ReportFold>
         </div>
       </section>
 
       <section class="panel daily-doc">
         <div class="doc-head">
           <div>
-            <h2>{{ doc ? `일일 생산 보고서 · ${date} ${SHIFT_SHORT}` : '일일 생산 보고서' }}</h2>
-            <p>{{ doc ? `${doc.at} 작성 · 생산 마감 기록` : '하루 생산실적을 마감하고 기록하는 보고서' }}</p>
+            <h2>{{ doc ? `일일 생산 보고서 · ${date}` : '일일 생산 보고서' }}</h2>
           </div>
           <button v-if="can('reportWrite')" class="btn primary" type="button" :disabled="!isToday || loading || flowView.status === 'SENT'" @click="generate">{{ isToday && madeAt ? '다시 생성' : 'AI 일일 리포트 생성' }}</button>
           <button class="btn" type="button" :disabled="!doc || docBusy" @click="downloadDoc">Google Docs(.doc)</button>
@@ -451,29 +455,17 @@ function writeFlow() {
 
 /* ── 목록 ── */
 .list {
-  margin: 0 -20px;
-  padding: 0;
   overflow: auto;
+  border-radius: inherit;
 }
 
-.list-section {
-  margin: 0;
-  padding: 10px 20px 7px;
-  border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-2);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.list > .list-section:first-child {
-  border-top: 0;
-}
+.side { padding: 0; }
 
 .date-label {
   padding: 12px 20px 4px;
   border-top: 1px solid var(--c-line-strong);
-  color: var(--c-ink-3);
-  font-size: 13px;
+  color: var(--c-ink-2);
+  font-size: var(--fs-md);
 }
 
 .list a {
@@ -496,6 +488,7 @@ function writeFlow() {
 }
 
 .list a b {
+  font-size: var(--fs-row);
   font-weight: 600;
 }
 
@@ -506,13 +499,13 @@ function writeFlow() {
 }
 
 .list a time {
-  color: var(--c-ink-3);
+  color: var(--c-ink-2);
   font-size: 14px;
 }
 
 .today-card {
-  margin: 0 12px 10px;
-  padding: 11px 12px;
+  margin: 0 16px 10px;
+  padding: 14px 16px;
   border: 1px solid #b9c9df;
   border-radius: 7px;
   background: #f6f9fd;
@@ -535,29 +528,23 @@ function writeFlow() {
 }
 
 .today-card b {
-  font-size: 13px;
+  font-size: var(--fs-row);
 }
 
 .today-card time {
   margin-left: auto;
-  color: var(--c-ink-3);
-  font-size: 11px;
-}
-
-.today-card p {
-  margin: 5px 0 7px;
   color: var(--c-ink-2);
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: var(--fs-md);
 }
 
 .draft-badge {
   display: inline-flex;
-  padding: 3px 7px;
+  margin-top: 8px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: #e5e7eb;
   color: #374151;
-  font-size: 10px;
+  font-size: var(--fs-sm);
   font-weight: 700;
 }
 
@@ -1035,6 +1022,31 @@ function writeFlow() {
   margin: 5px 0 0;
   padding: 0;
   font-size: 10px;
+}
+
+/* 11/21 문서만 보기 (/doc/…, 임시 MES 틀 안): 목록·버튼·요청 칸·결재 단추를 빼고 A4 문서만. 인쇄 모양과 같음 */
+.doc-only {
+  display: block;
+  height: auto;
+  padding: var(--sp-4);
+  background: var(--c-paper);
+}
+
+.doc-only :deep(.no-print),
+.doc-only .side,
+.doc-only .doc-head,
+.doc-only .report-tools {
+  display: none !important;
+}
+
+.doc-only .body,
+.doc-only .doc,
+.doc-only .daily-doc {
+  display: block;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: var(--c-paper);
 }
 
 @media print {

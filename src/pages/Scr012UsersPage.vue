@@ -100,7 +100,7 @@ const { can } = useAuth()
     </template>
 
     <div class="layout">
-      <BasePanel title="새 사용자 등록" meta="로그인 계정">
+      <BasePanel title="새 사용자 등록">
         <p v-if="!can('users')" class="perm-note" role="note">보기 전용 · {{ PERM_OWNER.users }}만 바꿀 수 있습니다</p>
         <form class="form" autocomplete="off" :inert="!can('users')" @submit.prevent="can('users') && save()">
           <BaseInput v-model="loginId" label="아이디" size="md" autocomplete="off" />
@@ -114,11 +114,6 @@ const { can } = useAuth()
             <p v-if="error" class="msg err" role="alert">{{ error }}</p>
             <p v-else-if="saved" class="msg ok" role="status">{{ saved }}</p>
           </div>
-          <ul class="rules">
-            <li>같은 아이디는 등록할 수 없음</li>
-            <li>비밀번호는 서버에 암호화해서 저장</li>
-            <li>수정·삭제는 아직 지원하지 않음</li>
-          </ul>
         </form>
       </BasePanel>
 
@@ -182,11 +177,4 @@ const { can } = useAuth()
   color: var(--c-ink-2);
 }
 
-.rules {
-  margin: var(--sp-2) 0 0;
-  padding-left: 1.2em;
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  line-height: 1.6;
-}
 </style>

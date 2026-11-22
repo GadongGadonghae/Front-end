@@ -9,7 +9,7 @@ export interface EquipCellView {
   /** 칸 안 이름 (예: 2단, 도장 #1) */
   name: string
   state: StateCode
-  /** 고장(D)일 때만 지속시간 (화면정의서 SCR-001 1번) */
+  /** 고장(D)일 때만 지속시간 (화면정의서 SCR-001 1번). 라인 흐름 큰 칸은 통신 끊김(DC)도 (11/22) */
   duration: string | null
   /** 예지보전 80% 이상이면 표시 (예: 주의 84%) */
   pdm: { level: PdmLevel; text: string } | null
@@ -48,8 +48,6 @@ export interface AlertRowView {
 
 /** 라인 흐름의 큰 설비 칸 (SCR-010 3번): 배치도 칸 + 사유 · 오늘 숫자 */
 export interface FlowCellView extends EquipCellView {
-  /** 큰 칸은 모든 상태에서 지속시간을 보인다 */
-  duration: string
   /** R이 아니면 비가동 코드 명칭 · 상세 */
   reason: { code: string; detail: string | null } | null
   /** 예: 가장 느린 단 */
@@ -101,7 +99,8 @@ export interface EquipCardView {
   id: string
   name: string
   state: StateCode
-  duration: string
+  /** 고장(D) · 통신 끊김(DC)일 때만 지속시간 (11/22) */
+  duration: string | null
   pdm: { level: PdmLevel; text: string } | null
   /** 예: 실설비 · LS iG5A / 시뮬레이터 (D-43) */
   tag: string | null

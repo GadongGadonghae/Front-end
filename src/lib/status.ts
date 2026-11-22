@@ -28,6 +28,9 @@ export function worstState(states: Iterable<StateCode>): StateCode {
   return SEVERITY.find((s) => set.has(s)) ?? 'R'
 }
 
+/** 발생 시점·지속 시간을 보이는 상태: 조치가 필요한 고장(D) · 통신 끊김(DC)만 (11/22) */
+export const showsSince = (s: StateCode) => s === 'D' || s === 'DC'
+
 /** 상태별 대수 */
 export function countByState(states: Iterable<StateCode>): Record<StateCode, number> {
   const out: Record<StateCode, number> = { R: 0, S: 0, I: 0, D: 0, DC: 0 }
@@ -35,8 +38,8 @@ export function countByState(states: Iterable<StateCode>): Record<StateCode, num
   return out
 }
 
-/** 공정 이름 (D-02). 검사(INSPECTION)는 화면에서 "출고" */
-export const PROCESS_NAME: Record<ProcessId, string> = { COIL: '코일입고', SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '출고' }
+/** 공정 이름 (D-02). 검사(INSPECTION)는 화면에서 "비전 검사" (11/22, 예전 "출고") */
+export const PROCESS_NAME: Record<ProcessId, string> = { COIL: '코일입고', SLITTING: '슬리팅', PRESS: '프레스', WELDING: '용접', PAINTING: '도장', INSPECTION: '비전 검사' }
 
 /** 알람 등급 이름 (백엔드 WARNING·CRITICAL). 등급 기준은 백엔드 미정 */
 export const ALARM_LEVEL_NAME = { WARNING: '경고', CRITICAL: '심각' } as const
@@ -47,7 +50,7 @@ export const byProcess = (a: ProcessId, b: ProcessId) => PROCESS_ORDER[a] - PROC
 
 /** 라인 이름: A~F는 "A라인", 도장 구역은 "도장" */
 export function lineName(id: string): string {
-  return id === 'PT' ? '도장' : id === 'VI' ? '출고' : `${id}라인`
+  return id === 'PT' ? '도장' : id === 'VI' ? '비전 검사' : `${id}라인`
 }
 
 /** 프레스 단별 작업 (화면정의서 SCR-002-3, D-80). 큰 칸·카드에서 "1단 성형"처럼 붙인다 */

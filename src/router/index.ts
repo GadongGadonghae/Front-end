@@ -3,7 +3,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { hasPerm, homePath, isLoggedIn, currentRole } from '@/composables/useAuth'
 import { settingsTabsFor } from '@/lib/permissions'
-import { installViewTransition } from '@/router/viewTransition'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -17,6 +16,8 @@ declare module 'vue-router' {
     public?: boolean
     /** 이 권한이 있어야 들어가는 화면 (없으면 첫 화면으로) */
     perm?: import('@/lib/access').Perm
+    /** 보고서 문서만 (임시 MES 틀 안, 11/21) */
+    docOnly?: boolean
   }
 }
 
@@ -29,7 +30,9 @@ const appRoutes: RouteRecordRaw[] = [
   { path: 'lines/:lineId([A-F])/:process(slit|press|weld)', component: () => import('@/pages/Scr002ProcessPage.vue'), meta: { screen: 'SCR-002-2~4', title: '공정 상세', menu: '대시보드' } },
   { path: 'lines/PT/paint', component: () => import('@/pages/Scr002ProcessPage.vue'), meta: { screen: 'SCR-002-5', title: '도장 상세', menu: '대시보드' } },
   { path: 'inbound', component: () => import('@/pages/Scr0021InboundPage.vue'), meta: { screen: 'SCR-002-1', title: '코일입고 상세', menu: '대시보드' } },
-  { path: 'outbound', component: () => import('@/pages/Scr0026OutboundPage.vue'), meta: { screen: 'SCR-002-6', title: '출고 상세', menu: '대시보드' } },
+  { path: 'vision', component: () => import('@/pages/Scr0026VisionPage.vue'), meta: { screen: 'SCR-002-6', title: '비전 검사', menu: '대시보드' } },
+  { path: 'loading', component: () => import('@/pages/Scr0027LoadingPage.vue'), meta: { screen: 'SCR-002-7', title: '적재', menu: '대시보드' } },
+  { path: 'outbound', redirect: '/loading' },
   { path: 'production', component: () => import('@/pages/Scr011ProductionPage.vue'), meta: { screen: 'SCR-011', title: '생산 조회', menu: '생산' } },
   { path: 'utilization', component: () => import('@/pages/Scr003UtilizationPage.vue'), meta: { screen: 'SCR-003', title: '가동률', menu: '가동률' } },
   { path: 'pdm', component: () => import('@/pages/Scr004PdmPage.vue'), meta: { screen: 'SCR-004', title: '예지보전', menu: '예지보전' } },
@@ -51,13 +54,15 @@ if (import.meta.env.DEV) {
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('@/pages/Scr000LoginPage.vue'), meta: { screen: 'SCR-000', title: '로그인', public: true } },
   // 임시 MES (11/20, 시연용): 상단 메뉴 없이 따로. 캠퍼스장 계정만
-  { path: '/mes', component: () => import('@/pages/MesPage.vue'), meta: { title: '임시 MES', perm: 'mes' } },
+  { path: '/mes', component: () => import('@/pages/MesPage.vue'), meta: { title: 'MES', perm: 'mes' } },
+  // 11/21 보고서 문서만 (우리 시스템 보고서 화면과 같은 부품·같은 레이아웃). 임시 MES가 틀(iframe) 안에 띄워요
+  { path: '/doc/replan/:id', component: () => import('@/pages/Scr007ReplanPage.vue'), meta: { title: '생산계획 수정 보고서', docOnly: true } },
+  { path: '/doc/daily/:date', component: () => import('@/pages/Scr007DailyPage.vue'), meta: { title: '일일 생산 보고서', docOnly: true } },
   { path: '/', component: () => import('@/layouts/AppShell.vue'), children: appRoutes },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 
 export const router = createRouter({ history: createWebHistory(), routes })
-installViewTransition(router)
 
 router.beforeEach((to) => {
   const loggedIn = isLoggedIn()
@@ -68,5 +73,5 @@ router.beforeEach((to) => {
 })
 
 router.afterEach((to) => {
-  document.title = to.meta.title ? `${to.meta.title} · 라인가동현황` : '라인가동현황'
+  document.title = to.meta.title ? `${to.meta.title} · FLOW` : 'FLOW'
 })

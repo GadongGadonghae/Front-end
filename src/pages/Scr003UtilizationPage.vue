@@ -1,5 +1,5 @@
 <!-- SCR-003 가동률 (D-108 시안 G, D-113 다듬기): 타임라인을 보여 주며 라인별 OEE를 비교한다.
-     왼쪽 열: 종합(OEE 다리) · 비가동 코드별(순위 막대). 오른쪽: 구역별 가동 [생산 라인 · 코일입고 · 도장 · 출고], 라인을 누르면 설비별.
+     왼쪽 열: 종합(OEE 다리) · 비가동 코드별(순위 막대). 오른쪽: 구역별 가동 [생산 라인 · 코일입고 · 도장 · 비전 검사], 라인을 누르면 설비별.
      기간(일/주/월)만 먹색 구간 버튼, 패널 안 탭·정렬은 옅은 구간 버튼 (성격이 다른 선택을 모양으로 나눔) -->
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
@@ -25,13 +25,8 @@ const { period, date, tab, sort } = u
 const PERIODS: { value: Period; label: string }[] = [{ value: 'day', label: '일' }, { value: 'week', label: '주' }, { value: 'month', label: '월' }]
 const TABS: { value: UtilTab; label: string }[] = [
   // 코일입고는 공정 시간(CT)이 없어 가동률을 셀 수 없어서 뺌 (11/20)
-  { value: 'line', label: '생산 라인' }, { value: 'paint', label: '도장' }, { value: 'out', label: '출고 비전' },
+  { value: 'line', label: '생산 라인' }, { value: 'paint', label: '도장' }, { value: 'out', label: '비전 검사' },
 ]
-/** 줄이 적은 구역의 설명 줄 (시안 G) */
-const NOTE: Partial<Record<UtilTab, string>> = {
-  paint: 'A~F 모든 라인의 제품을 도장 두 대가 나눠 받습니다',
-  out: '모든 제품이 출고 비전 한 대를 거칩니다',
-}
 const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as const, label: 'OEE 낮은 순' }]
 </script>
 
@@ -48,7 +43,7 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
 
     <div class="layout">
       <div class="side">
-        <BasePanel :title="u.title.value" :meta="`OEE · ${u.periodWord.value}`">
+        <BasePanel :title="u.title.value" :meta="`${u.periodWord.value} · OEE`">
           <p class="key">{{ formatNumber(u.summary.value?.oee.oee, 1) }}<small v-if="u.summary.value?.oee.oee != null">%</small></p>
           <OeeBridge :oee="u.summary.value?.oee ?? null" :line-yield="u.summary.value?.lineYield ?? null" />
         </BasePanel>
@@ -77,7 +72,6 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
           <span>설비 없이 수량만 관리하는 곳이라 가동·정지 상태가 없습니다.</span>
           <span>오늘 입고 코일 수와 슬리팅 앞 재고는 <RouterLink to="/inbound">코일입고 상세</RouterLink>에서 봅니다.</span>
         </div>
-        <p v-if="NOTE[tab] && !u.line.value" class="note">{{ NOTE[tab] }}</p>
         <UtilLedger
           v-if="tab !== 'inbound' && u.rows.value.length"
           :rows="u.rows.value"
@@ -145,12 +139,6 @@ const SORTS = [{ value: 'line' as const, label: '라인순' }, { value: 'low' as
 
 .main :deep(.ph) {
   flex-wrap: wrap;
-}
-
-.note {
-  margin: 0 0 var(--sp-3);
-  color: var(--c-ink-2);
-  font-size: var(--fs-md);
 }
 
 .crumb {

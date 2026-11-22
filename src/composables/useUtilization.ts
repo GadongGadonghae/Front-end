@@ -1,5 +1,5 @@
 // 가동률 (SCR-003, API-050·051, D-108 시안 G): 타임라인을 보여 주며 라인별 OEE를 비교한다.
-// 탭 = 생산 라인 6 · 코일입고 · 도장 · 출고. 라인을 누르면 그 라인 설비별로 내려간다.
+// 탭 = 생산 라인 6 · 코일입고 · 도장 · 비전 검사. 라인을 누르면 그 라인 설비별로 내려간다.
 // 줄마다 OEE(기준 대비) · 손실 시간 · 24시간 띠(일) 또는 날짜 칸(주·월). 조건이 바뀌면 바로, 그대로 두면 1분마다 다시 부른다
 import { now as clockNow } from '@/clock'
 import { computed, ref, watch } from 'vue'
@@ -10,7 +10,8 @@ import type { DowntimeSliceView, LedgerRowView, StateSpanView } from '@/types/vi
 import { useMaster } from '@/composables/useMaster'
 import { usePoll } from '@/composables/usePoll'
 import { DOWNTIME_NAME, STATE_NAME, byProcess, lineName, longShortName } from '@/lib/status'
-import { formatDate, formatHm, formatNumber, toDateStr } from '@/lib/format'
+import { formatDate, formatNumber, toDateStr } from '@/lib/format'
+import { shiftBasis } from '@/lib/shift'
 
 const POLL_MS = 60_000
 const LINES: LineId[] = ['A', 'B', 'C', 'D', 'E', 'F']
@@ -32,7 +33,7 @@ export function useUtilization(init: { tab?: string; line?: string } = {}) {
   const sort = ref<'line' | 'low'>('line')
   watch(tab, () => { line.value = null })
 
-  /** 지금 보는 범위 (종합·비가동·비교 기준): 라인을 고르면 그 라인, 도장·출고 탭은 그 구역, 아니면 공장 */
+  /** 지금 보는 범위 (종합·비가동·비교 기준): 라인을 고르면 그 라인, 도장·비전 검사 탭은 그 구역, 아니면 공장 */
   const area = computed<string | null>(() => (tab.value === 'line' ? line.value : tab.value === 'paint' ? 'PT' : tab.value === 'out' ? 'VI' : null))
 
   const equipmentOf = (a: string): Equipment[] => (master.value?.equipment ?? [])
@@ -71,7 +72,7 @@ export function useUtilization(init: { tab?: string; line?: string } = {}) {
   const rangeText = computed(() => {
     const r = summary.value
     if (!r) return ''
-    if (period.value === 'day') return isToday.value ? `00:00 ~ ${formatHm(r.to)} 기준` : `${formatDate(r.from)} 하루`
+    if (period.value === 'day') return isToday.value ? shiftBasis(clockNow()) : `${formatDate(r.from)} 하루`
     return `${toDateStr(Date.parse(r.from))} ~ ${toDateStr(Date.parse(r.to) - 1).slice(5)}`
   })
 

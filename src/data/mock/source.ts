@@ -27,12 +27,12 @@ const RISK_MS = 5000 // risk 5초 [제안]
 /** 라인 능력 17초에 1개 (백엔드 v3.1) → 1초에 1/17 확률로 라인 실적 +1 (데모) */
 const LINE_DONE_PER_SEC = 1 / 17
 /** 데모 계정 이름. 조치 메모 담당자도 이 이름 (실제는 서버가 로그인 사용자로 기록, D-84) */
-const DEMO_USER = '김현수'
+const DEMO_USER = '정연창'
 /** 데모 사용자 목록 (사용자 관리 화면) */
 const demoUsers: import('@/types/user').UserRow[] = [
-  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_HEAD', email: null, memo: '데모 공장장', lastLoginAt: null },
-  { loginId: 'prodlead', name: '이도윤', role: 'PROD_LEAD', email: null, memo: '데모 생산관리팀장', lastLoginAt: null },
-  { loginId: 'linelead', name: '박서연', role: 'LINE_WORKER', email: null, memo: 'A·B라인', lastLoginAt: null },
+  { loginId: 'abc', name: DEMO_USER, role: 'PLANT_HEAD', email: null, memo: '공장장', lastLoginAt: null },
+  { loginId: 'prodlead', name: '윤은빈', role: 'PROD_LEAD', email: null, memo: '생산관리팀장', lastLoginAt: null },
+  { loginId: 'linelead', name: '김유석', role: 'LINE_WORKER', email: null, memo: 'A·B라인', lastLoginAt: null },
 ]
 const PAGE_SIZE = 50
 
@@ -240,21 +240,12 @@ export function createMockSource(now: () => number = Date.now): DataSource {
     // 코일 1롤 = 제품 20개 (백엔드 M-13)
     const consumed = Math.round(input / 20)
     const first = inbound.stock + consumed - inbound.today
-    const weights = PRODUCTION_LINES.map((l) => 0.8 + noise('stock-w', l) * 0.4)
-    const wsum = sum(weights)
     const stockTrend: InboundToday['stockTrend'] = []
     const slots = [...Array(Math.floor(elapsed / 1_800_000) + 1).keys()].map((i) => start + i * 1_800_000).concat(now())
     for (const t of slots) {
       const got = sum(receipts.filter((x) => Date.parse(x.t) <= t).map((x) => x.coils))
       const total = Math.max(0, Math.round(first + got - consumed * ((t - start) / elapsed)))
-      const byLine: Record<string, number> = {}
-      let rest = total
-      PRODUCTION_LINES.forEach((l, i) => {
-        const n = i === PRODUCTION_LINES.length - 1 ? rest : Math.floor((total * weights[i]) / wsum)
-        byLine[l] = n
-        rest -= n
-      })
-      stockTrend.push({ t: iso(t), total, byLine })
+      stockTrend.push({ t: iso(t), total })
     }
     return { today: inbound.today, stock: inbound.stock, input, receipts: receipts.reverse(), stockTrend }
   }
@@ -426,6 +417,8 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getTelemetry: async (equipmentId, range) => telemetry.series(equipmentId, range),
       getStateEvents: async ({ equipmentId }) => events.filter((e) => e.equipmentId === equipmentId).map((e) => ({ ...e })),
       getInspectionsToday: async (process, lineId) => inspections(process, lineId),
+      getLoadedToday: async () => PRODUCTION_LINES.flatMap((l) => products.day(today(), l)).filter((x) => x.result === 'ok' && x.doneAt)
+        .sort((a, b) => b.doneAt!.localeCompare(a.doneAt!)).slice(0, PAGE_SIZE).map((x) => ({ t: x.doneAt!, productId: x.id, lineId: x.lineId })),
       getMicrostopsToday: async (equipmentId) => telemetry.microstops(equipmentId),
       getInboundToday: async () => inboundToday(),
       // 라인 수율 = 출고 양품 ÷ 슬리팅 투입 (D-92). 공장·생산 라인 단위만
@@ -450,6 +443,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       getMesReports: async () => null,
       getPlannedStopLines: async () => [],
       getPendingTarget: async () => null,
+      getPaintPlan: async () => null,   // 도장 운영 판단은 서버 계산 전용
       // 데모에는 PDF 서버가 없다 → 화면이 브라우저 인쇄로 대신한다
       getReplanPdf: async () => null,
       getTargets: async (from, to) => targetRows(from, to),
@@ -481,7 +475,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
       approveReplanReport: async (reportId) => reports.approve(reportId, DEMO_USER),
       syncReportFlow: async () => {},
       editReplanAllocations: async (id, addQty) => reports.editAllocations(id, addQty),
-      createTargetReport: async () => { throw new Error('데모 데이터에서는 목표 변동 보고서를 만들 수 없어요 (실서버 전용)') },
+      createTargetReport: async () => { throw new Error('서버에 연결해야 목표 변동 보고서를 만들 수 있어요') },
       createOrderReport: async (request) => reports.createOrder(request),
       applyOrderReport: async (id) => reports.applyOrder(id),
       // 데모 데이터: 슬랙으로 보내지 않고 보고서 요약만 돌려준다
@@ -502,6 +496,7 @@ export function createMockSource(now: () => number = Date.now): DataSource {
         tickSummary()
         return { ok: true, value: targetRows(date, date)[0] }
       },
+      applyPaintPlan: async () => ({ ok: false, error: '서버에 연결해야 도장 운영을 적용할 수 있어요' }),
       async setPaintRoute(lineId, paintId, reason) {
         const line = MASTER.lines.find((l) => l.id === lineId && l.kind === 'production')
         if (!line) return { ok: false, error: `생산 라인이 아닙니다: ${lineId}` }

@@ -1,13 +1,15 @@
 <!-- SCR-004 예지보전 (화면정의서 SCR-004, 시안 B-pdm)
      왼쪽: 등급별 대수 → 위험도 목록 (위험 → 주의 → 정상은 접어 둠, D-61). 지금 고장 난 설비는 따로
      오른쪽: 설비 고르기(구역 → 설비) → 고른 설비 이름·등급·상태 + 센서 카드(지금 값·위험도·1시간 미니 그래프)
-            → 고른 센서 추이(상·하한 점선, 80%·90% 옅은 선) · 센서별 오늘 이력. 온도·진동·전류 등 설비 센서는 더미 (data/dummy/sensors.ts)
+            → 고른 센서 추이(상·하한 점선, 80%·90% 옅은 선) · 센서별 오늘 이력. 온도·진동·전류 등 설비 상태 센서만 (더미, data/dummy/sensors.ts)
+     공정 관리값(압력·전류·전압·가압 시간 등)은 라인 화면(공정 상세)에서만 본다 — 같은 값을 두 화면에 두지 않음
      예지보전 표시는 칸 바깥 테두리 (DESIGN.md): 주의 = 노랑 실선, 위험 = 빨강 점선, 항상 "주의"·"위험" 글자와 함께 -->
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import PageLayout from '@/layouts/PageLayout.vue'
 import BasePanel from '@/components/base/BasePanel.vue'
+import BaseFold from '@/components/base/BaseFold.vue'
 import BaseSegmented from '@/components/base/BaseSegmented.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseEmpty from '@/components/base/BaseEmpty.vue'
@@ -52,7 +54,9 @@ const pickArea = computed({
 const pickEquip = computed({ get: () => selectedId.value ?? '', set: (id: string) => { selectedId.value = id } })
 const equipOptions = computed(() => equipOf(area.value).map((e) => {
   const r = p.rows.value.find((x) => x.id === e.id)
-  const mark = r?.state === 'D' ? ' · 고장' : r?.grade === 'danger' ? ' · 위험' : r?.grade === 'warn' ? ' · 주의' : ''
+  // 고장은 글자 대신 빨간 칸 (11/22)
+  if (r?.state === 'D') return { value: e.id, label: e.shortName, tone: 'down' as const, aria: `${e.shortName} 고장` }
+  const mark = r?.grade === 'danger' ? ' · 위험' : r?.grade === 'warn' ? ' · 주의' : ''
   return { value: e.id, label: `${e.shortName}${mark}` }
 }))
 const pct = (v: number | null) => (v == null ? '-' : `${v}%`)
@@ -66,7 +70,7 @@ const legend = computed(() => [
 const pick = (r: RiskRow) => { selectedId.value = r.id }
 /** 펼쳐 보이는 묶음: 지금 고장 → 위험 → 주의. 정상·기준 미정은 접어 둔다 (D-61) */
 const topGroups = computed(() => [
-  { key: 'down', title: '지금 고장 · 멈추기 전 10분 평균', rows: g.value.down },
+  { key: 'down', title: '지금 고장', rows: g.value.down },
   { key: 'danger', title: `위험 · ${DANGER}% 이상`, rows: g.value.danger },
   { key: 'warn', title: `주의 · ${WARN}% 이상`, rows: g.value.warn },
 ])
@@ -76,11 +80,11 @@ const topGroups = computed(() => [
   <PageLayout>
     <template #head>
       <h1 class="title">예지보전</h1>
-      <span class="note">관리값이 있는 설비 38대 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · {{ WARN }}% 주의 · {{ DANGER }}% 위험</span>
+      <BaseFold label="설명" :text="`설비 38대 · 설비 상태 센서(온도·진동·전류)로 판단, 공정 관리값은 라인 화면에서 · 위험도 = 최근 10분 평균이 기준 가운데에서 상·하한까지 간 정도(%) 중 가장 큰 값 · ${WARN}% 주의 · ${DANGER}% 위험`" />
     </template>
 
     <div class="layout">
-      <BasePanel title="설비 위험도" meta="위험 순">
+      <BasePanel title="설비 위험도">
         <dl class="counts">
           <div class="danger"><dt>위험</dt><dd>{{ p.counts.value.danger }}</dd></div>
           <div class="warn"><dt>주의</dt><dd>{{ p.counts.value.warn }}</dd></div>
@@ -142,7 +146,7 @@ const topGroups = computed(() => [
               <StatusKey :state="sel.state" size="sm" />
               <span :class="['tag', sel.grade]">{{ GRADE_WORD[sel.grade] }}</span>
               <span v-if="p.dangerSince.value" class="since">{{ p.dangerSince.value }}</span>
-              <span class="meta">센서 {{ sn.tiles.value.length }}개 · 최근 1시간 · 온도·진동·전류 등 설비 센서는 더미 값</span>
+              <span class="meta">상태 센서 {{ sn.tiles.value.length }}개 · 최근 1시간</span>
             </div>
             <h2 v-else>설비를 고르세요</h2>
           </template>
@@ -208,14 +212,6 @@ const topGroups = computed(() => [
 .title {
   font-size: var(--fs-page);
   font-weight: var(--fw-strong);
-  white-space: nowrap;
-}
-
-.note {
-  overflow: hidden;
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

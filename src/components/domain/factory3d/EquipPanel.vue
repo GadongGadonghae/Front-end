@@ -1,13 +1,13 @@
 <!-- 3D 공장: 고른 설비 팝업 (D-118). 3D 화면 왼쪽에 붙는다 (설비는 카메라가 화면 가운데로 데려온다)
-     머리 = 상태 열쇠 칸 + 명칭, 이상 상태면 그 상태의 옅은 바탕. 설비 ID를 크게, 지속 시간·발생 시점을 숫자 두 칸으로
+     머리 = 상태 열쇠 칸 + 명칭, 이상 상태면 그 상태의 옅은 바탕. 설비 ID를 크게, 고장(D)·통신 끊김(DC)이면 지속 시간·발생 시점을 숫자 두 칸으로
      닫기: × · Esc · 팝업 밖을 누름 (Factory3D가 처리) -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusKey from '@/components/domain/StatusKey.vue'
-import { DOWNTIME_NAME, PROCESS_NAME } from '@/lib/status'
-import { formatDuration, formatTime } from '@/lib/format'
+import { DOWNTIME_NAME, PROCESS_NAME, showsSince } from '@/lib/status'
+import { formatDuration, formatNumber, formatTime } from '@/lib/format'
 import type { Equipment } from '@/types/plant'
 import type { EquipmentLive } from '@/types/live'
 
@@ -21,11 +21,21 @@ const props = defineProps<{
   abnormal: boolean
   /** 아직 확인하지 않은 이상: [확인] 버튼 */
   issue: boolean
+  /** 비전 검사: 오늘 합격 · 불량 (그 밖 설비는 없음) */
+  vision?: { ok: number; ng: number } | null
 }>()
 const emit = defineEmits<{ close: []; ack: []; goLine: []; goAction: [] }>()
 
+const isVision = computed(() => props.e.process === 'INSPECTION')
 const tone = computed(() => (props.l.state === 'D' ? 'down' : props.l.state === 'I' ? 'idle' : props.l.state === 'DC' ? 'dc' : null))
-const hasCause = computed(() => props.l.code != null || props.l.detail != null)
+/** 원인: 원인 코드 이름 + 내용 한 줄 (11/21). 고장이면 "고장 원인" */
+const cause = computed(() => {
+  const name = props.l.code ? DOWNTIME_NAME[props.l.code] : null
+  const detail = props.l.detail && props.l.detail !== name ? props.l.detail : null
+  const parts = [name, detail].filter((x): x is string => !!x)
+  return parts.length ? parts.join(' · ') : null
+})
+const causeLabel = computed(() => (props.l.state === 'D' ? '고장 원인' : props.l.state === 'DC' ? '끊긴 원인' : '대기 원인'))
 </script>
 
 <template>
@@ -40,21 +50,30 @@ const hasCause = computed(() => props.l.code != null || props.l.detail != null)
       <p class="where">{{ PROCESS_NAME[e.process] }} · {{ lineName }}</p>
     </div>
 
-    <dl class="nums">
-      <div><dt>지속 시간</dt><dd class="num">{{ formatDuration(sec) }}</dd></div>
+    <!-- 발생 시점 · 지속 시간은 고장(D) · 통신 끊김(DC)만 (11/22) -->
+    <dl v-if="showsSince(l.state)" class="nums">
       <div><dt>발생 시점</dt><dd class="num">{{ formatTime(l.since) }}</dd></div>
+      <div><dt>지속 시간</dt><dd class="num">{{ formatDuration(sec) }}</dd></div>
     </dl>
 
-    <dl v-if="hasCause" class="facts">
-      <div><dt>원인 코드</dt><dd>{{ l.code ? `${l.code} · ${DOWNTIME_NAME[l.code]}` : '-' }}</dd></div>
-      <div><dt>내용</dt><dd>{{ l.detail ?? '-' }}</dd></div>
+    <dl v-if="vision" class="nums">
+      <div><dt>오늘 합격</dt><dd class="num">{{ formatNumber(vision.ok) }}</dd></div>
+      <div><dt>오늘 불량</dt><dd class="num">{{ formatNumber(vision.ng) }}</dd></div>
     </dl>
 
-    <!-- 이상 없는 설비(가동·계획 정지 등)는 할 일이 없어 버튼을 두지 않는다 -->
-    <footer v-if="abnormal" class="acts">
+    <dl v-if="abnormal" class="facts">
+      <div>
+        <dt>{{ causeLabel }}</dt>
+        <dd class="cause">{{ cause ?? '원인 미입력' }}</dd>
+        <dd v-if="l.code" class="code">코드 {{ l.code }}</dd>
+      </div>
+    </dl>
+
+    <!-- 이상 없는 설비(가동·계획 정지 등)는 할 일이 없어 버튼을 두지 않는다. 비전 검사는 상세 보기만 -->
+    <footer v-if="abnormal || isVision" class="acts">
       <BaseButton v-if="issue" @click="emit('ack')">확인</BaseButton>
-      <BaseButton @click="emit('goLine')">라인 가기</BaseButton>
-      <BaseButton variant="primary" @click="emit('goAction')">조치 가기</BaseButton>
+      <BaseButton @click="emit('goLine')">{{ isVision ? '상세 보기' : '라인 가기' }}</BaseButton>
+      <BaseButton v-if="abnormal" variant="primary" @click="emit('goAction')">조치 가기</BaseButton>
     </footer>
   </section>
 </template>
@@ -105,7 +124,7 @@ const hasCause = computed(() => props.l.code != null || props.l.detail != null)
 .x:hover { background: var(--c-surface-sunk); color: var(--c-ink); }
 
 .who {
-  padding: var(--sp-4) var(--sp-4) 0;
+  padding: var(--sp-4);
 }
 
 .id {
@@ -125,7 +144,7 @@ const hasCause = computed(() => props.l.code != null || props.l.detail != null)
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-4);
   margin: 0;
-  padding: var(--sp-4);
+  padding: 0 var(--sp-4) var(--sp-4);
 }
 
 .nums dt,
@@ -154,6 +173,16 @@ const hasCause = computed(() => props.l.code != null || props.l.detail != null)
   margin: var(--sp-1) 0 0;
   font-size: var(--fs-md);
   line-height: var(--lh-body);
+}
+
+.facts .cause {
+  font-size: var(--fs-row);
+  font-weight: var(--fw-strong);
+}
+
+.facts .code {
+  color: var(--c-ink-2);
+  font-size: var(--fs-sm);
 }
 
 .acts {

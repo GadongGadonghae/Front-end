@@ -37,7 +37,6 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
           <div class="types">
             <BaseSegmented v-model="type" label="설비 종류" :options="c.typeOptions.value" />
             <BaseSelect v-model="equipmentId" label="설비" :options="c.equipmentOptions.value" />
-            <span class="note">설비마다 기준이 따로 있음 · 빈 칸은 기준 미정</span>
           </div>
         </template>
 
@@ -94,7 +93,7 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
             <p v-if="c.error.value" class="msg err" role="alert">{{ c.error.value }}</p>
             <p v-else-if="c.otherDirty.value" class="msg warn" role="status">다른 설비에 저장하지 않은 값이 있습니다: {{ c.otherDirty.value }}. 저장은 지금 고른 설비만 합니다</p>
             <p v-else-if="c.saved.value" class="msg" role="status">{{ c.saved.value }}</p>
-            <p v-else class="msg">저장하면 상태 판정(상·하한 이탈 → D)과 예지보전 위험도에 바로 반영됩니다</p>
+            <p v-else class="msg"></p>
             <BaseButton :disabled="!c.dirtyCount.value" @click="c.revert">되돌리기</BaseButton>
             <BaseButton type="submit" variant="primary" :disabled="c.saving.value || !c.dirtyCount.value">
               저장<template v-if="c.dirtyCount.value"> ({{ c.dirtyCount.value }}개)</template>
@@ -132,11 +131,6 @@ const TABS = computed(() => settingsTabsFor(myRole.value))
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3) var(--sp-5);
-}
-
-.note {
-  color: var(--c-ink-3);
-  font-size: var(--fs-sm);
 }
 
 .form {

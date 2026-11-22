@@ -6,7 +6,7 @@ const PROCESS_SEGMENT: Record<string, string> = { SLITTING: 'slit', PRESS: 'pres
 /** 설비의 공정 상세 경로. 쿼리 eq로 처음 선택할 설비를 넘긴다 (화면정의서 SCR-002 3번) */
 export function equipmentPath(e: Equipment): string {
   if (e.process === 'COIL') return '/inbound'
-  if (e.process === 'INSPECTION') return `/outbound?eq=${e.id}`
+  if (e.process === 'INSPECTION') return `/vision?eq=${e.id}`
   if (e.process === 'PAINTING') return `/lines/PT/paint?eq=${e.id}`
   return `/lines/${e.area}/${PROCESS_SEGMENT[e.process]}?eq=${e.id}`
 }
