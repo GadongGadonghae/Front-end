@@ -83,17 +83,19 @@ src/data/
 
 ### 3.3 실시간 (WebSocket STOMP)
 
-> **지금은 REST 주기 조회로 대신합니다.** STOMP 라이브러리 추가를 정하기 전까지 `source.ts`가 상태 M-01(+M-07·M-13) 1초, 요약 10초, 알림 5초(U-08 진행 중 건 비교), 관리값 M-03 2초로 부릅니다. 아래 표는 STOMP로 바꿀 때의 모양입니다.
+> **웹소켓으로 받고, 끊기면 주기 조회로 돌아갑니다 (11/22).** 연결은 `src/data/api/ws.ts` 하나(`@stomp/stompjs`)를 모든 화면이 같이 쓰고, `source.ts`의 `hybrid()`가 붙어 있으면 웹소켓, 끊겨 있으면 원래 주기 조회(상태 1초 · 알림 2초 · 관리값 2초)를 씁니다. 백엔드가 꺼져 있거나 허용 주소가 아니어도 화면은 그대로 돕니다. 다시 붙으면 REST로 다시 채우고 재구독합니다 (백엔드 명세).
 
-| 백엔드 채널 | 계약 | 어댑터가 할 일 |
+| 백엔드 채널 | 계약 | 웹소켓이 붙어 있을 때 |
 |---|---|---|
-| `/topic/status` (W-01, 바뀐 설비만) | `live.onSnapshot` (1초, 39대 전체) | 처음 `GET /api/monitoring/status`(M-01)로 39대를 채우고, W-01이 올 때마다 그 설비만 바꿔 끼운 스냅샷을 내보냄. 라인별 실적은 `GET /api/production/counts?groupBy=line`(M-07)을 주기 조회 |
-| `/topic/alarms` (W-02) | `live.onAlarm` | 관리값 이탈 알람. 고장 전체(장비고장·안전문제 포함) 알림은 W-01 상태가 D로 바뀌는 것도 함께 봄 |
-| `/topic/production` (W-03) | `live.onSummary` 일부 | 오늘 누적 수량. 목표·OEE·재공은 U-01·M-13·G-02 주기 조회로 채움 |
-| `/topic/metrics/{equipmentId}` (W-04, P2) | `live.onTelemetry` | 고른 설비의 새 관리값 |
+| `/topic/status` (W-01, 바뀐 설비만) | `live.onSnapshot` | 처음 M-01로 39대를 채우고, W-01이 올 때마다 그 설비만 바꿔 끼움. 전체는 10초마다 다시 맞춤 |
+| `/topic/production` (W-03) | `live.onSnapshot` 공장 실적 | 오늘 양품 수가 바뀔 때만 반영, 라인별 실적·코일은 그때 M-07·M-16을 다시 받음 (2초에 한 번까지) |
+| `/topic/status` (W-01) | `live.onAlarm` | 상태가 바뀔 때만 진행 중 비가동(U-08)을 다시 받아 비교. 놓친 것은 30초마다 |
+| `/topic/metrics/{equipmentId}` (W-04) | `live.onTelemetry` | 고른 설비의 새 관리값. 놓친 점은 10초마다 M-03으로 채움 |
+| `/topic/flow` (W-05) | `live.onFlowPositions` | 3D 물류 제품 위치 + 코일 재고, 1초마다. 구독하자마자 한 번은 M-17 · M-16 |
 
-- 연결이 끊기면 REST(M-01, M-04, M-07)로 다시 채우고 재구독합니다 (백엔드 명세).
-- STOMP 클라이언트 라이브러리(예: `@stomp/stompjs`)가 필요합니다. **라이브러리 추가는 팀 확인 후** (CLAUDE.md 규칙).
+- **웹소켓 채널이 없어 주기 조회로 남는 것**: 요약 `live.onSummary`(10초), 예지보전 위험도 `live.onRisk`(5초, 센서 더미).
+- **W-02(`/topic/alarms`)는 쓰지 않습니다**: 관리값 이탈 알람이라 화면의 알람(비가동 이벤트, U-08)과 다른 데이터이고, 백엔드가 아직 보내지 않습니다.
+- 주소: `VITE_WS_URL`(기본 `/ws`). 상대 경로면 지금 화면 주소 기준(`ws://호스트/ws`)으로 붙고, 개발 서버 · 미리보기 · nginx가 백엔드로 넘깁니다. 백엔드는 브라우저 주소창의 주소를 허용 목록(`websocket.allowed-origin-patterns`)에 두어야 합니다.
 
 ### 3.4 화면별 API 대응
 
